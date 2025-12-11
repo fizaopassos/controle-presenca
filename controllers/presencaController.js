@@ -1,21 +1,35 @@
 const db = require('../config/db');
 
 // ========================================
-// TELA: Lançar presença diária
+// TELA: Lançar presença
 // ========================================
-// TELA: Lançar presença diária
 exports.getLancarPresenca = async (req, res) => {
   try {
-    console.log('Sessão do usuário:', req.session.user); // ← Adiciona isso
+    const usuario = req.session.user;
 
-    const [condominios] = await db.query(
-      'SELECT id, nome FROM condominios ORDER BY nome'
-    );
+    let sql = 'SELECT id, nome FROM condominios';
+    let params = [];
 
-    res.render('presenca/lancar', {
+    if (usuario.perfil !== 'admin') {
+      sql += `
+        WHERE id IN (
+          SELECT condominio_id 
+          FROM usuario_condominios 
+          WHERE usuario_id = ?
+        )
+      `;
+      params.push(usuario.id);
+    }
+
+    sql += ' ORDER BY nome';
+
+    const [condominios] = await db.query(sql, params);
+
+    res.render('layout', {
       title: 'Lançar Presença Diária',
-      condominios,
-      usuario: req.session.user
+      menuAtivo: 'presenca',
+      page: 'presenca/lancar',
+      condominios
     });
   } catch (error) {
     console.error('Erro ao carregar tela de lançamento:', error);
@@ -23,12 +37,52 @@ exports.getLancarPresenca = async (req, res) => {
   }
 };
 
+// ========================================
+// TELA: Consultar presenças
+// ========================================
+exports.getConsultarPresenca = async (req, res) => {
+  try {
+    const usuario = req.session.user;
 
+    let sqlCond = 'SELECT id, nome FROM condominios';
+    let paramsCond = [];
+
+    if (usuario.perfil !== 'admin') {
+      sqlCond += `
+        WHERE id IN (
+          SELECT condominio_id 
+          FROM usuario_condominios 
+          WHERE usuario_id = ?
+        )
+      `;
+      paramsCond.push(usuario.id);
+    }
+
+    sqlCond += ' ORDER BY nome';
+
+    const [condominios] = await db.query(sqlCond, paramsCond);
+
+    const [empresas] = await db.query(
+      'SELECT id, nome FROM empresas ORDER BY nome'
+    );
+
+    res.render('layout', {
+      title: 'Consultar Presenças',
+      menuAtivo: 'presenca',
+      page: 'presenca/consultar',
+      condominios,
+      empresas
+    });
+  } catch (error) {
+    console.error('Erro ao carregar consulta:', error);
+    res.status(500).send('Erro ao carregar tela de consulta de presença');
+  }
+};
 
 // ========================================
 // API: Buscar postos de um condomínio
 // ========================================
-exports.getPostosPorCondominio = async (req, res) => {
+exports.getPostos = async (req, res) => {
   try {
     const { condominio_id } = req.params;
     const [postos] = await db.query(
@@ -45,7 +99,7 @@ exports.getPostosPorCondominio = async (req, res) => {
 // ========================================
 // API: Buscar colaboradores de um posto
 // ========================================
-exports.getColaboradoresPorPosto = async (req, res) => {
+exports.getFuncionarios = async (req, res) => {
   try {
     const { posto_id } = req.params;
     const { data } = req.query;
@@ -63,8 +117,7 @@ exports.getColaboradoresPorPosto = async (req, res) => {
       ORDER BY c.nome
     `, [posto_id]);
 
-  console.log('Colaboradores encontrados para posto', posto_id, ':', colaboradores.length);
-
+    console.log('Colaboradores encontrados para posto', posto_id, ':', colaboradores.length);
 
     // Se foi passada uma data, busca se já existe presença registrada
     if (data && colaboradores.length > 0) {
@@ -116,7 +169,7 @@ exports.getColaboradoresPorPosto = async (req, res) => {
 // ========================================
 // POST: Salvar presenças em massa
 // ========================================
-exports.salvarPresencas = async (req, res) => {
+exports.lancarPresenca = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const { data, condominio_id, posto_id, presencas } = req.body;
@@ -166,35 +219,9 @@ exports.salvarPresencas = async (req, res) => {
 };
 
 // ========================================
-// TELA: Consultar presenças
-// ========================================
-// TELA: Consultar presenças
-exports.getConsultarPresenca = async (req, res) => {
-  try {
-    const [condominios] = await db.query(
-      'SELECT id, nome FROM condominios ORDER BY nome'
-    );
-    const [empresas] = await db.query(
-      'SELECT id, nome FROM empresas ORDER BY nome'
-    );
-
-    res.render('presenca/consultar', {
-      title: 'Consultar Presenças',
-      condominios,
-      empresas,
-      usuario: req.session.user
-    });
-  } catch (error) {
-    console.error('Erro ao carregar consulta:', error);
-    res.status(500).send('Erro ao carregar tela de consulta de presença');
-  }
-};
-
-
-// ========================================
 // API: Buscar presenças (filtros)
 // ========================================
-exports.buscarPresencas = async (req, res) => {
+exports.consultarPresencas = async (req, res) => {
   try {
     const { 
       data_inicio, 

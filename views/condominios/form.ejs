@@ -32,10 +32,11 @@
     </h1>
 
     <form 
-      action="<%= acao === 'novo' ? '/condominios/novo' : '/condominios/editar/' + condominio.id %>" 
-      method="POST"
-      class="row g-3"
-    >
+  action="<%= acao === 'novo' ? '/condominios' : '/condominios/' + condominio.id %>" 
+  method="POST"
+  class="row g-3"
+>
+
       <div class="col-md-6">
         <label for="nome" class="form-label">Nome do Condomínio *</label>
         <input 
@@ -91,7 +92,7 @@
           rows="2"
         ><%= condominio ? (condominio.endereco || '') : '' %></textarea>
       </div>
-
+      
       <% if (acao === 'editar') { %>
         <div class="col-md-2 form-check mt-2">
           <input 
@@ -100,7 +101,7 @@
             id="ativo" 
             name="ativo"
             <%= condominio && condominio.ativo ? 'checked' : '' %>
-          >
+          
           <label class="form-check-label" for="ativo">
             Ativo
           </label>

@@ -1,334 +1,434 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
-  <link 
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
-    rel="stylesheet"
-  >
-  <link 
-    rel="stylesheet" 
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
-  >
-  <link rel="stylesheet" href="/css/style.css">
-  <style>
-    .colaborador-row {
-      transition: background-color 0.2s;
-    }
-    .colaborador-row:hover {
-      background-color: #f8f9fa;
-    }
-    .checkbox-presenca {
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
+<style>
+  .colaborador-row {
+    transition: background-color 0.2s;
+  }
+  .colaborador-row:hover {
+    background-color: #f8f9fa;
+  }
+  .colaborador-row.selecionado {
+    background-color: #e7f5ff;
+  }
+  .colaborador-row.ja-registrado {
+    background-color: #fff3cd;
+    opacity: 0.9;
+  }
+  .checkbox-presenca {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+  .checkbox-presenca:disabled {
+    cursor: not-allowed;
+  }
+</style>
 
-  <!-- Navbar padrão -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="/dashboard">Controle de Presença</a>
-      <div class="d-flex">
-        <span class="navbar-text text-white me-3">
-          Olá, <%= usuario.nome %> (<%= usuario.perfil %>)
-        </span>
-        <a href="/auth/logout" class="btn btn-outline-light btn-sm">Sair</a>
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2><i class="bi bi-calendar-check"></i> <%= title %></h2>
+      <a href="/dashboard" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+      </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="data" class="form-label">Data</label>
+            <input type="date" class="form-control" id="data" required>
+            <small class="text-muted">Apenas hoje ou datas anteriores</small>
+          </div>
+          <div class="col-md-4">
+            <label for="condominio" class="form-label">Condomínio</label>
+            <select class="form-select" id="condominio" required>
+              <option value="">Selecione...</option>
+              <% condominios.forEach(cond => { %>
+                <option value="<%= cond.id %>"><%= cond.nome %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="posto" class="form-label">Posto</label>
+            <select class="form-select" id="posto" required disabled>
+              <option value="">Selecione um condomínio primeiro</option>
+            </select>
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <button type="button" class="btn btn-primary w-100" id="btnCarregar">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </nav>
 
-  <div class="container mt-4">
-    <div class="row">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <h2><i class="bi bi-calendar-check"></i> <%= title %></h2>
-          <a href="/dashboard" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-          </a>
-        </div>
-
-        <!-- Filtros -->
-        <div class="card mb-4">
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-3">
-                <label for="data" class="form-label">Data</label>
-                <input type="date" class="form-control" id="data" required>
-              </div>
-              <div class="col-md-4">
-                <label for="condominio" class="form-label">Condomínio</label>
-                <select class="form-select" id="condominio" required>
-                  <option value="">Selecione...</option>
-                  <% condominios.forEach(cond => { %>
-                    <option value="<%= cond.id %>"><%= cond.nome %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label for="posto" class="form-label">Posto</label>
-                <select class="form-select" id="posto" required disabled>
-                  <option value="">Selecione um condomínio primeiro</option>
-                </select>
-              </div>
-              <div class="col-md-1 d-flex align-items-end">
-                <button type="button" class="btn btn-primary w-100" id="btnCarregar">
-                  <i class="bi bi-search"></i>
-                </button>
-              </div>
-            </div>
+    <!-- Tabela de colaboradores -->
+    <div id="areaColaboradores" style="display: none;">
+      <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <div>
+            <i class="bi bi-people"></i> Colaboradores do Posto
+            <span class="badge bg-info text-dark ms-2" id="badgeSelecionados">0 selecionados</span>
+            <span class="badge bg-warning text-dark ms-2" id="badgeJaRegistrados" style="display: none;">0 já registrados</span>
+          </div>
+          <div>
+            <button type="button" class="btn btn-sm btn-light me-2" id="btnMarcarTodosPresente">
+              <i class="bi bi-check-all"></i> Marcar Todos Presentes
+            </button>
+            <button type="button" class="btn btn-sm btn-warning text-dark" id="btnLimparSelecao">
+              <i class="bi bi-x-lg"></i> Limpar Seleção
+            </button>
           </div>
         </div>
-
-        <!-- Tabela de colaboradores -->
-        <div id="areaColaboradores" style="display: none;">
-          <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-people"></i> Colaboradores</span>
-              <div>
-                <button type="button" class="btn btn-sm btn-light me-2" id="btnMarcarTodos">
-                  <i class="bi bi-check-all"></i> Marcar Todos
-                </button>
-                <button type="button" class="btn btn-sm btn-light" id="btnDesmarcarTodos">
-                  <i class="bi bi-x-lg"></i> Desmarcar Todos
-                </button>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th style="width: 60px;" class="text-center">Presente</th>
-                      <th>Colaborador</th>
-                      <th>CPF</th>
-                      <th>Empresa</th>
-                      <th style="width: 150px;">Status</th>
-                      <th>Observações</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tabelaColaboradores">
-                    <!-- Preenchido via JS -->
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="d-flex justify-content-end mt-3">
-                <button type="button" class="btn btn-success btn-lg" id="btnSalvar">
-                  <i class="bi bi-save"></i> Salvar Presenças
-                </button>
-              </div>
-            </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> 
+            <strong>Instruções:</strong> Marque apenas os colaboradores que estão trabalhando hoje. 
+            Quem não for selecionado <strong>não terá registro de presença</strong>.
+            <br>
+            <small><i class="bi bi-exclamation-triangle"></i> Colaboradores com fundo amarelo já possuem presença registrada para esta data.</small>
           </div>
-        </div>
 
-        <div id="msgSemColaboradores" class="alert alert-info mt-3" style="display: none;">
-          <i class="bi bi-info-circle"></i> Nenhum colaborador encontrado para este posto.
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th class="text-center" style="width: 60px;">Selecionar</th>
+                  <th>Colaborador</th>
+                  <th>CPF</th>
+                  <th>Empresa</th>
+                  <th style="width: 150px;">Status</th>
+                  <th>Observações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaColaboradores">
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-end mt-3">
+            <button type="button" class="btn btn-success btn-lg" id="btnSalvar">
+              <i class="bi bi-save"></i> Salvar Presenças
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+
+    <div id="msgSemColaboradores" class="alert alert-info mt-3" style="display: none;">
+      <i class="bi bi-info-circle"></i> Nenhum colaborador encontrado para este posto.
     </div>
   </div>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Define data de hoje como padrão
-    document.getElementById('data').valueAsDate = new Date();
+<script>
+  // ===================== VARIÁVEIS GLOBAIS =====================
+  const inputData = document.getElementById('data');
+  const selectCondominio = document.getElementById('condominio');
+  const selectPosto = document.getElementById('posto');
+  const hojeStr = new Date().toISOString().split('T')[0];
 
-    let colaboradores = [];
+  let colaboradores = [];
+  let colaboradoresSelecionados = new Set();
+  let colaboradoresJaRegistrados = new Set();
 
-    // Ao selecionar condomínio, carrega postos
-    document.getElementById('condominio').addEventListener('change', async function() {
-      const condominioId = this.value;
-      const postosSelect = document.getElementById('posto');
-      
-      postosSelect.innerHTML = '<option value="">Carregando...</option>';
-      postosSelect.disabled = true;
+  // ===================== CONFIGURA DATA (BLOQUEIA FUTURO) =====================
+  (function configurarData() {
+    inputData.value = hojeStr;
+    inputData.max = hojeStr;
 
-      if (!condominioId) {
-        postosSelect.innerHTML = '<option value="">Selecione um condomínio primeiro</option>';
-        return;
-      }
+    inputData.addEventListener('change', function () {
+      const valor = this.value;
+      if (!valor) return;
 
-      try {
-        const res = await fetch('/presenca/api/postos/' + condominioId);
-        const postos = await res.json();
-
-        postosSelect.innerHTML = '<option value="">Selecione...</option>';
-        postos.forEach(function(p) {
-          const option = document.createElement('option');
-          option.value = p.id;
-          option.textContent = p.nome;
-          postosSelect.appendChild(option);
-        });
-        postosSelect.disabled = false;
-      } catch (error) {
-        console.error('Erro ao carregar postos:', error);
-        alert('Erro ao carregar postos');
+      if (valor > hojeStr) {
+        alert('Não é permitido lançar presença para datas futuras.');
+        this.value = hojeStr;
       }
     });
+  })();
 
-    // Botão Carregar
-    document.getElementById('btnCarregar').addEventListener('click', async function() {
-      const data = document.getElementById('data').value;
-      const postoId = document.getElementById('posto').value;
+  // ===================== CARREGA POSTOS AO MUDAR CONDOMÍNIO =====================
+  selectCondominio.addEventListener('change', async function () {
+    const condominioId = this.value;
+    selectPosto.innerHTML = '<option value="">Carregando...</option>';
+    selectPosto.disabled = true;
 
-      if (!data || !postoId) {
-        alert('Preencha Data e Posto');
-        return;
-      }
-
-      try {
-        const res = await fetch('/presenca/api/colaboradores/' + postoId + '?data=' + data);
-        colaboradores = await res.json();
-
-        if (colaboradores.length === 0) {
-          document.getElementById('areaColaboradores').style.display = 'none';
-          document.getElementById('msgSemColaboradores').style.display = 'block';
-          return;
-        }
-
-        document.getElementById('msgSemColaboradores').style.display = 'none';
-        document.getElementById('areaColaboradores').style.display = 'block';
-
-        renderizarTabela();
-      } catch (error) {
-        console.error('Erro ao carregar colaboradores:', error);
-        alert('Erro ao carregar colaboradores');
-      }
-    });
-
-    function renderizarTabela() {
-      const tbody = document.getElementById('tabelaColaboradores');
-      tbody.innerHTML = '';
-
-      colaboradores.forEach(function(c, index) {
-        const tr = document.createElement('tr');
-        tr.className = 'colaborador-row';
-
-        const checked = c.status === 'presente' ? 'checked' : '';
-
-        tr.innerHTML = 
-          '<td class="text-center">' +
-            '<input type="checkbox" class="checkbox-presenca" data-index="' + index + '" ' + checked + '>' +
-          '</td>' +
-          '<td>' + c.nome + '</td>' +
-          '<td>' + (c.cpf || '-') + '</td>' +
-          '<td>' + (c.empresa || '-') + '</td>' +
-          '<td>' +
-            '<select class="form-select form-select-sm status-select" data-index="' + index + '">' +
-              '<option value="presente"' + (c.status === 'presente' ? ' selected' : '') + '>Presente</option>' +
-              '<option value="falta"' + (c.status === 'falta' ? ' selected' : '') + '>Falta</option>' +
-              '<option value="folga"' + (c.status === 'folga' ? ' selected' : '') + '>Folga</option>' +
-              '<option value="atestado"' + (c.status === 'atestado' ? ' selected' : '') + '>Atestado</option>' +
-            '</select>' +
-          '</td>' +
-          '<td>' +
-            '<input type="text" class="form-control form-control-sm obs-input" ' +
-                   'data-index="' + index + '" value="' + (c.observacoes || '') + '" ' +
-                   'placeholder="Observação...">' +
-          '</td>';
-
-        tbody.appendChild(tr);
-      });
-
-      // Checkbox -> status
-      document.querySelectorAll('.checkbox-presenca').forEach(function(cb) {
-        cb.addEventListener('change', function() {
-          const idx = this.dataset.index;
-          const statusSelect = document.querySelector('.status-select[data-index="' + idx + '"]');
-          if (this.checked) {
-            statusSelect.value = 'presente';
-            colaboradores[idx].status = 'presente';
-          } else {
-            statusSelect.value = 'falta';
-            colaboradores[idx].status = 'falta';
-          }
-        });
-      });
-
-      // Status -> checkbox
-      document.querySelectorAll('.status-select').forEach(function(sel) {
-        sel.addEventListener('change', function() {
-          const idx = this.dataset.index;
-          colaboradores[idx].status = this.value;
-          const checkbox = document.querySelector('.checkbox-presenca[data-index="' + idx + '"]');
-          checkbox.checked = (this.value === 'presente');
-        });
-      });
-
-      // Observações
-      document.querySelectorAll('.obs-input').forEach(function(inp) {
-        inp.addEventListener('input', function() {
-          const idx = this.dataset.index;
-          colaboradores[idx].observacoes = this.value;
-        });
-      });
+    if (!condominioId) {
+      selectPosto.innerHTML = '<option value="">Selecione um condomínio primeiro</option>';
+      return;
     }
 
-    // Marcar todos
-    document.getElementById('btnMarcarTodos').addEventListener('click', function() {
-      colaboradores.forEach(function(c) {
-        c.status = 'presente';
-      });
-      renderizarTabela();
-    });
+    try {
+      const res = await fetch('/presenca/api/postos/' + condominioId);
+      if (!res.ok) {
+        throw new Error('Erro na requisição de postos');
+      }
+      const postos = await res.json();
 
-    // Desmarcar todos
-    document.getElementById('btnDesmarcarTodos').addEventListener('click', function() {
-      colaboradores.forEach(function(c) {
-        c.status = 'falta';
-      });
-      renderizarTabela();
-    });
-
-    // Salvar
-    document.getElementById('btnSalvar').addEventListener('click', async function() {
-      const data = document.getElementById('data').value;
-      const condominioId = document.getElementById('condominio').value;
-      const postoId = document.getElementById('posto').value;
-
-      if (!data || !condominioId || !postoId || colaboradores.length === 0) {
-        alert('Dados incompletos');
+      if (!postos || postos.length === 0) {
+        selectPosto.innerHTML = '<option value="">Nenhum posto encontrado</option>';
         return;
       }
 
-      const presencas = colaboradores.map(function(c) {
-        return {
-          colaborador_id: c.id,
-          status: c.status,
-          observacoes: c.observacoes || ''
-        };
+      selectPosto.innerHTML = '<option value="">Selecione...</option>';
+      postos.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nome;
+        selectPosto.appendChild(opt);
+      });
+      selectPosto.disabled = false;
+    } catch (e) {
+      console.error('Erro ao carregar postos:', e);
+      alert('Erro ao carregar postos para o condomínio selecionado.');
+      selectPosto.innerHTML = '<option value="">Erro ao carregar postos</option>';
+    }
+  });
+
+  // ===================== BOTÃO CARREGAR COLABORADORES =====================
+  document.getElementById('btnCarregar').addEventListener('click', async function () {
+    const data = inputData.value;
+    const postoId = selectPosto.value;
+
+    if (!data || !postoId) {
+      alert('Informe Data e selecione um Posto.');
+      return;
+    }
+
+    if (data > hojeStr) {
+      alert('Não é permitido lançar presença para datas futuras.');
+      inputData.value = hojeStr;
+      return;
+    }
+
+    try {
+      const url = '/presenca/api/colaboradores/' + postoId + '?data=' + encodeURIComponent(data);
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error('Erro na requisição de colaboradores');
+      }
+      colaboradores = await res.json();
+
+      const areaColab = document.getElementById('areaColaboradores');
+      const msgSem = document.getElementById('msgSemColaboradores');
+
+      if (!colaboradores || colaboradores.length === 0) {
+        areaColab.style.display = 'none';
+        msgSem.style.display = 'block';
+        return;
+      }
+
+      msgSem.style.display = 'none';
+      areaColab.style.display = 'block';
+
+      colaboradoresSelecionados.clear();
+      colaboradoresJaRegistrados.clear();
+
+      colaboradores.forEach(c => {
+        if (c.presenca_id) {
+          colaboradoresJaRegistrados.add(c.id);
+        }
       });
 
-      try {
-        const res = await fetch('/presenca/api/salvar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            data: data,
-            condominio_id: condominioId,
-            posto_id: postoId,
-            presencas: presencas
-          })
-        });
+      renderizarTabela();
+    } catch (e) {
+      console.error('Erro ao buscar colaboradores:', e);
+      alert('Erro ao buscar colaboradores.');
+    }
+  });
 
-        const result = await res.json();
+  // ===================== RENDERIZA TABELA =====================
+  function renderizarTabela() {
+    const tbody = document.getElementById('tabelaColaboradores');
+    tbody.innerHTML = '';
 
-        if (result.success) {
-          alert(result.message);
-          document.getElementById('btnCarregar').click();
+    let countJaReg = 0;
+
+    colaboradores.forEach(c => {
+      const jaRegistrado = colaboradoresJaRegistrados.has(c.id);
+      const selecionado = colaboradoresSelecionados.has(c.id);
+
+      if (jaRegistrado) countJaReg++;
+
+      const tr = document.createElement('tr');
+      tr.className = 'colaborador-row';
+      if (jaRegistrado) {
+        tr.classList.add('ja-registrado');
+      } else if (selecionado) {
+        tr.classList.add('selecionado');
+      }
+
+      const checked = selecionado ? 'checked' : '';
+      const disabledCheckbox = jaRegistrado ? 'disabled' : '';
+
+      const statusAtual = jaRegistrado
+        ? (c.status || 'presente')
+        : (selecionado ? (c.status || 'presente') : 'presente');
+
+      const statusDisplay = jaRegistrado
+        ? '<span class="badge bg-secondary">' + statusAtual.toUpperCase() + '</span> <small>(já registrado)</small>'
+        : '<select class="form-select form-select-sm status-select" data-id="' + c.id + '" ' +
+          (selecionado ? '' : 'disabled') + '>' +
+          '<option value="presente" ' + (statusAtual === 'presente' ? 'selected' : '') + '>Presente</option>' +
+          '<option value="falta" ' + (statusAtual === 'falta' ? 'selected' : '') + '>Falta</option>' +
+          '<option value="folga" ' + (statusAtual === 'folga' ? 'selected' : '') + '>Folga</option>' +
+          '<option value="atestado" ' + (statusAtual === 'atestado' ? 'selected' : '') + '>Atestado</option>' +
+        '</select>';
+
+      const obsHTML = jaRegistrado
+        ? '<input type="text" class="form-control form-control-sm" value="' + (c.observacoes || '') + '" disabled>'
+        : '<input type="text" class="form-control form-control-sm obs-input" ' +
+          'data-id="' + c.id + '" value="' + (c.observacoes || '') + '" ' +
+          'placeholder="Observação..." ' + (selecionado ? '' : 'disabled') + '>';
+
+      tr.innerHTML = ''
+        + '<td class="text-center">'
+        + '  <input type="checkbox" class="checkbox-presenca" data-id="' + c.id + '" ' + checked + ' ' + disabledCheckbox + '>'
+        + '</td>'
+        + '<td>' + c.nome + '</td>'
+        + '<td>' + (c.cpf || '-') + '</td>'
+        + '<td>' + (c.empresa || '-') + '</td>'
+        + '<td>' + statusDisplay + '</td>'
+        + '<td>' + obsHTML + '</td>';
+
+      tbody.appendChild(tr);
+    });
+
+    const badgeJa = document.getElementById('badgeJaRegistrados');
+    if (countJaReg > 0) {
+      badgeJa.textContent = countJaReg + ' já registrados';
+      badgeJa.style.display = 'inline-block';
+    } else {
+      badgeJa.style.display = 'none';
+    }
+
+    atualizarContador();
+    configurarEventListeners();
+  }
+
+  // ===================== EVENTOS DA TABELA =====================
+  function configurarEventListeners() {
+    document.querySelectorAll('.checkbox-presenca:not([disabled])').forEach(cb => {
+      cb.addEventListener('change', function () {
+        const id = parseInt(this.dataset.id, 10);
+        const row = this.closest('tr');
+        const statusSelect = row.querySelector('.status-select');
+        const obsInput = row.querySelector('.obs-input');
+
+        if (this.checked) {
+          colaboradoresSelecionados.add(id);
+          row.classList.add('selecionado');
+          if (statusSelect) statusSelect.disabled = false;
+          if (obsInput) obsInput.disabled = false;
         } else {
-          alert(result.message || 'Erro ao salvar');
+          colaboradoresSelecionados.delete(id);
+          row.classList.remove('selecionado');
+          if (statusSelect) statusSelect.disabled = true;
+          if (obsInput) obsInput.disabled = true;
         }
-      } catch (error) {
-        console.error('Erro ao salvar:', error);
-        alert('Erro ao salvar presenças');
+
+        atualizarContador();
+      });
+    });
+
+    document.querySelectorAll('.status-select').forEach(sel => {
+      sel.addEventListener('change', function () {
+        const id = parseInt(this.dataset.id, 10);
+        const colab = colaboradores.find(c => c.id === id);
+        if (colab) colab.status = this.value;
+      });
+    });
+
+    document.querySelectorAll('.obs-input').forEach(inp => {
+      inp.addEventListener('input', function () {
+        const id = parseInt(this.dataset.id, 10);
+        const colab = colaboradores.find(c => c.id === id);
+        if (colab) colab.observacoes = this.value;
+      });
+    });
+  }
+
+  function atualizarContador() {
+    document.getElementById('badgeSelecionados').textContent =
+      colaboradoresSelecionados.size + ' selecionados';
+  }
+
+  // ===================== BOTÕES AUXILIARES =====================
+  document.getElementById('btnMarcarTodosPresente').addEventListener('click', function () {
+    colaboradores.forEach(c => {
+      if (!colaboradoresJaRegistrados.has(c.id)) {
+        colaboradoresSelecionados.add(c.id);
+        c.status = 'presente';
       }
     });
-  </script>
-</body>
-</html>
+    renderizarTabela();
+  });
+
+  document.getElementById('btnLimparSelecao').addEventListener('click', function () {
+    colaboradoresSelecionados.clear();
+    renderizarTabela();
+  });
+
+  // ===================== SALVAR PRESENÇAS =====================
+  document.getElementById('btnSalvar').addEventListener('click', async function () {
+    const data = inputData.value;
+    const condominioId = selectCondominio.value;
+    const postoId = selectPosto.value;
+
+    if (!data || !condominioId || !postoId) {
+      alert('Preencha Data, Condomínio e Posto.');
+      return;
+    }
+
+    if (data > hojeStr) {
+      alert('Não é permitido lançar presença para datas futuras.');
+      return;
+    }
+
+    if (colaboradoresSelecionados.size === 0) {
+      const confirma = confirm('Nenhum colaborador foi selecionado. Deseja continuar mesmo assim?');
+      if (!confirma) return;
+    }
+
+    const presencas = colaboradores
+      .filter(c => colaboradoresSelecionados.has(c.id) && !colaboradoresJaRegistrados.has(c.id))
+      .map(c => ({
+        colaborador_id: c.id,
+        status: c.status || 'presente',
+        observacoes: c.observacoes || ''
+      }));
+
+    if (presencas.length === 0) {
+      alert('Nenhum colaborador novo para registrar (todos já possuem presença lançada).');
+      return;
+    }
+
+    try {
+      const res = await fetch('/presenca/api/lancar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data,
+          condominio_id: condominioId,
+          posto_id: postoId,
+          presencas
+        })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        alert(result.message || 'Presenças salvas com sucesso.');
+        document.getElementById('btnCarregar').click();
+      } else {
+        alert(result.message || 'Erro ao salvar presenças.');
+      }
+    } catch (e) {
+      console.error('Erro ao salvar presenças:', e);
+      alert('Erro ao salvar presenças.');
+    }
+  });
+</script>

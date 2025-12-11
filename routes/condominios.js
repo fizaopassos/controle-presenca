@@ -1,24 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated } = require('../middlewares/auth');
+const { isAuthenticated, isAdmin, checkCondominioAccess } = require('../middlewares/auth');
 const condominiosController = require('../controllers/condominiosController');
 
-// Listar condomínios
+// Listar condomínios (todos podem ver os seus)
 router.get('/', isAuthenticated, condominiosController.listar);
 
 // Formulário de novo condomínio
-router.get('/novo', isAuthenticated, condominiosController.formNovo);
+router.get('/novo', isAuthenticated, isAdmin, condominiosController.formNovo);
 
-// Salvar novo condomínio
-router.post('/novo', isAuthenticated, condominiosController.criar);
+// Criar condomínio (apenas admin)
+router.post('/', isAuthenticated, isAdmin, condominiosController.criar);
 
 // Formulário de edição
-router.get('/editar/:id', isAuthenticated, condominiosController.formEditar);
+router.get('/:id/editar', isAuthenticated, isAdmin, condominiosController.formEditar);
 
-// Atualizar condomínio
-router.post('/editar/:id', isAuthenticated, condominiosController.atualizar);
+// Atualizar condomínio (apenas admin)
+router.post('/:id', isAuthenticated, isAdmin, condominiosController.atualizar);
+// Toggle ativo/inativo
+router.patch('/:id/toggle', isAuthenticated, isAdmin, condominiosController.toggleAtivo);
 
-// Ativar / Inativar (toggle)
-router.post('/toggle-ativo/:id', isAuthenticated, condominiosController.toggleAtivo);
+// Deletar condomínio (apenas admin)
+router.delete('/:id', isAuthenticated, isAdmin, condominiosController.deletar);
+
+// Ver detalhes de um condomínio (precisa ter acesso)
+router.get('/:id', isAuthenticated, checkCondominioAccess, condominiosController.detalhes);
 
 module.exports = router;

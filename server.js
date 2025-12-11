@@ -1,30 +1,42 @@
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-require('dotenv').config();
 
 const app = express();
+
+// Definir a porta
 const PORT = process.env.PORT || 3000;
 
 // Configurar view engine (EJS)
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middlewares para body
+// Middleware para parsear body
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Sessão
+// Arquivos estáticos (CSS, JS, imagens)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Configuração de sessão
 app.use(session({
-secret: process.env.SESSION_SECRET || 'um_segredo_qualquer_trocar_depois',
-resave: false,
-saveUninitialized: false,
-cookie: {
-maxAge: 1000 * 60 * 30 // 30 minutos
-}
+  secret: process.env.SESSION_SECRET || 'seu-secret-super-seguro-aqui',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24
+  }
 }));
 
-// Arquivos estáticos (CSS, JS, imagens)
+// Middleware para disponibilizar usuário nas views
+app.use((req, res, next) => {
+  res.locals.usuario = req.session.user || null;
+  next();
+});
+
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Rotas
@@ -35,20 +47,18 @@ const empresasRoutes = require('./routes/empresas');
 const postosRoutes = require('./routes/postos');
 const colaboradoresRoutes = require('./routes/colaboradores');
 const presencaRoutes = require('./routes/presenca');
+const usuariosRoutes = require('./routes/usuarios');
 
-app.use('/auth', authRoutes);
+app.use('/', authRoutes); // mudei de /auth para / para funcionar /login
 app.use('/condominios', condominiosRoutes);
 app.use('/empresas', empresasRoutes);
 app.use('/postos', postosRoutes);
 app.use('/colaboradores', colaboradoresRoutes);
-app.use('/', dashboardRoutes);
+app.use('/dashboard', dashboardRoutes);
 app.use('/presenca', presencaRoutes);
-
-
-
-
+app.use('/usuarios', usuariosRoutes);
 
 // Iniciar servidor
 app.listen(PORT, () => {
-console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
 });

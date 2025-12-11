@@ -1,0 +1,103 @@
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2><i class="bi bi-building"></i> Condomínios</h2>
+      <a href="/condominios/novo" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Novo Condomínio
+      </a>
+    </div>
+
+    <div class="card">
+      <div class="card-header bg-light">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome...">
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <% if (condominios && condominios.length > 0) { %>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>#</th>
+                  <th>Nome</th>
+                  <th>Código</th>
+                  <th>Cidade</th>
+                  <th>Ativo</th>
+                  <th style="width: 160px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaCondominios">
+                <% condominios.forEach((c, index) => { %>
+                  <tr>
+                    <td><%= index + 1 %></td>
+                    <td class="td-nome"><%= c.nome %></td>
+                    <td><%= c.codigo_interno || '-' %></td>
+                    <td><%= c.cidade || '-' %></td>
+                    <td>
+                      <% if (c.ativo) { %>
+                        <span class="badge bg-success">Ativo</span>
+                      <% } else { %>
+                        <span class="badge bg-secondary">Inativo</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <a href="/condominios/<%= c.id %>/editar" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="<%= c.id %>">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="alert alert-info">
+            Nenhum condomínio cadastrado.
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Filtro simples por nome (no front)
+  document.getElementById('filtroNome').addEventListener('input', function () {
+    const termo = this.value.toLowerCase();
+    document.querySelectorAll('#tabelaCondominios tr').forEach(tr => {
+      const tdNome = tr.querySelector('.td-nome');
+      if (!tdNome) return;
+      const nome = tdNome.textContent.toLowerCase();
+      tr.style.display = nome.includes(termo) ? '' : 'none';
+    });
+  });
+
+  // Exclusão (AJAX opcional)
+  document.querySelectorAll('.btn-excluir').forEach(btn => {
+    btn.addEventListener('click', async function () {
+      const id = this.getAttribute('data-id');
+      if (!confirm('Confirma a exclusão deste condomínio?')) return;
+
+      try {
+        const res = await fetch('/condominios/' + id, {
+          method: 'DELETE'
+        });
+        const json = await res.json();
+        if (json.success) {
+          location.reload();
+        } else {
+          alert(json.message || 'Erro ao excluir');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Erro ao excluir');
+      }
+    });
+  });
+</script>

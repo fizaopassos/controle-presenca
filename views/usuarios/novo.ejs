@@ -1,0 +1,129 @@
+<div class="row">
+  <div class="col-12 col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2><i class="bi bi-person-plus"></i> Novo Usuário</h2>
+      <a href="/usuarios" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+      </a>
+    </div>
+
+    <form method="post" action="/usuarios/novo" id="formNovoUsuario">
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          Dados do Usuário
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Nome *</label>
+            <input type="text" name="nome" class="form-control" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">E-mail (login) *</label>
+            <input type="email" name="email" class="form-control" required>
+            <div class="form-text">Este será o login do usuário</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Senha *</label>
+            <input type="password" name="senha" id="senha" class="form-control" required minlength="6">
+            <div class="form-text">Mínimo 6 caracteres</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Confirmar Senha *</label>
+            <input type="password" id="senhaConfirm" class="form-control" required minlength="6">
+            <div class="invalid-feedback" id="senhaErro">
+              As senhas não coincidem
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Perfil *</label>
+            <select name="perfil" id="perfil" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="GESTOR">GESTOR</option>
+              <option value="OPERADOR">OPERADOR</option>
+            </select>
+            <div class="form-text">
+              ADMIN enxerga todos os condomínios e gerencia usuários
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4" id="cardCondominios" style="display: none;">
+        <div class="card-header bg-light">
+          Condomínios que este usuário pode enxergar
+        </div>
+        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+          <% if (condominios && condominios.length > 0) { %>
+            <% condominios.forEach(c => { %>
+              <div class="form-check">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  name="condominios" 
+                  value="<%= c.id %>" 
+                  id="cond_<%= c.id %>"
+                >
+                <label class="form-check-label" for="cond_<%= c.id %>">
+                  <%= c.nome %>
+                </label>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <p class="text-muted">Nenhum condomínio cadastrado.</p>
+          <% } %>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success" id="btnSalvar">
+        <i class="bi bi-save"></i> Criar Usuário
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const selectPerfil = document.getElementById('perfil');
+  const cardCondominios = document.getElementById('cardCondominios');
+  const senha = document.getElementById('senha');
+  const senhaConfirm = document.getElementById('senhaConfirm');
+  const senhaErro = document.getElementById('senhaErro');
+  const form = document.getElementById('formNovoUsuario');
+  const btnSalvar = document.getElementById('btnSalvar');
+
+  // Mostra/oculta card de condomínios conforme perfil
+  selectPerfil.addEventListener('change', function() {
+    if (this.value === 'ADMIN' || this.value === '') {
+      cardCondominios.style.display = 'none';
+    } else {
+      cardCondominios.style.display = 'block';
+    }
+  });
+
+  // Validação de senhas
+  function validarSenhas() {
+    if (senha.value !== senhaConfirm.value) {
+      senhaConfirm.classList.add('is-invalid');
+      senhaErro.style.display = 'block';
+      return false;
+    } else {
+      senhaConfirm.classList.remove('is-invalid');
+      senhaErro.style.display = 'none';
+      return true;
+    }
+  }
+
+  senhaConfirm.addEventListener('input', validarSenhas);
+  senha.addEventListener('input', validarSenhas);
+
+  form.addEventListener('submit', function(e) {
+    if (!validarSenhas()) {
+      e.preventDefault();
+      return false;
+    }
+  });
+</script>

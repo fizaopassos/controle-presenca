@@ -1,20 +1,46 @@
 const express = require('express');
 const router = express.Router();
+const { isAuthenticated, checkCondominioAccess } = require('../middlewares/auth');
 const presencaController = require('../controllers/presencaController');
-const { isAuthenticated } = require('../middlewares/auth');
 
-// Aplicar autenticação em todas as rotas
-router.use(isAuthenticated);
+// ========================================
+// TELAS (renderizam HTML)
+// ========================================
+router.get('/lancar', isAuthenticated, presencaController.getLancarPresenca);
+router.get('/consultar', isAuthenticated, presencaController.getConsultarPresenca);
 
-// ========== TELAS ==========
-router.get('/lancar', presencaController.getLancarPresenca);
-router.get('/consultar', presencaController.getConsultarPresenca);
+// ========================================
+// APIs (retornam JSON)
+// ========================================
 
-// ========== APIs ==========
-router.get('/api/postos/:condominio_id', presencaController.getPostosPorCondominio);
-router.get('/api/colaboradores/:posto_id', presencaController.getColaboradoresPorPosto);
-router.post('/api/salvar', presencaController.salvarPresencas);
-router.get('/api/buscar', presencaController.buscarPresencas);
-router.get('/api/colaboradores-busca', presencaController.buscarColaboradores);
+// Buscar postos de um condomínio
+router.get('/api/postos/:condominio_id', 
+  isAuthenticated, 
+  presencaController.getPostos
+);
+
+// Buscar colaboradores de um posto
+router.get('/api/colaboradores/:posto_id', 
+  isAuthenticated, 
+  presencaController.getFuncionarios
+);
+
+// Lançar presença
+router.post('/api/lancar', 
+  isAuthenticated, 
+  presencaController.lancarPresenca
+);
+
+// Consultar presenças
+router.get('/api/consultar', 
+  isAuthenticated, 
+  presencaController.consultarPresencas
+);
+
+// Buscar colaboradores (autocomplete)
+router.get('/api/colaboradores', 
+  isAuthenticated, 
+  presencaController.buscarColaboradores
+);
 
 module.exports = router;

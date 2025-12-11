@@ -1,0 +1,97 @@
+<div class="row">
+  <div class="col-12 col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2><i class="bi bi-person-gear"></i> Editar Usuário</h2>
+      <a href="/usuarios" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+      </a>
+    </div>
+
+    <form method="post" action="/usuarios/editar/<%= usuario.id %>">
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          Dados do Usuário
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" name="nome" class="form-control" value="<%= usuario.nome %>" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">E-mail (login)</label>
+            <input type="email" name="email" class="form-control" value="<%= usuario.email %>" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Perfil</label>
+            <select name="perfil" id="perfil" class="form-select" required>
+              <option value="ADMIN" <%= usuario.perfil === 'ADMIN' ? 'selected' : '' %>>ADMIN</option>
+              <option value="GESTOR" <%= usuario.perfil === 'GESTOR' ? 'selected' : '' %>>GESTOR</option>
+              <option value="OPERADOR" <%= usuario.perfil === 'OPERADOR' ? 'selected' : '' %>>OPERADOR</option>
+              <!-- Adicione outros perfis aqui se quiser -->
+            </select>
+            <div class="form-text">
+              ADMIN enxerga todos os condomínios e gerencia usuários.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4" id="cardCondominios">
+        <div class="card-header bg-light">
+          Condomínios que este usuário pode enxergar
+        </div>
+        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+          <% if (condominios && condominios.length > 0) { %>
+            <% condominios.forEach(c => { %>
+              <div class="form-check">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  name="condominios" 
+                  value="<%= c.id %>" 
+                  id="cond_<%= c.id %>"
+                  <%= condoIdsPermitidos.includes(c.id) ? 'checked' : '' %>
+                >
+                <label class="form-check-label" for="cond_<%= c.id %>">
+                  <%= c.nome %>
+                </label>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <p class="text-muted">Nenhum condomínio cadastrado.</p>
+          <% } %>
+          <div class="form-text">
+            Para ADMIN, esta lista é ignorada (vê todos).
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-save"></i> Salvar
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Se o perfil for ADMIN, esconde/desabilita o card de condomínios (opcional)
+  const selectPerfil = document.getElementById('perfil');
+  const cardCondominios = document.getElementById('cardCondominios');
+
+  function atualizarVisibilidadeCondominios() {
+    if (selectPerfil.value === 'ADMIN') {
+      cardCondominios.classList.add('opacity-50');
+      Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
+        chk.disabled = true;
+      });
+    } else {
+      cardCondominios.classList.remove('opacity-50');
+      Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
+        chk.disabled = false;
+      });
+    }
+  }
+
+  selectPerfil.addEventListener('change', atualizarVisibilidadeCondominios);
+  atualizarVisibilidadeCondominios();
+</script>

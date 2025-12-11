@@ -1,0 +1,66 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+    <p class="text-muted">Visão geral rápida do controle de presenças.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-3">
+    <div class="card text-white bg-primary h-100">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-calendar-check"></i> Lançar Presença</h5>
+        <p class="card-text">Registrar a presença de hoje ou de dias anteriores.</p>
+      </div>
+      <div class="card-footer text-end">
+        <a href="/presenca/lancar" class="btn btn-light btn-sm">
+          Ir para Lançamento <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white bg-success h-100">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-clipboard-data"></i> Consultar Presenças</h5>
+        <p class="card-text">Ver o histórico de presenças, faltas e atestados.</p>
+      </div>
+      <div class="card-footer text-end">
+        <a href="/presenca/consultar" class="btn btn-light btn-sm">
+          Ver Relatório <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white bg-info h-100">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-people"></i> Cadastros</h5>
+        <p class="card-text">Gerenciar condomínios, empresas, postos e colaboradores.</p>
+      </div>
+      <div class="card-footer text-end">
+        <a href="/condominios" class="btn btn-light btn-sm">
+          Abrir Cadastros <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <% if (usuario && usuario.perfil === 'ADMIN') { %>
+    <div class="col-md-3">
+      <div class="card text-white bg-dark h-100">
+        <div class="card-body">
+          <h5 class="card-title"><i class="bi bi-shield-lock"></i> Administração</h5>
+          <p class="card-text">Configurações de usuários e permissões.</p>
+        </div>
+        <div class="card-footer text-end">
+          <a href="/user" class="btn btn-light btn-sm">
+            Gerenciar <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
