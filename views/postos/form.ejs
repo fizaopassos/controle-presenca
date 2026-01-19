@@ -13,7 +13,6 @@
 </head>
 <body>
 
-  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
       <a class="navbar-brand" href="/dashboard">Controle de Presença</a>
@@ -46,36 +45,6 @@
           required
           value="<%= posto ? posto.nome : '' %>"
         >
-      </div>
-
-      <div class="col-md-3">
-        <label for="condominio_id" class="form-label">Condomínio *</label>
-        <select class="form-select" id="condominio_id" name="condominio_id" required>
-          <option value="">Selecione...</option>
-          <% condominios.forEach(c => { %>
-            <option 
-              value="<%= c.id %>" 
-              <%= (posto && posto.condominio_id == c.id) ? 'selected' : '' %>
-            >
-              <%= c.nome %>
-            </option>
-          <% }) %>
-        </select>
-      </div>
-
-      <div class="col-md-3">
-        <label for="empresa_id" class="form-label">Empresa *</label>
-        <select class="form-select" id="empresa_id" name="empresa_id" required>
-          <option value="">Selecione...</option>
-          <% empresas.forEach(e => { %>
-            <option 
-              value="<%= e.id %>" 
-              <%= (posto && posto.empresa_id == e.id) ? 'selected' : '' %>
-            >
-              <%= e.nome %>
-            </option>
-          <% }) %>
-        </select>
       </div>
 
       <div class="col-md-12">

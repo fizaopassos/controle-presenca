@@ -123,10 +123,12 @@ exports.deletar = async (req, res) => {
 
   try {
     // Verifica se há postos vinculados
+    
     const [postos] = await db.query(
-      'SELECT COUNT(*) as total FROM postos WHERE condominio_id = ?',
-      [id]
-    );
+  'SELECT COUNT(*) as total FROM condominio_postos WHERE condominio_id = ?',
+  [id]
+);
+
 
     if (postos[0].total > 0) {
       return res.status(400).json({ 
@@ -220,9 +222,17 @@ exports.detalhes = async (req, res) => {
 
     // Busca postos do condomínio
     const [postos] = await db.query(
-      'SELECT id, nome, ativo FROM postos WHERE condominio_id = ? ORDER BY nome',
-      [id]
-    );
+  `SELECT 
+     p.id, 
+     p.nome, 
+     p.ativo
+   FROM condominio_postos cp
+   INNER JOIN postos p ON cp.posto_id = p.id
+   WHERE cp.condominio_id = ?
+   ORDER BY p.nome`,
+  [id]
+);
+
 
     // Busca usuários com acesso
     const [usuarios] = await db.query(`

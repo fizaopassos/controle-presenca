@@ -82,11 +82,17 @@ exports.getConsultarPresenca = async (req, res) => {
 // ========================================
 // API: Buscar postos de um condomínio
 // ========================================
-exports.getPostos = async (req, res) => {
+/*exports.getPostos = async (req, res) => {
   try {
     const { condominio_id } = req.params;
     const [postos] = await db.query(
-      'SELECT id, nome FROM postos WHERE condominio_id = ? ORDER BY nome',
+      `SELECT 
+         p.id, 
+         p.nome
+       FROM condominio_postos cp
+       INNER JOIN postos p ON cp.posto_id = p.id
+       WHERE cp.condominio_id = ?
+       ORDER BY p.nome`,
       [condominio_id]
     );
     res.json(postos);
@@ -94,7 +100,27 @@ exports.getPostos = async (req, res) => {
     console.error('Erro ao buscar postos:', error);
     res.status(500).json({ error: 'Erro ao buscar postos' });
   }
+};*/
+
+// ========================================
+// API: Buscar postos (opção 2: retorna todos, ignora condomínio)
+// mantém a mesma rota /presenca/api/postos/:condominio_id
+// ========================================
+exports.getPostos = async (req, res) => {
+  try {
+    const [postos] = await db.query(
+      `SELECT id, nome
+       FROM postos
+       WHERE ativo = 1
+       ORDER BY nome`
+    );
+    res.json(postos);
+  } catch (error) {
+    console.error('Erro ao buscar postos:', error);
+    res.status(500).json({ error: 'Erro ao buscar postos' });
+  }
 };
+
 
 // ========================================
 // API: Buscar colaboradores de um posto
@@ -183,6 +209,20 @@ exports.lancarPresenca = async (req, res) => {
     }
 
     await connection.beginTransaction();
+
+    // Valida se o posto pertence ao condomínio
+/*const [vinculo] = await connection.query(
+  'SELECT 1 FROM condominio_postos WHERE condominio_id = ? AND posto_id = ? LIMIT 1',
+  [condominio_id, posto_id]
+);
+
+if (vinculo.length === 0) {
+  await connection.rollback();
+  return res.status(400).json({
+    success: false,
+    message: 'Este posto não está vinculado ao condomínio selecionado.'
+  });
+}*/
 
     for (const p of presencas) {
       const { colaborador_id, status, observacoes } = p;

@@ -42,8 +42,6 @@
           <tr>
             <th>ID</th>
             <th>Nome do Posto</th>
-            <th>Condomínio</th>
-            <th>Empresa</th>
             <th>Descrição</th>
             <th>Ativo</th>
             <th style="width: 200px;">Ações</th>
@@ -54,8 +52,6 @@
             <tr>
               <td><%= p.id %></td>
               <td><%= p.nome %></td>
-              <td><%= p.condominio_nome %></td>
-              <td><%= p.empresa_nome %></td>
               <td><%= p.descricao || '-' %></td>
               <td>
                 <% if (p.ativo) { %>
