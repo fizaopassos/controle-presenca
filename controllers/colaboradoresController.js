@@ -1,16 +1,18 @@
 const db = require('../config/db');
 
-// Listar todos os colaboradores com empresa e posto
+// Listar todos os colaboradores com empresa, posto e condomínio
 exports.listar = async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT 
         c.*,
         e.nome AS empresa_nome,
-        p.nome AS posto_nome
+        p.nome AS posto_nome,
+        cond.nome AS condominio_nome
       FROM colaboradores c
       LEFT JOIN empresas e ON c.empresa_id = e.id
       LEFT JOIN postos p ON c.posto_id = p.id
+      LEFT JOIN condominios cond ON c.condominio_id = cond.id
       ORDER BY c.nome
     `);
 
@@ -29,13 +31,15 @@ exports.formNovo = async (req, res) => {
   try {
     const [empresas] = await db.query('SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY nome');
     const [postos] = await db.query('SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome');
+    const [condominios] = await db.query('SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome');
 
     res.render('colaboradores/form', {
       usuario: req.session.user,
       colaborador: null,
       acao: 'novo',
       empresas,
-      postos
+      postos,
+      condominios
     });
   } catch (error) {
     console.error('Erro ao carregar formulário:', error);
@@ -45,7 +49,7 @@ exports.formNovo = async (req, res) => {
 
 // Criar novo colaborador
 exports.criar = async (req, res) => {
-  const { nome, cpf, telefone, email, empresa_id, posto_id, cargo, foto_url } = req.body;
+  const { nome, cpf, telefone, email, empresa_id, condominio_id, posto_id, cargo, foto_url } = req.body;
 
   if (!nome || nome.trim() === '') {
     return res.status(400).send('Nome é obrigatório.');
@@ -57,13 +61,14 @@ exports.criar = async (req, res) => {
 
   try {
     await db.query(
-      'INSERT INTO colaboradores (nome, cpf, telefone, email, empresa_id, posto_id, cargo, foto_url, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)',
+      'INSERT INTO colaboradores (nome, cpf, telefone, email, empresa_id, condominio_id, posto_id, cargo, foto_url, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)',
       [
         nome, 
         cpf || null, 
         telefone || null, 
         email || null, 
-        empresa_id, 
+        empresa_id,
+        condominio_id || null,
         posto_id || null, 
         cargo || null, 
         foto_url || null
@@ -96,13 +101,15 @@ exports.formEditar = async (req, res) => {
 
     const [empresas] = await db.query('SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY nome');
     const [postos] = await db.query('SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome');
+    const [condominios] = await db.query('SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome');
 
     res.render('colaboradores/form', {
       usuario: req.session.user,
       colaborador: rows[0],
       acao: 'editar',
       empresas,
-      postos
+      postos,
+      condominios
     });
   } catch (error) {
     console.error('Erro ao carregar colaborador:', error);
@@ -113,7 +120,7 @@ exports.formEditar = async (req, res) => {
 // Atualizar colaborador
 exports.atualizar = async (req, res) => {
   const { id } = req.params;
-  const { nome, cpf, telefone, email, empresa_id, posto_id, cargo, foto_url, ativo } = req.body;
+  const { nome, cpf, telefone, email, empresa_id, condominio_id, posto_id, cargo, foto_url, ativo } = req.body;
 
   if (!nome || nome.trim() === '') {
     return res.status(400).send('Nome é obrigatório.');
@@ -127,13 +134,14 @@ exports.atualizar = async (req, res) => {
 
   try {
     await db.query(
-      'UPDATE colaboradores SET nome = ?, cpf = ?, telefone = ?, email = ?, empresa_id = ?, posto_id = ?, cargo = ?, foto_url = ?, ativo = ? WHERE id = ?',
+      'UPDATE colaboradores SET nome = ?, cpf = ?, telefone = ?, email = ?, empresa_id = ?, condominio_id = ?, posto_id = ?, cargo = ?, foto_url = ?, ativo = ? WHERE id = ?',
       [
         nome, 
         cpf || null, 
         telefone || null, 
         email || null, 
-        empresa_id, 
+        empresa_id,
+        condominio_id || null,
         posto_id || null, 
         cargo || null, 
         foto_url || null, 

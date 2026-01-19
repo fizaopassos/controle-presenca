@@ -49,6 +49,7 @@ const colaboradoresRoutes = require('./routes/colaboradores');
 const presencaRoutes = require('./routes/presenca');
 const usuariosRoutes = require('./routes/usuarios');
 
+
 app.use('/', authRoutes); // mudei de /auth para / para funcionar /login
 app.use('/condominios', condominiosRoutes);
 app.use('/empresas', empresasRoutes);
@@ -57,6 +58,7 @@ app.use('/colaboradores', colaboradoresRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/presenca', presencaRoutes);
 app.use('/usuarios', usuariosRoutes);
+
 
 // Iniciar servidor
 app.listen(PORT, () => {

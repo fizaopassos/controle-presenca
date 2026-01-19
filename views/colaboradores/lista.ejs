@@ -44,6 +44,7 @@
             <th>Nome</th>
             <th>CPF</th>
             <th>Telefone</th>
+            <th>Condomínio</th>
             <th>Empresa</th>
             <th>Posto</th>
             <th>Cargo</th>
@@ -58,6 +59,7 @@
               <td><%= c.nome %></td>
               <td><%= c.cpf || '-' %></td>
               <td><%= c.telefone || '-' %></td>
+              <td><%= c.condominio_nome || '-' %></td>
               <td><%= c.empresa_nome %></td>
               <td><%= c.posto_nome || '-' %></td>
               <td><%= c.cargo || '-' %></td>
@@ -93,6 +95,7 @@
       </table>
     <% } %>
   </div>
+  
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -205,7 +205,9 @@
     }
 
     try {
-      const url = '/presenca/api/colaboradores/' + postoId + '?data=' + encodeURIComponent(data);
+      const url = '/presenca/api/colaboradores/' + postoId 
+  + '?data=' + encodeURIComponent(data)
+  + '&condominio_id=' + encodeURIComponent(selectCondominio.value);
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error('Erro na requisição de colaboradores');

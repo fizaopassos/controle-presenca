@@ -125,7 +125,7 @@ exports.getPostos = async (req, res) => {
 // ========================================
 // API: Buscar colaboradores de um posto
 // ========================================
-exports.getFuncionarios = async (req, res) => {
+/*exports.getFuncionarios = async (req, res) => {
   try {
     const { posto_id } = req.params;
     const { data } = req.query;
@@ -190,7 +190,97 @@ exports.getFuncionarios = async (req, res) => {
     console.error('Erro ao buscar colaboradores:', error);
     res.status(500).json({ error: 'Erro ao buscar colaboradores' });
   }
+};*/
+
+// ========================================
+// API: Buscar colaboradores de um posto+condomínio (via alocação)
+// ========================================
+// ========================================
+// API: Buscar colaboradores de um posto + condomínio (sem tabela de alocação)
+// ========================================
+exports.getFuncionarios = async (req, res) => {
+  try {
+    const { posto_id } = req.params;
+    const { data, condominio_id } = req.query;
+
+    if (!posto_id || !condominio_id) {
+      return res.status(400).json({ error: 'posto_id e condominio_id são obrigatórios' });
+    }
+
+    // Busca colaboradores vinculados a este posto E a este condomínio
+    const [colaboradores] = await db.query(`
+      SELECT 
+        c.id,
+        c.nome,
+        c.cpf,
+        e.nome AS empresa
+      FROM colaboradores c
+      LEFT JOIN empresas e ON c.empresa_id = e.id
+      WHERE c.posto_id = ?
+        AND c.condominio_id = ?
+      ORDER BY c.nome
+    `, [posto_id, condominio_id]);
+
+    console.log(
+      'Colaboradores encontrados para condominio',
+      condominio_id,
+      'posto',
+      posto_id,
+      ':',
+      colaboradores.length
+    );
+
+    // Se foi passada uma data, busca se já existe presença registrada
+    if (data && colaboradores.length > 0) {
+      const ids = colaboradores.map(c => c.id);
+      const [presencas] = await db.query(`
+        SELECT 
+          colaborador_id,
+          status,
+          observacoes,
+          id AS presenca_id
+        FROM presencas_diarias
+        WHERE data = ? 
+          AND colaborador_id IN (?)
+          AND posto_id = ?
+          AND condominio_id = ?
+      `, [data, ids, posto_id, condominio_id]);
+
+      const mapaPresencas = {};
+      presencas.forEach(p => {
+        mapaPresencas[p.colaborador_id] = {
+          presenca_id: p.presenca_id,
+          status: p.status,
+          observacoes: p.observacoes
+        };
+      });
+
+      colaboradores.forEach(c => {
+        if (mapaPresencas[c.id]) {
+          c.presenca_id = mapaPresencas[c.id].presenca_id;
+          c.status = mapaPresencas[c.id].status;
+          c.observacoes = mapaPresencas[c.id].observacoes;
+        } else {
+          c.status = 'presente'; // default
+          c.observacoes = '';
+        }
+      });
+    } else {
+      // Sem data, todos começam como "presente"
+      colaboradores.forEach(c => {
+        c.status = 'presente';
+        c.observacoes = '';
+      });
+    }
+
+    res.json(colaboradores);
+  } catch (error) {
+    console.error('Erro ao buscar colaboradores:', error);
+    res.status(500).json({ error: 'Erro ao buscar colaboradores' });
+  }
 };
+
+
 
 // ========================================
 // POST: Salvar presenças em massa

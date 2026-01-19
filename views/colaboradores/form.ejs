@@ -83,7 +83,7 @@
         >
       </div>
 
-      <div class="col-md-3">
+      <div class="col-md-6">
         <label for="empresa_id" class="form-label">Empresa *</label>
         <select class="form-select" id="empresa_id" name="empresa_id" required>
           <option value="">Selecione...</option>
@@ -98,7 +98,22 @@
         </select>
       </div>
 
-      <div class="col-md-3">
+      <div class="col-md-6">
+        <label for="condominio_id" class="form-label">Condomínio</label>
+        <select class="form-select" id="condominio_id" name="condominio_id">
+          <option value="">Selecione...</option>
+          <% condominios.forEach(c => { %>
+            <option 
+              value="<%= c.id %>" 
+              <%= (colaborador && colaborador.condominio_id == c.id) ? 'selected' : '' %>
+            >
+              <%= c.nome %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="col-md-6">
         <label for="posto_id" class="form-label">Posto</label>
         <select class="form-select" id="posto_id" name="posto_id">
           <option value="">Nenhum</option>
@@ -164,3 +179,4 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
