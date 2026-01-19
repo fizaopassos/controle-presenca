@@ -1,0 +1,127 @@
+<%
+  const isNovo = (acao === 'novo');
+
+  const postUrl  = isNovo 
+    ? '/empresas/novo' 
+    : '/empresas/editar/' + empresa.id;
+
+  const hxTarget = isNovo 
+    ? '#tabelaEmpresas'           // cria: adiciona uma nova <tr> no fim da tabela
+    : '#empresa-' + empresa.id;   // edita: substitui a <tr> específica
+
+  const hxSwap   = isNovo 
+    ? 'beforeend' 
+    : 'outerHTML';
+%>
+
+<form
+  id="formEmpresaHtmx"
+  class="row g-4"
+  hx-post="<%= postUrl %>"
+  hx-target="<%= hxTarget %>"
+  hx-swap="<%= hxSwap %>"
+  hx-indicator="#btnSalvarEmpresa"
+>
+  <div class="col-12">
+    <h5 class="mb-3">
+      <i class="bi <%= isNovo ? 'bi-plus-circle' : 'bi-pencil-square' %> text-primary me-2"></i>
+      <%= isNovo ? 'Nova Empresa' : 'Editar Empresa' %>
+    </h5>
+  </div>
+
+  <div class="col-md-8">
+    <label for="nome" class="form-label">
+      Nome da Empresa *
+    </label>
+    <input
+      type="text"
+      class="form-control"
+      id="nome"
+      name="nome"
+      required
+      value="<%= empresa ? empresa.nome : '' %>"
+    >
+  </div>
+
+  <div class="col-md-4">
+    <label for="cnpj" class="form-label">CNPJ</label>
+    <input
+      type="text"
+      class="form-control"
+      id="cnpj"
+      name="cnpj"
+      value="<%= empresa ? (empresa.cnpj || '') : '' %>"
+    >
+  </div>
+
+  <div class="col-md-4">
+    <label for="telefone" class="form-label">Telefone</label>
+    <input
+      type="text"
+      class="form-control"
+      id="telefone"
+      name="telefone"
+      value="<%= empresa ? (empresa.telefone || '') : '' %>"
+    >
+  </div>
+
+  <div class="col-md-8">
+    <label for="email" class="form-label">Email</label>
+    <input
+      type="email"
+      class="form-control"
+      id="email"
+      name="email"
+      value="<%= empresa ? (empresa.email || '') : '' %>"
+    >
+  </div>
+
+  <div class="col-12">
+    <label for="endereco" class="form-label">Endereço</label>
+    <textarea
+      class="form-control"
+      id="endereco"
+      name="endereco"
+      rows="2"
+    ><%= empresa ? (empresa.endereco || '') : '' %></textarea>
+  </div>
+
+  <% if (!isNovo) { %>
+    <div class="col-12">
+      <div class="form-check form-switch">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          id="ativo"
+          name="ativo"
+          <%= empresa && empresa.ativo ? 'checked' : '' %>
+        >
+        <label class="form-check-label" for="ativo">
+          Empresa Ativa
+        </label>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      data-bs-dismiss="modal"
+    >
+      Cancelar
+    </button>
+    <button
+      type="submit"
+      class="btn btn-primary"
+      id="btnSalvarEmpresa"
+    >
+      <i class="bi bi-check-circle me-1"></i>
+      Salvar
+    </button>
+  </div>
+</form>
+
+<script>
+  // Aqui você pode colocar máscaras, se quiser
+</script>

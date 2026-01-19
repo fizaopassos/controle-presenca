@@ -1,0 +1,82 @@
+<tr id="empresa-<%= empresa.id %>" data-nome="<tr data-nome="<%= empresa.nome.toLowerCase() %>" hx-target="this" hx-swap="outerHTML">
+<td>
+<div class="d-flex align-items-center">
+<div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
+<i class="bi bi-building"></i>
+</div>
+<div>
+<div class="fw-semibold"><%= empresa.nome %></div>
+<% if (empresa.endereco) { %>
+<small class="text-muted">
+<i class="bi bi-geo-alt"></i>
+<%= empresa.endereco.substring(0, 40) %><%= empresa.endereco.length > 40 ? '...' : '' %>
+</small>
+<% } %>
+</div>
+</div>
+</td>
+<td>
+<% if (empresa.cnpj) { %>
+<span class="font-monospace small"><%= empresa.cnpj %></span>
+<% } else { %>
+<span class="text-muted">-</span>
+<% } %>
+</td>
+<td>
+<% if (empresa.telefone) { %>
+<i class="bi bi-telephone text-primary me-1"></i>
+<%= empresa.telefone %>
+<% } else { %>
+<span class="text-muted">-</span>
+<% } %>
+</td>
+<td>
+<% if (empresa.email) { %>
+<a href="mailto:<%= empresa.email %>" class="text-decoration-none">
+<i class="bi bi-envelope me-1"></i>
+<%= empresa.email %>
+</a>
+<% } else { %>
+<span class="text-muted">-</span>
+<% } %>
+</td>
+<td class="text-center">
+<% if (empresa.ativo) { %>
+<span class="badge bg-success">
+<i class="bi bi-check-circle me-1"></i>
+Ativa
+</span>
+<% } else { %>
+<span class="badge bg-secondary">
+<i class="bi bi-x-circle me-1"></i>
+Inativa
+</span>
+<% } %>
+</td>
+<td class="text-end">
+<div class="btn-group" role="group">
+<!-- Editar em modal via HTMX -->
+<button
+type="button"
+class="btn btn-sm btn-outline-primary"
+title="Editar"
+hx-get="/empresas/editar/<%= empresa.id %>?partial=1"
+hx-target="#empresaModalBody"
+hx-swap="innerHTML"
+
+>
+<i class="bi bi-pencil"></i>
+</button>
+
+  <!-- Toggle continua normal (page reload) ou depois migramos pra HTMX também -->
+  <a 
+    href="/empresas/toggle/<%= empresa.id %>" 
+    class="btn btn-sm btn-outline-warning"
+    title="<%= empresa.ativo ? 'Inativar' : 'Ativar' %>"
+  >
+    <i class="bi bi-<%= empresa.ativo ? 'toggle-on' : 'toggle-off' %>"></i>
+  </a>
+</div>
+
+</td>
+</tr>

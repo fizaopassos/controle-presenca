@@ -1,0 +1,106 @@
+<%
+const isNovo = (acao === 'novo');
+
+const postUrl  = isNovo
+? '/colaboradores/novo'
+: '/colaboradores/editar/' + colaborador.id;
+
+const hxTarget = isNovo
+? '#tabelaColaboradores'
+: '#colaborador-' + colaborador.id;
+
+const hxSwap = isNovo ? 'beforeend' : 'outerHTML';
+%>
+
+<form
+id="formColaboradorHtmx"
+class="row g-3"
+hx-post="<%= postUrl %>"
+hx-target="<%= hxTarget %>"
+hx-swap="<%= hxSwap %>"
+
+<div class="col-12">
+<h5 class="mb-2"><%= isNovo ? 'Novo Colaborador' : 'Editar Colaborador' %></h5>
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Nome *</label>
+<input class="form-control" name="nome" required value="<%= colaborador ? colaborador.nome : '' %>">
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Empresa *</label>
+<select class="form-select" name="empresa_id" required>
+<option value="">Selecione...</option>
+<% empresas.forEach(e => { %>
+<option value="<%= e.id %>" <%= (colaborador && colaborador.empresa_id === e.id) ? 'selected' : '' %>>
+<%= e.nome %>
+</option>
+<% }) %>
+</select>
+</div>
+
+<div class="col-md-4">
+<label class="form-label">CPF</label>
+<input class="form-control" name="cpf" value="<%= colaborador ? (colaborador.cpf || '') : '' %>">
+</div>
+
+<div class="col-md-4">
+<label class="form-label">Telefone</label>
+<input class="form-control" name="telefone" value="<%= colaborador ? (colaborador.telefone || '') : '' %>">
+</div>
+
+<div class="col-md-4">
+<label class="form-label">Email</label>
+<input class="form-control" type="email" name="email" value="<%= colaborador ? (colaborador.email || '') : '' %>">
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Condomínio</label>
+<select class="form-select" name="condominio_id">
+<option value="">Selecione...</option>
+<% condominios.forEach(cond => { %>
+<option value="<%= cond.id %>" <%= (colaborador && colaborador.condominio_id === cond.id) ? 'selected' : '' %>>
+<%= cond.nome %>
+</option>
+<% }) %>
+</select>
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Posto</label>
+<select class="form-select" name="posto_id">
+<option value="">Selecione...</option>
+<% postos.forEach(p => { %>
+<option value="<%= p.id %>" <%= (colaborador && colaborador.posto_id === p.id) ? 'selected' : '' %>>
+<%= p.nome %>
+</option>
+<% }) %>
+</select>
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Cargo</label>
+<input class="form-control" name="cargo" value="<%= colaborador ? (colaborador.cargo || '') : '' %>">
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Foto URL</label>
+<input class="form-control" name="foto_url" value="<%= colaborador ? (colaborador.foto_url || '') : '' %>">
+</div>
+
+<% if (!isNovo) { %>
+<div class="col-12">
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="ativo" id="ativo"
+<%= colaborador && colaborador.ativo ? 'checked' : '' %>>
+<label class="form-check-label" for="ativo">Ativo</label>
+</div>
+</div>
+<% } %>
+
+<div class="col-12 d-flex justify-content-end gap-2 mt-2">
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button type="submit" class="btn btn-primary">Salvar</button>
+</div>
+</form>

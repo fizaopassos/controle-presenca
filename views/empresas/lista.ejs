@@ -9,89 +9,216 @@
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
     rel="stylesheet"
   >
+  <link 
+    rel="stylesheet" 
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+  >
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <div class="container-fluid">
-      <a class="navbar-brand" href="/dashboard">Controle de Presença</a>
-      <div class="d-flex">
-        <span class="navbar-text text-white me-3">
-          Olá, <%= usuario.nome %> (<%= usuario.perfil %>)
-        </span>
-        <a href="/auth/logout" class="btn btn-outline-light btn-sm">Sair</a>
+      <a class="navbar-brand" href="/dashboard">
+        <i class="bi bi-calendar-check me-2"></i>
+        Controle de Presença
+      </a>
+      <div class="d-flex align-items-center gap-3">
+        <div class="d-none d-md-flex align-items-center text-white-50">
+          <i class="bi bi-person-circle me-2"></i>
+          <span class="small">
+            <%= usuario.nome %> 
+            <span class="badge bg-secondary ms-1"><%= usuario.perfil %></span>
+          </span>
+        </div>
+        <a href="/auth/logout" class="btn btn-outline-light btn-sm">
+          <i class="bi bi-box-arrow-right me-1"></i>
+          Sair
+        </a>
       </div>
     </div>
   </nav>
 
-  <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1 class="h4 mb-0">Empresas Terceirizadas</h1>
-      <a href="/empresas/novo" class="btn btn-primary">+ Nova Empresa</a>
+  <div class="container my-4 fade-in">
+    
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+      <div>
+        <h1 class="h3 mb-1">
+          <i class="bi bi-building text-primary me-2"></i>
+          Empresas Fornecedoras
+        </h1>
+        <p class="subtitle mb-0">
+          Gerencie as empresas prestadoras de serviço
+        </p>
+      </div>
+      <button 
+  type="button"
+  class="btn btn-primary"
+  hx-get="/empresas/novo?partial=1"
+  hx-target="#empresaModalBody"
+  hx-swap="innerHTML"
+>
+  <i class="bi bi-plus-circle me-1"></i>
+  Nova Empresa
+</button>
+
     </div>
 
-    <% if (empresas.length === 0) { %>
-      <div class="alert alert-info">
-        Nenhuma empresa cadastrada ainda.
+    <!-- Filtro Rápido -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i>
+          </span>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="filtroNome" 
+            placeholder="Buscar empresa por nome..."
+          >
+        </div>
       </div>
-    <% } else { %>
-      <table class="table table-striped table-hover">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nome</th>
-            <th>CNPJ</th>
-            <th>Telefone</th>
-            <th>Email</th>
-            <th>Responsável</th>
-            <th>Ativo</th>
-            <th style="width: 200px;">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% empresas.forEach(e => { %>
-            <tr>
-              <td><%= e.id %></td>
-              <td><%= e.nome %></td>
-              <td><%= e.cnpj || '-' %></td>
-              <td><%= e.telefone || '-' %></td>
-              <td><%= e.email || '-' %></td>
-              <td><%= e.responsavel || '-' %></td>
-              <td>
-                <% if (e.ativo) { %>
-                  <span class="badge bg-success">Ativo</span>
-                <% } else { %>
-                  <span class="badge bg-secondary">Inativo</span>
-                <% } %>
-              </td>
-              <td>
-                <a href="/empresas/editar/<%= e.id %>" class="btn btn-sm btn-outline-primary me-2">
-                  Editar
-                </a>
+    </div>
 
-                <form action="/empresas/toggle-ativo/<%= e.id %>" method="POST" class="d-inline">
-                  <% if (e.ativo) { %>
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                      onclick="return confirm('Tem certeza que deseja inativar esta empresa?');">
-                      Inativar
-                    </button>
-                  <% } else { %>
-                    <button type="submit" class="btn btn-sm btn-outline-success"
-                      onclick="return confirm('Tem certeza que deseja ativar esta empresa?');">
-                      Ativar
-                    </button>
-                  <% } %>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
+    <!-- Tabela de Empresas -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+          <i class="bi bi-list-ul me-2"></i>
+          Lista de Empresas
+        </span>
+        <span class="badge bg-primary" id="totalEmpresas">
+          <%= empresas.length %> empresa<%= empresas.length !== 1 ? 's' : '' %>
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <% if (empresas.length === 0) { %>
+          <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="text-muted mt-3">Nenhuma empresa cadastrada ainda.</p>
+            <a href="/empresas/novo" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>
+              Cadastrar Primeira Empresa
+            </a>
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Nome</th>
+                  <th>CNPJ</th>
+                  <th>Telefone</th>
+                  <th>Email</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-end">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaEmpresas">
+<% empresas.forEach(emp => { %>
+<%- include('_linha', { empresa: emp }) %>
+<% }) %>
+</tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
   </div>
 
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+    </div> <!-- fecha container -->
+
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+  <!-- Bootstrap Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Scripts customizados - ÚNICO BLOCO -->
+  <script>
+    // ========================================
+    // Filtro de busca em tempo real
+    // ========================================
+    const filtroInput = document.getElementById('filtroNome');
+    const linhas = document.querySelectorAll('#tabelaEmpresas tr');
+
+    if (filtroInput) {
+      filtroInput.addEventListener('input', function() {
+        const termo = this.value.toLowerCase();
+        let visiveis = 0;
+
+        linhas.forEach(linha => {
+          const nome = linha.dataset.nome || '';
+          if (nome.includes(termo)) {
+            linha.style.display = '';
+            visiveis++;
+          } else {
+            linha.style.display = 'none';
+          }
+        });
+
+        document.getElementById('totalEmpresas').textContent = 
+          visiveis + ' empresa' + (visiveis !== 1 ? 's' : '');
+      });
+    }
+
+    // ========================================
+    // Abrir modal após HTMX carregar conteúdo
+    // ========================================
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+      if (evt.target && evt.target.id === 'empresaModalBody') {
+        const modalEl = document.getElementById('empresaModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    });
+
+    // ========================================
+    // Fechar modal após salvar com sucesso
+    // ========================================
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+      if (evt.detail.successful && evt.detail.xhr.status === 200) {
+        const url = evt.detail.pathInfo.requestPath;
+        if (url.includes('/empresas/novo') || url.includes('/empresas/editar')) {
+          const modalEl = document.getElementById('empresaModal');
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          if (modal) {
+            modal.hide();
+          }
+        }
+      }
+    });
+  </script>
+
+  <!-- Modal para criar/editar Empresa via HTMX -->
+  <div class="modal fade" id="empresaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="empresaModalTitle">Empresa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="empresaModalBody">
+          <!-- Conteúdo do formulário virá via HTMX -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
+
+
 </body>
 </html>

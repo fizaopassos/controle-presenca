@@ -1,0 +1,43 @@
+<tr id="colaborador-<%= c.id %>">
+<td><%= c.id %></td>
+<td><%= c.nome %></td>
+<td><%= c.cpf || '-' %></td>
+<td><%= c.telefone || '-' %></td>
+<td><%= c.condominio_nome || '-' %></td>
+<td><%= c.empresa_nome || '-' %></td>
+<td><%= c.posto_nome || '-' %></td>
+<td><%= c.cargo || '-' %></td>
+<td>
+<% if (c.ativo) { %>
+<span class="badge bg-success">Ativo</span>
+<% } else { %>
+<span class="badge bg-secondary">Inativo</span>
+<% } %>
+</td>
+<td>
+<button
+type="button"
+class="btn btn-sm btn-outline-primary me-2"
+hx-get="/colaboradores/editar/<%= c.id %>?partial=1"
+hx-target="#colaboradorModalBody"
+hx-swap="innerHTML"
+>
+Editar
+</button>
+
+<form action="/colaboradores/toggle-ativo/<%= c.id %>" method="POST" class="d-inline">
+  <% if (c.ativo) { %>
+    <button type="submit" class="btn btn-sm btn-outline-danger"
+      onclick="return confirm('Tem certeza que deseja inativar este colaborador?');">
+      Inativar
+    </button>
+  <% } else { %>
+    <button type="submit" class="btn btn-sm btn-outline-success"
+      onclick="return confirm('Tem certeza que deseja ativar este colaborador?');">
+      Ativar
+    </button>
+  <% } %>
+</form>
+
+</td>
+</tr>
