@@ -1,0 +1,101 @@
+<%
+  // Define classes e textos para cada status
+  const statusConfig = {
+    presente: { badge: 'bg-success', texto: 'Presente ✅' },
+    falta: { badge: 'bg-danger', texto: 'Falta ❌' },
+    folga: { badge: 'bg-secondary', texto: 'Folga' },
+    atestado: { badge: 'bg-warning text-dark', texto: 'Atestado' },
+    ferias: { badge: 'bg-info text-dark', texto: 'Férias' }
+  };
+
+  const statusAtual = c.status || 'presente';
+  const config = statusConfig[statusAtual] || statusConfig['presente'];
+%>
+
+<div 
+  id="card-colaborador-<%= c.id %>" 
+  class="card mb-2 border-start border-3 <%= config.badge.includes('success') ? 'border-success' : (config.badge.includes('danger') ? 'border-danger' : 'border-secondary') %>"
+>
+  <div class="card-body p-3">
+    <div class="row align-items-center">
+      <!-- Info do colaborador -->
+      <div class="col-md-4">
+        <h6 class="mb-0"><%= c.nome %></h6>
+        <small class="text-muted">
+          <%= c.empresa || 'Sem empresa' %> 
+          <% if (c.cpf) { %>• CPF: <%= c.cpf %><% } %>
+        </small>
+      </div>
+
+      <!-- Status atual -->
+      <div class="col-md-2 text-center">
+        <span class="badge <%= config.badge %>"><%= config.texto %></span>
+      </div>
+
+      <!-- Botões de ação (status) -->
+      <div class="col-md-6">
+        <div class="btn-group btn-group-sm w-100" role="group">
+          <button 
+            type="button" 
+            class="btn <%= statusAtual === 'presente' ? 'btn-success' : 'btn-outline-success' %>"
+            hx-post="/presenca/api/salvar-individual"
+            hx-vals='{"data": "<%= data %>", "condominio_id": "<%= condominio_id %>", "posto_id": "<%= posto_id %>", "colaborador_id": "<%= c.id %>", "status": "presente"}'
+            hx-target="#card-colaborador-<%= c.id %>"
+            hx-swap="outerHTML"
+          >
+            Presente
+          </button>
+
+          <button 
+            type="button" 
+            class="btn <%= statusAtual === 'falta' ? 'btn-danger' : 'btn-outline-danger' %>"
+            hx-post="/presenca/api/salvar-individual"
+            hx-vals='{"data": "<%= data %>", "condominio_id": "<%= condominio_id %>", "posto_id": "<%= posto_id %>", "colaborador_id": "<%= c.id %>", "status": "falta"}'
+            hx-target="#card-colaborador-<%= c.id %>"
+            hx-swap="outerHTML"
+          >
+            Falta
+          </button>
+
+          <button 
+            type="button" 
+            class="btn <%= statusAtual === 'folga' ? 'btn-secondary' : 'btn-outline-secondary' %>"
+            hx-post="/presenca/api/salvar-individual"
+            hx-vals='{"data": "<%= data %>", "condominio_id": "<%= condominio_id %>", "posto_id": "<%= posto_id %>", "colaborador_id": "<%= c.id %>", "status": "folga"}'
+            hx-target="#card-colaborador-<%= c.id %>"
+            hx-swap="outerHTML"
+          >
+            Folga
+          </button>
+
+          <button 
+            type="button" 
+            class="btn <%= statusAtual === 'atestado' ? 'btn-warning' : 'btn-outline-warning' %>"
+            hx-post="/presenca/api/salvar-individual"
+            hx-vals='{"data": "<%= data %>", "condominio_id": "<%= condominio_id %>", "posto_id": "<%= posto_id %>", "colaborador_id": "<%= c.id %>", "status": "atestado"}'
+            hx-target="#card-colaborador-<%= c.id %>"
+            hx-swap="outerHTML"
+          >
+            Atestado
+          </button>
+
+          <button 
+            type="button" 
+            class="btn <%= statusAtual === 'ferias' ? 'btn-info' : 'btn-outline-info' %>"
+            hx-post="/presenca/api/salvar-individual"
+            hx-vals='{"data": "<%= data %>", "condominio_id": "<%= condominio_id %>", "posto_id": "<%= posto_id %>", "colaborador_id": "<%= c.id %>", "status": "ferias"}'
+            hx-target="#card-colaborador-<%= c.id %>"
+            hx-swap="outerHTML"
+          >
+            Férias
+          </button>
+        </div>
+
+        <!-- Campo de observações (opcional, inline) -->
+        <% if (c.observacoes) { %>
+          <small class="text-muted d-block mt-1">💬 <%= c.observacoes %></small>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>

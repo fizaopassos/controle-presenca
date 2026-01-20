@@ -1,436 +1,389 @@
-<style>
-  .colaborador-row {
-    transition: background-color 0.2s;
-  }
-  .colaborador-row:hover {
-    background-color: #f8f9fa;
-  }
-  .colaborador-row.selecionado {
-    background-color: #e7f5ff;
-  }
-  .colaborador-row.ja-registrado {
-    background-color: #fff3cd;
-    opacity: 0.9;
-  }
-  .checkbox-presenca {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-  }
-  .checkbox-presenca:disabled {
-    cursor: not-allowed;
-  }
-</style>
+<div class="container mt-4">
+  <h1 class="h4 mb-4">Lançar Presença Diária</h1>
 
-<div class="row">
-  <div class="col-12">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2><i class="bi bi-calendar-check"></i> <%= title %></h2>
-      <a href="/dashboard" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i> Voltar
-      </a>
-    </div>
-
-    <!-- Filtros -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-3">
-            <label for="data" class="form-label">Data</label>
-            <input type="date" class="form-control" id="data" required>
-            <small class="text-muted">Apenas hoje ou datas anteriores</small>
-          </div>
-          <div class="col-md-4">
-            <label for="condominio" class="form-label">Condomínio</label>
-            <select class="form-select" id="condominio" required>
-              <option value="">Selecione...</option>
-              <% condominios.forEach(cond => { %>
-                <option value="<%= cond.id %>"><%= cond.nome %></option>
-              <% }) %>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label for="posto" class="form-label">Posto</label>
-            <select class="form-select" id="posto" required disabled>
-              <option value="">Selecione um condomínio primeiro</option>
-            </select>
-          </div>
-          <div class="col-md-1 d-flex align-items-end">
-            <button type="button" class="btn btn-primary w-100" id="btnCarregar">
-              <i class="bi bi-search"></i>
-            </button>
-          </div>
+  <div class="card mb-3">
+    <div class="card-body">
+      <form id="formFiltro" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Data *</label>
+          <input type="date" class="form-control" id="inputData" name="data" required>
         </div>
-      </div>
-    </div>
 
-    <!-- Tabela de colaboradores -->
-    <div id="areaColaboradores" style="display: none;">
-      <div class="card">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <div>
-            <i class="bi bi-people"></i> Colaboradores do Posto
-            <span class="badge bg-info text-dark ms-2" id="badgeSelecionados">0 selecionados</span>
-            <span class="badge bg-warning text-dark ms-2" id="badgeJaRegistrados" style="display: none;">0 já registrados</span>
-          </div>
-          <div>
-            <button type="button" class="btn btn-sm btn-light me-2" id="btnMarcarTodosPresente">
-              <i class="bi bi-check-all"></i> Marcar Todos Presentes
-            </button>
-            <button type="button" class="btn btn-sm btn-warning text-dark" id="btnLimparSelecao">
-              <i class="bi bi-x-lg"></i> Limpar Seleção
-            </button>
-          </div>
+        <div class="col-md-7">
+          <label class="form-label">Condomínio *</label>
+          <select class="form-select" id="inputCondominio" name="condominio_id" required>
+            <option value="">Selecione...</option>
+            <% condominios.forEach(cond => { %>
+              <option value="<%= cond.id %>"><%= cond.nome %></option>
+            <% }) %>
+          </select>
         </div>
-        <div class="card-body">
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> 
-            <strong>Instruções:</strong> Marque apenas os colaboradores que estão trabalhando hoje. 
-            Quem não for selecionado <strong>não terá registro de presença</strong>.
-            <br>
-            <small><i class="bi bi-exclamation-triangle"></i> Colaboradores com fundo amarelo já possuem presença registrada para esta data.</small>
-          </div>
 
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th class="text-center" style="width: 60px;">Selecionar</th>
-                  <th>Colaborador</th>
-                  <th>CPF</th>
-                  <th>Empresa</th>
-                  <th style="width: 150px;">Status</th>
-                  <th>Observações</th>
-                </tr>
-              </thead>
-              <tbody id="tabelaColaboradores">
-              </tbody>
-            </table>
-          </div>
-
-          <div class="d-flex justify-content-end mt-3">
-            <button type="button" class="btn btn-success btn-lg" id="btnSalvar">
-              <i class="bi bi-save"></i> Salvar Presenças
-            </button>
-          </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" id="btnBuscar" class="btn btn-primary w-100" disabled>Buscar</button>
         </div>
-      </div>
+      </form>
     </div>
+  </div>
 
-    <div id="msgSemColaboradores" class="alert alert-info mt-3" style="display: none;">
-      <i class="bi bi-info-circle"></i> Nenhum colaborador encontrado para este posto.
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <button type="button" class="btn btn-outline-success btn-sm" id="btnSelecionarTodosPresente" disabled>
+      Selecionar todos: Presente
+    </button>
+
+    <button type="button" class="btn btn-success btn-sm" id="btnConfirmarTudo" disabled>
+      Confirmar lançamentos
+    </button>
+
+    <span class="ms-auto text-muted" id="resumo"></span>
+  </div>
+
+  <div id="alerta" class="alert d-none" role="alert"></div>
+
+  <div id="areaColaboradores">
+    <div class="alert alert-info">
+      Selecione data e condomínio para carregar os colaboradores.
     </div>
   </div>
 </div>
 
 <script>
-  // ===================== VARIÁVEIS GLOBAIS =====================
-  const inputData = document.getElementById('data');
-  const selectCondominio = document.getElementById('condominio');
-  const selectPosto = document.getElementById('posto');
-  const hojeStr = new Date().toISOString().split('T')[0];
+  // Status disponíveis
+  var STATUSES = [
+    { key: 'presente', label: 'Presente', btn: 'btn-outline-success', btnActive: 'btn-success' },
+    { key: 'falta',    label: 'Falta',    btn: 'btn-outline-danger',  btnActive: 'btn-danger' },
+    { key: 'folga',    label: 'Folga',    btn: 'btn-outline-secondary', btnActive: 'btn-secondary' },
+    { key: 'atestado', label: 'Atestado', btn: 'btn-outline-warning', btnActive: 'btn-warning' },
+    { key: 'ferias',   label: 'Férias',   btn: 'btn-outline-info',    btnActive: 'btn-info' }
+  ];
 
-  let colaboradores = [];
-  let colaboradoresSelecionados = new Set();
-  let colaboradoresJaRegistrados = new Set();
+  // Para quais status exigimos/mostramos observação
+  var STATUS_COM_OBS = ['falta', 'folga', 'atestado', 'ferias'];
 
-  // ===================== CONFIGURA DATA (BLOQUEIA FUTURO) =====================
-  (function configurarData() {
-    inputData.value = hojeStr;
-    inputData.max = hojeStr;
+  var inputData = document.getElementById('inputData');
+  var inputCondominio = document.getElementById('inputCondominio');
+  var btnBuscar = document.getElementById('btnBuscar');
+  var btnConfirmarTudo = document.getElementById('btnConfirmarTudo');
+  var btnSelecionarTodosPresente = document.getElementById('btnSelecionarTodosPresente');
+  var areaColaboradores = document.getElementById('areaColaboradores');
+  var resumo = document.getElementById('resumo');
+  var alerta = document.getElementById('alerta');
 
-    inputData.addEventListener('change', function () {
-      const valor = this.value;
-      if (!valor) return;
+  // Estado local da tela (NÃO salva até confirmar)
+  var estado = {};
+  var listaIds = [];
+  window.__colaboradoresRaw = {};
 
-      if (valor > hojeStr) {
-        alert('Não é permitido lançar presença para datas futuras.');
-        this.value = hojeStr;
-      }
+  function hojeISO() {
+    var d = new Date();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
+  }
+
+  function showAlert(type, msg) {
+    alerta.className = 'alert alert-' + type;
+    alerta.textContent = msg;
+    alerta.classList.remove('d-none');
+    setTimeout(function() { alerta.classList.add('d-none'); }, 3000);
+  }
+
+  function badgeStatus(status) {
+    if (!status) return { cls: 'bg-light text-dark', text: 'Não lançado' };
+    if (status === 'presente') return { cls: 'bg-success', text: 'Presente' };
+    if (status === 'falta') return { cls: 'bg-danger', text: 'Falta' };
+    if (status === 'folga') return { cls: 'bg-secondary', text: 'Folga' };
+    if (status === 'atestado') return { cls: 'bg-warning text-dark', text: 'Atestado' };
+    if (status === 'ferias') return { cls: 'bg-info text-dark', text: 'Férias' };
+    return { cls: 'bg-light text-dark', text: status };
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function isPendente(id) {
+    var s = estado[String(id)];
+    if (!s) return false;
+    return (s.status !== s.originalStatus) || ((s.observacoes || '') !== (s.originalObs || '')) || !s.presenca_id;
+  }
+
+  function atualizarResumo() {
+    var total = listaIds.length;
+    var pendentes = 0;
+    var jaSalvos = 0;
+
+    listaIds.forEach(function(id) {
+      if (isPendente(id)) pendentes++;
+      else jaSalvos++;
     });
-  })();
 
-  // ===================== CARREGA POSTOS AO MUDAR CONDOMÍNIO =====================
-  selectCondominio.addEventListener('change', async function () {
-    const condominioId = this.value;
-    selectPosto.innerHTML = '<option value="">Carregando...</option>';
-    selectPosto.disabled = true;
+    resumo.textContent = 'Total: ' + total + ' | Pendentes: ' + pendentes + ' | Já salvos: ' + jaSalvos;
 
-    if (!condominioId) {
-      selectPosto.innerHTML = '<option value="">Selecione um condomínio primeiro</option>';
+    btnConfirmarTudo.disabled = (total === 0);
+    btnSelecionarTodosPresente.disabled = (total === 0);
+  }
+
+  function renderCard(c) {
+    var id = String(c.id);
+    var s = estado[id];
+    var statusAtual = (s && s.status != null && s.status !== '') ? s.status : '';
+    var obsAtual = (s && s.observacoes) ? s.observacoes : '';
+
+    var badge = badgeStatus(statusAtual);
+    var pendente = isPendente(id);
+
+    var borderClass =
+      statusAtual === 'presente' ? 'border-success' :
+      statusAtual === 'falta' ? 'border-danger' :
+      'border-secondary';
+
+    var pendBadge = pendente
+      ? '<span class="badge bg-primary">Pendente</span>'
+      : '<span class="badge bg-success">Confirmado</span>';
+
+    var btns = '';
+    STATUSES.forEach(function(st) {
+      var active = (st.key === statusAtual);
+      var cls = active ? st.btnActive : st.btn;
+      btns += '<button type="button" class="btn ' + cls + ' btn-sm" data-action="set-status" data-id="' + id + '" data-status="' + st.key + '">' + st.label + '</button> ';
+    });
+
+    var obsVisible = STATUS_COM_OBS.indexOf(statusAtual) !== -1;
+    var obsHtml = '<div class="mt-2 ' + (obsVisible ? '' : 'd-none') + '" id="obs-wrap-' + id + '">' +
+      '<label class="form-label mb-1">Observação</label>' +
+      '<input type="text" class="form-control form-control-sm" id="obs-' + id + '" ' +
+      'placeholder="Ex: Folga autorizada, Atestado entregue..." ' +
+      'value="' + escapeHtml(obsAtual) + '" data-action="set-obs" data-id="' + id + '">' +
+      '</div>';
+
+    var cpfText = c.cpf ? ' • CPF: ' + escapeHtml(c.cpf) : '';
+    var empresaText = escapeHtml(c.empresa || 'Sem empresa');
+    var postoText = c.posto_nome ? ' • ' + escapeHtml(c.posto_nome) : '';
+
+    return ''
+      + '<div id="card-' + id + '" class="card mb-2 border-start border-3 ' + borderClass + '">'
+      + '  <div class="card-body p-3">'
+      + '    <div class="d-flex justify-content-between align-items-start gap-3">'
+      + '      <div>'
+      + '        <div class="fw-semibold">' + escapeHtml(c.nome) + '</div>'
+      + '        <div class="text-muted small">' + empresaText + cpfText + postoText + '</div>'
+      + '      </div>'
+      + '      <div class="text-end">'
+      + '        <span class="badge ' + badge.cls + '">' + badge.text + '</span>'
+      + '        <div class="mt-1">' + pendBadge + '</div>'
+      + '      </div>'
+      + '    </div>'
+      + '    <div class="mt-2 d-flex flex-wrap gap-2">' + btns + '</div>'
+      +      obsHtml
+      + '  </div>'
+      + '</div>';
+  }
+
+  function rerenderCardById(id, colaboradorRaw) {
+    var el = document.getElementById('card-' + id);
+    if (!el) return;
+    el.outerHTML = renderCard(colaboradorRaw);
+  }
+
+  function buscarColaboradores() {
+    var data = inputData.value;
+    var condId = inputCondominio.value;
+
+    if (!data || !condId) {
+      showAlert('warning', 'Preencha data e condomínio.');
       return;
     }
 
-    try {
-      const res = await fetch('/presenca/api/postos/' + condominioId);
-      if (!res.ok) {
-        throw new Error('Erro na requisição de postos');
-      }
-      const postos = await res.json();
+    alerta.classList.add('d-none');
 
-      if (!postos || postos.length === 0) {
-        selectPosto.innerHTML = '<option value="">Nenhum posto encontrado</option>';
+    areaColaboradores.innerHTML =
+      '<div class="text-center py-4"><div class="spinner-border" role="status"></div><div class="mt-2">Carregando colaboradores...</div></div>';
+
+    fetch('/presenca/api/colaboradores/condominio/' + condId + '?data=' + encodeURIComponent(data))
+      .then(function(resp) { return resp.json(); })
+      .then(function(colaboradores) {
+        if (!Array.isArray(colaboradores) || colaboradores.length === 0) {
+          estado = {};
+          listaIds = [];
+          window.__colaboradoresRaw = {};
+          areaColaboradores.innerHTML = '<div class="alert alert-warning">Nenhum colaborador encontrado para este condomínio.</div>';
+          atualizarResumo();
+          return;
+        }
+
+        estado = {};
+        listaIds = colaboradores.map(function(c) { return String(c.id); });
+        window.__colaboradoresRaw = {};
+
+        colaboradores.forEach(function(c) {
+          var id = String(c.id);
+          var originalStatus = c.status || '';      // não força "presente"
+          var originalObs = c.observacoes || '';
+          estado[id] = {
+            status: originalStatus,                 // pode ser vazio (não lançado)
+            observacoes: originalObs,
+            originalStatus: originalStatus,
+            originalObs: originalObs,
+            presenca_id: c.presenca_id || null
+          };
+          window.__colaboradoresRaw[id] = c;
+        });
+
+        var html = '';
+        colaboradores.forEach(function(c) {
+          html += renderCard(c);
+        });
+        areaColaboradores.innerHTML = html;
+
+        atualizarResumo();
+      })
+      .catch(function(e) {
+        console.error(e);
+        areaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao buscar colaboradores.</div>';
+        estado = {};
+        listaIds = [];
+        window.__colaboradoresRaw = {};
+        atualizarResumo();
+      });
+  }
+
+  // Eventos
+  inputData.value = hojeISO();
+
+  inputCondominio.addEventListener('change', function() {
+    btnBuscar.disabled = !this.value;
+  });
+
+  btnBuscar.addEventListener('click', buscarColaboradores);
+
+  // Clique nos botões de status
+  areaColaboradores.addEventListener('click', function(evt) {
+    var btn = evt.target.closest('button[data-action="set-status"]');
+    if (!btn) return;
+
+    var id = String(btn.getAttribute('data-id'));
+    var novoStatus = btn.getAttribute('data-status');
+
+    var s = estado[id];
+    if (!s) return;
+
+    s.status = novoStatus;
+
+    if (STATUS_COM_OBS.indexOf(novoStatus) === -1) {
+      s.observacoes = '';
+    }
+
+    estado[id] = s;
+
+    var raw = window.__colaboradoresRaw[id];
+    if (raw) rerenderCardById(id, raw);
+
+    atualizarResumo();
+  });
+
+  // Digitação de observação
+  areaColaboradores.addEventListener('input', function(evt) {
+    var inp = evt.target.closest('input[data-action="set-obs"]');
+    if (!inp) return;
+
+    var id = String(inp.getAttribute('data-id'));
+    var s = estado[id];
+    if (!s) return;
+
+    s.observacoes = inp.value || '';
+    estado[id] = s;
+
+    atualizarResumo();
+  });
+
+  // Selecionar todos Presente
+  btnSelecionarTodosPresente.addEventListener('click', function() {
+    listaIds.forEach(function(id) {
+      var s = estado[String(id)];
+      if (!s) return;
+      s.status = 'presente';
+      s.observacoes = '';
+      estado[String(id)] = s;
+
+      var raw = window.__colaboradoresRaw[String(id)];
+      if (raw) rerenderCardById(String(id), raw);
+    });
+    atualizarResumo();
+  });
+
+  // Confirmar lançamentos
+  btnConfirmarTudo.addEventListener('click', function() {
+    var data = inputData.value;
+    var condId = inputCondominio.value;
+
+    if (!data || !condId) {
+      showAlert('warning', 'Preencha data e condomínio.');
+      return;
+    }
+
+    if (listaIds.length === 0) {
+      showAlert('warning', 'Nenhum colaborador para confirmar.');
+      return;
+    }
+
+    var condominioTexto = inputCondominio.options[inputCondominio.selectedIndex].text;
+
+    var msg = 'Confirma salvar os lançamentos?\n\n' +
+      'Data: ' + data + '\n' +
+      'Condomínio: ' + condominioTexto + '\n' +
+      'Total de colaboradores: ' + listaIds.length + '\n\n' +
+      'Isso vai gravar/atualizar as presenças no sistema.';
+
+    if (!confirm(msg)) {
+      return;
+    }
+
+    var presencas = listaIds.map(function(id) {
+      var s = estado[String(id)];
+      var raw = window.__colaboradoresRaw[String(id)];
+      var postoIdColab = raw && raw.posto_id ? raw.posto_id : null;
+
+      return {
+        colaborador_id: Number(id),
+        status: (s && s.status) ? s.status : '',
+        observacoes: ((s && s.observacoes) ? s.observacoes : '').trim(),
+        posto_id: postoIdColab
+      };
+    });
+
+    btnConfirmarTudo.disabled = true;
+
+    fetch('/presenca/api/lancar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: data,
+        condominio_id: condId,
+        presencas: presencas
+      })
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(result) {
+      if (!result.success) {
+        showAlert('danger', result.message || 'Erro ao salvar presenças.');
+        btnConfirmarTudo.disabled = false;
         return;
       }
 
-      selectPosto.innerHTML = '<option value="">Selecione...</option>';
-      postos.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.nome;
-        selectPosto.appendChild(opt);
-      });
-      selectPosto.disabled = false;
-    } catch (e) {
-      console.error('Erro ao carregar postos:', e);
-      alert('Erro ao carregar postos para o condomínio selecionado.');
-      selectPosto.innerHTML = '<option value="">Erro ao carregar postos</option>';
-    }
-  });
-
-  // ===================== BOTÃO CARREGAR COLABORADORES =====================
-  document.getElementById('btnCarregar').addEventListener('click', async function () {
-    const data = inputData.value;
-    const postoId = selectPosto.value;
-
-    if (!data || !postoId) {
-      alert('Informe Data e selecione um Posto.');
-      return;
-    }
-
-    if (data > hojeStr) {
-      alert('Não é permitido lançar presença para datas futuras.');
-      inputData.value = hojeStr;
-      return;
-    }
-
-    try {
-      const url = '/presenca/api/colaboradores/' + postoId 
-  + '?data=' + encodeURIComponent(data)
-  + '&condominio_id=' + encodeURIComponent(selectCondominio.value);
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error('Erro na requisição de colaboradores');
-      }
-      colaboradores = await res.json();
-
-      const areaColab = document.getElementById('areaColaboradores');
-      const msgSem = document.getElementById('msgSemColaboradores');
-
-      if (!colaboradores || colaboradores.length === 0) {
-        areaColab.style.display = 'none';
-        msgSem.style.display = 'block';
-        return;
-      }
-
-      msgSem.style.display = 'none';
-      areaColab.style.display = 'block';
-
-      colaboradoresSelecionados.clear();
-      colaboradoresJaRegistrados.clear();
-
-      colaboradores.forEach(c => {
-        if (c.presenca_id) {
-          colaboradoresJaRegistrados.add(c.id);
-        }
-      });
-
-      renderizarTabela();
-    } catch (e) {
-      console.error('Erro ao buscar colaboradores:', e);
-      alert('Erro ao buscar colaboradores.');
-    }
-  });
-
-  // ===================== RENDERIZA TABELA =====================
-  function renderizarTabela() {
-    const tbody = document.getElementById('tabelaColaboradores');
-    tbody.innerHTML = '';
-
-    let countJaReg = 0;
-
-    colaboradores.forEach(c => {
-      const jaRegistrado = colaboradoresJaRegistrados.has(c.id);
-      const selecionado = colaboradoresSelecionados.has(c.id);
-
-      if (jaRegistrado) countJaReg++;
-
-      const tr = document.createElement('tr');
-      tr.className = 'colaborador-row';
-      if (jaRegistrado) {
-        tr.classList.add('ja-registrado');
-      } else if (selecionado) {
-        tr.classList.add('selecionado');
-      }
-
-      const checked = selecionado ? 'checked' : '';
-      const disabledCheckbox = jaRegistrado ? 'disabled' : '';
-
-      const statusAtual = jaRegistrado
-        ? (c.status || 'presente')
-        : (selecionado ? (c.status || 'presente') : 'presente');
-
-      const statusDisplay = jaRegistrado
-        ? '<span class="badge bg-secondary">' + statusAtual.toUpperCase() + '</span> <small>(já registrado)</small>'
-        : '<select class="form-select form-select-sm status-select" data-id="' + c.id + '" ' +
-          (selecionado ? '' : 'disabled') + '>' +
-          '<option value="presente" ' + (statusAtual === 'presente' ? 'selected' : '') + '>Presente</option>' +
-          '<option value="falta" ' + (statusAtual === 'falta' ? 'selected' : '') + '>Falta</option>' +
-          '<option value="folga" ' + (statusAtual === 'folga' ? 'selected' : '') + '>Folga</option>' +
-          '<option value="atestado" ' + (statusAtual === 'atestado' ? 'selected' : '') + '>Atestado</option>' +
-        '</select>';
-
-      const obsHTML = jaRegistrado
-        ? '<input type="text" class="form-control form-control-sm" value="' + (c.observacoes || '') + '" disabled>'
-        : '<input type="text" class="form-control form-control-sm obs-input" ' +
-          'data-id="' + c.id + '" value="' + (c.observacoes || '') + '" ' +
-          'placeholder="Observação..." ' + (selecionado ? '' : 'disabled') + '>';
-
-      tr.innerHTML = ''
-        + '<td class="text-center">'
-        + '  <input type="checkbox" class="checkbox-presenca" data-id="' + c.id + '" ' + checked + ' ' + disabledCheckbox + '>'
-        + '</td>'
-        + '<td>' + c.nome + '</td>'
-        + '<td>' + (c.cpf || '-') + '</td>'
-        + '<td>' + (c.empresa || '-') + '</td>'
-        + '<td>' + statusDisplay + '</td>'
-        + '<td>' + obsHTML + '</td>';
-
-      tbody.appendChild(tr);
+      showAlert('success', 'Presenças confirmadas com sucesso!');
+      buscarColaboradores();
+    })
+    .catch(function(e) {
+      console.error(e);
+      showAlert('danger', 'Erro ao salvar presenças.');
+      btnConfirmarTudo.disabled = false;
     });
-
-    const badgeJa = document.getElementById('badgeJaRegistrados');
-    if (countJaReg > 0) {
-      badgeJa.textContent = countJaReg + ' já registrados';
-      badgeJa.style.display = 'inline-block';
-    } else {
-      badgeJa.style.display = 'none';
-    }
-
-    atualizarContador();
-    configurarEventListeners();
-  }
-
-  // ===================== EVENTOS DA TABELA =====================
-  function configurarEventListeners() {
-    document.querySelectorAll('.checkbox-presenca:not([disabled])').forEach(cb => {
-      cb.addEventListener('change', function () {
-        const id = parseInt(this.dataset.id, 10);
-        const row = this.closest('tr');
-        const statusSelect = row.querySelector('.status-select');
-        const obsInput = row.querySelector('.obs-input');
-
-        if (this.checked) {
-          colaboradoresSelecionados.add(id);
-          row.classList.add('selecionado');
-          if (statusSelect) statusSelect.disabled = false;
-          if (obsInput) obsInput.disabled = false;
-        } else {
-          colaboradoresSelecionados.delete(id);
-          row.classList.remove('selecionado');
-          if (statusSelect) statusSelect.disabled = true;
-          if (obsInput) obsInput.disabled = true;
-        }
-
-        atualizarContador();
-      });
-    });
-
-    document.querySelectorAll('.status-select').forEach(sel => {
-      sel.addEventListener('change', function () {
-        const id = parseInt(this.dataset.id, 10);
-        const colab = colaboradores.find(c => c.id === id);
-        if (colab) colab.status = this.value;
-      });
-    });
-
-    document.querySelectorAll('.obs-input').forEach(inp => {
-      inp.addEventListener('input', function () {
-        const id = parseInt(this.dataset.id, 10);
-        const colab = colaboradores.find(c => c.id === id);
-        if (colab) colab.observacoes = this.value;
-      });
-    });
-  }
-
-  function atualizarContador() {
-    document.getElementById('badgeSelecionados').textContent =
-      colaboradoresSelecionados.size + ' selecionados';
-  }
-
-  // ===================== BOTÕES AUXILIARES =====================
-  document.getElementById('btnMarcarTodosPresente').addEventListener('click', function () {
-    colaboradores.forEach(c => {
-      if (!colaboradoresJaRegistrados.has(c.id)) {
-        colaboradoresSelecionados.add(c.id);
-        c.status = 'presente';
-      }
-    });
-    renderizarTabela();
-  });
-
-  document.getElementById('btnLimparSelecao').addEventListener('click', function () {
-    colaboradoresSelecionados.clear();
-    renderizarTabela();
-  });
-
-  // ===================== SALVAR PRESENÇAS =====================
-  document.getElementById('btnSalvar').addEventListener('click', async function () {
-    const data = inputData.value;
-    const condominioId = selectCondominio.value;
-    const postoId = selectPosto.value;
-
-    if (!data || !condominioId || !postoId) {
-      alert('Preencha Data, Condomínio e Posto.');
-      return;
-    }
-
-    if (data > hojeStr) {
-      alert('Não é permitido lançar presença para datas futuras.');
-      return;
-    }
-
-    if (colaboradoresSelecionados.size === 0) {
-      const confirma = confirm('Nenhum colaborador foi selecionado. Deseja continuar mesmo assim?');
-      if (!confirma) return;
-    }
-
-    const presencas = colaboradores
-      .filter(c => colaboradoresSelecionados.has(c.id) && !colaboradoresJaRegistrados.has(c.id))
-      .map(c => ({
-        colaborador_id: c.id,
-        status: c.status || 'presente',
-        observacoes: c.observacoes || ''
-      }));
-
-    if (presencas.length === 0) {
-      alert('Nenhum colaborador novo para registrar (todos já possuem presença lançada).');
-      return;
-    }
-
-    try {
-      const res = await fetch('/presenca/api/lancar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data,
-          condominio_id: condominioId,
-          posto_id: postoId,
-          presencas
-        })
-      });
-
-      const result = await res.json();
-
-      if (result.success) {
-        alert(result.message || 'Presenças salvas com sucesso.');
-        document.getElementById('btnCarregar').click();
-      } else {
-        alert(result.message || 'Erro ao salvar presenças.');
-      }
-    } catch (e) {
-      console.error('Erro ao salvar presenças:', e);
-      alert('Erro ao salvar presenças.');
-    }
   });
 </script>

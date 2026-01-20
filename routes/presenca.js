@@ -19,10 +19,16 @@ router.get('/api/postos/:condominio_id',
   presencaController.getPostos
 );
 
-// Buscar colaboradores de um posto
+/*// Buscar colaboradores de um posto
 router.get('/api/colaboradores/:posto_id', 
   isAuthenticated, 
   presencaController.getFuncionarios
+);*/
+
+// NOVO: Buscar colaboradores por condomínio (sem filtro de posto)
+router.get('/api/colaboradores/condominio/:condominio_id',
+  isAuthenticated,
+  presencaController.getFuncionariosPorCondominio
 );
 
 // Lançar presença
@@ -42,5 +48,12 @@ router.get('/api/colaboradores',
   isAuthenticated, 
   presencaController.buscarColaboradores
 );
+
+/*// Salvar presença individual (HTMX)
+router.post('/api/salvar-individual', 
+  isAuthenticated, 
+  presencaController.salvarPresencaIndividual
+);*/
+
 
 module.exports = router;
