@@ -31,6 +31,12 @@ router.get('/api/colaboradores/condominio/:condominio_id',
   presencaController.getFuncionariosPorCondominio
 );
 
+router.get(
+  '/api/coberturas/empresa/:empresa_id',
+  isAuthenticated,
+  presencaController.getCoberturasPorEmpresa
+);
+
 // Lançar presença
 router.post('/api/lancar', 
   isAuthenticated, 

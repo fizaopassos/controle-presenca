@@ -1,105 +1,111 @@
 <div class="container mt-4">
-  <h1 class="h4 mb-4">Lançar Presença Diária</h1>
+<h1 class="h4 mb-4">Lançar Presença Diária</h1>
 
-  <div class="card mb-3">
-    <div class="card-body">
-      <form id="formFiltro" class="row g-3">
-        <div class="col-md-3">
-          <label class="form-label">Data *</label>
-          <input type="date" class="form-control" id="inputData" name="data" required>
-        </div>
+<div class="card mb-3">
+<div class="card-body">
+<form id="formFiltro" class="row g-3">
+<div class="col-md-3">
+<label class="form-label">Data *</label>
+<input type="date" class="form-control" id="inputData" name="data" required>
+</div>
 
-        <div class="col-md-7">
-          <label class="form-label">Condomínio *</label>
-          <select class="form-select" id="inputCondominio" name="condominio_id" required>
-            <option value="">Selecione...</option>
-            <% condominios.forEach(cond => { %>
-              <option value="<%= cond.id %>"><%= cond.nome %></option>
-            <% }) %>
-          </select>
-        </div>
-
-        <div class="col-md-2 d-flex align-items-end">
-          <button type="button" id="btnBuscar" class="btn btn-primary w-100" disabled>Buscar</button>
-        </div>
-      </form>
+    <div class="col-md-7">
+      <label class="form-label">Condomínio *</label>
+      <select class="form-select" id="inputCondominio" name="condominio_id" required>
+        <option value="">Selecione...</option>
+        <% condominios.forEach(cond => { %>
+          <option value="<%= cond.id %>"><%= cond.nome %></option>
+        <% }) %>
+      </select>
     </div>
-  </div>
 
-  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-    <button type="button" class="btn btn-outline-success btn-sm" id="btnSelecionarTodosPresente" disabled>
-      Selecionar todos: Presente
-    </button>
-
-    <button type="button" class="btn btn-success btn-sm" id="btnConfirmarTudo" disabled>
-      Confirmar lançamentos
-    </button>
-
-    <span class="ms-auto text-muted" id="resumo"></span>
-  </div>
-
-  <div id="alerta" class="alert d-none" role="alert"></div>
-
-  <div id="areaColaboradores">
-    <div class="alert alert-info">
-      Selecione data e condomínio para carregar os colaboradores.
+    <div class="col-md-2 d-flex align-items-end">
+      <button type="button" id="btnBuscar" class="btn btn-primary w-100" disabled>Buscar</button>
     </div>
-  </div>
+  </form>
+</div>
+
+</div>
+
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+<button type="button" class="btn btn-outline-success btn-sm" id="btnSelecionarTodosPresente" disabled>
+Selecionar todos: Presente
+</button>
+
+<button type="button" class="btn btn-success btn-sm" id="btnConfirmarTudo" disabled>
+  Confirmar lançamentos
+</button>
+
+<span class="ms-auto text-muted" id="resumo"></span>
+
+</div>
+
+<div id="alerta" class="alert d-none" role="alert"></div>
+
+<div id="areaColaboradores">
+<div class="alert alert-info">
+Selecione data e condomínio para carregar os colaboradores.
+</div>
+</div>
 </div>
 
 <script>
-  // Status disponíveis
-  var STATUSES = [
-    { key: 'presente', label: 'Presente', btn: 'btn-outline-success', btnActive: 'btn-success' },
-    { key: 'falta',    label: 'Falta',    btn: 'btn-outline-danger',  btnActive: 'btn-danger' },
-    { key: 'folga',    label: 'Folga',    btn: 'btn-outline-secondary', btnActive: 'btn-secondary' },
-    { key: 'atestado', label: 'Atestado', btn: 'btn-outline-warning', btnActive: 'btn-warning' },
-    { key: 'ferias',   label: 'Férias',   btn: 'btn-outline-info',    btnActive: 'btn-info' }
-  ];
+var STATUSES = [
+{ key: 'presente', label: 'Presente', btn: 'btn-outline-success', btnActive: 'btn-success' },
+{ key: 'falta',    label: 'Falta',    btn: 'btn-outline-danger',  btnActive: 'btn-danger' },
+{ key: 'folga',    label: 'Folga',    btn: 'btn-outline-secondary', btnActive: 'btn-secondary' },
+{ key: 'atestado', label: 'Atestado', btn: 'btn-outline-warning', btnActive: 'btn-warning' },
+{ key: 'ferias',   label: 'Férias',   btn: 'btn-outline-info',    btnActive: 'btn-info' }
+];
 
-  // Para quais status exigimos/mostramos observação
-  var STATUS_COM_OBS = ['falta', 'folga', 'atestado', 'ferias'];
+var STATUS_COM_OBS = ['falta', 'folga', 'atestado', 'ferias'];
+var STATUS_COM_COBERTURA = ['falta', 'folga', 'atestado', 'ferias'];
 
-  var inputData = document.getElementById('inputData');
-  var inputCondominio = document.getElementById('inputCondominio');
-  var btnBuscar = document.getElementById('btnBuscar');
-  var btnConfirmarTudo = document.getElementById('btnConfirmarTudo');
-  var btnSelecionarTodosPresente = document.getElementById('btnSelecionarTodosPresente');
-  var areaColaboradores = document.getElementById('areaColaboradores');
-  var resumo = document.getElementById('resumo');
-  var alerta = document.getElementById('alerta');
+var inputData = document.getElementById('inputData');
+var inputCondominio = document.getElementById('inputCondominio');
+var btnBuscar = document.getElementById('btnBuscar');
+var btnConfirmarTudo = document.getElementById('btnConfirmarTudo');
+var btnSelecionarTodosPresente = document.getElementById('btnSelecionarTodosPresente');
+var areaColaboradores = document.getElementById('areaColaboradores');
+var resumo = document.getElementById('resumo');
+var alerta = document.getElementById('alerta');
 
-  // Estado local da tela (NÃO salva até confirmar)
-  var estado = {};
-  var listaIds = [];
-  window.__colaboradoresRaw = {};
+// Estado local (não salva até confirmar)
+var estado = {};
+var listaIds = [];
+window.__colaboradoresRaw = {};
 
-  function hojeISO() {
-    var d = new Date();
-    var yyyy = d.getFullYear();
-    var mm = String(d.getMonth() + 1).padStart(2, '0');
-    var dd = String(d.getDate()).padStart(2, '0');
-    return yyyy + '-' + mm + '-' + dd;
-  }
+// Cache de coberturas por empresa
+window.__coberturasPorEmpresa = {};   // empresa_id -> [{id,nome}]
+window.__coberturasLoading = {};      // empresa_id -> true/false
 
-  function showAlert(type, msg) {
-    alerta.className = 'alert alert-' + type;
-    alerta.textContent = msg;
-    alerta.classList.remove('d-none');
-    setTimeout(function() { alerta.classList.add('d-none'); }, 3000);
-  }
+function hojeISO() {
+var d = new Date();
+var yyyy = d.getFullYear();
+var mm = String(d.getMonth() + 1).padStart(2, '0');
+var dd = String(d.getDate()).padStart(2, '0');
+return yyyy + '-' + mm + '-' + dd;
+}
 
-  function badgeStatus(status) {
-    if (!status) return { cls: 'bg-light text-dark', text: 'Não lançado' };
-    if (status === 'presente') return { cls: 'bg-success', text: 'Presente' };
-    if (status === 'falta') return { cls: 'bg-danger', text: 'Falta' };
-    if (status === 'folga') return { cls: 'bg-secondary', text: 'Folga' };
-    if (status === 'atestado') return { cls: 'bg-warning text-dark', text: 'Atestado' };
-    if (status === 'ferias') return { cls: 'bg-info text-dark', text: 'Férias' };
-    return { cls: 'bg-light text-dark', text: status };
-  }
+function showAlert(type, msg, timeoutMs) {
+alerta.className = 'alert alert-' + type;
+alerta.textContent = msg;
+alerta.classList.remove('d-none');
+var t = (typeof timeoutMs === 'number') ? timeoutMs : 3500;
+if (t > 0) setTimeout(function() { alerta.classList.add('d-none'); }, t);
+}
 
-  function escapeHtml(str) {
+function badgeStatus(status) {
+if (!status) return { cls: 'bg-light text-dark', text: 'Não lançado' };
+if (status === 'presente') return { cls: 'bg-success', text: 'Presente' };
+if (status === 'falta') return { cls: 'bg-danger', text: 'Falta' };
+if (status === 'folga') return { cls: 'bg-secondary', text: 'Folga' };
+if (status === 'atestado') return { cls: 'bg-warning text-dark', text: 'Atestado' };
+if (status === 'ferias') return { cls: 'bg-info text-dark', text: 'Férias' };
+return { cls: 'bg-light text-dark', text: status };
+}
+
+function escapeHtml(str) {
     return String(str || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -108,323 +114,530 @@
       .replace(/'/g, '&#039;');
   }
 
-  function isPendente(id) {
-    var s = estado[String(id)];
-    if (!s) return false;
-    return (s.status !== s.originalStatus) || ((s.observacoes || '') !== (s.originalObs || '')) || !s.presenca_id;
-  }
-
-  function atualizarResumo() {
-    var total = listaIds.length;
-    var pendentes = 0;
-    var jaSalvos = 0;
-
-    listaIds.forEach(function(id) {
-      if (isPendente(id)) pendentes++;
-      else jaSalvos++;
-    });
-
-    resumo.textContent = 'Total: ' + total + ' | Pendentes: ' + pendentes + ' | Já salvos: ' + jaSalvos;
-
-    btnConfirmarTudo.disabled = (total === 0);
-    btnSelecionarTodosPresente.disabled = (total === 0);
-  }
-
-  function renderCard(c) {
-  var id = String(c.id);
-  var s = estado[id] || {};
-  var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
-  var obsAtual = s.observacoes || '';
-  var expanded = s.expanded ? true : false;
-
-  var badge = badgeStatus(statusAtual);
-  var pendente = isPendente(id);
-
-  var borderClass =
-    statusAtual === 'presente' ? 'border-success' :
-    statusAtual === 'falta' ? 'border-danger' :
-    'border-secondary';
-
-  var pendBadge = pendente
-    ? '<span class="badge bg-primary">Pendente</span>'
-    : '<span class="badge bg-success">Confirmado</span>';
-
-  var btns = '';
-  STATUSES.forEach(function(st) {
-    var active = (st.key === statusAtual);
-    var cls = active ? st.btnActive : st.btn;
-    btns += '<button type="button" class="btn ' + cls + ' btn-sm" data-action="set-status" data-id="' + id + '" data-status="' + st.key + '">' + st.label + '</button> ';
-  });
-
-  var obsVisible = STATUS_COM_OBS.indexOf(statusAtual) !== -1;
-  var obsHtml = '<div class="mt-2 ' + (obsVisible ? '' : 'd-none') + '" id="obs-wrap-' + id + '">' +
-    '<label class="form-label mb-1">Observação</label>' +
-    '<input type="text" class="form-control form-control-sm" id="obs-' + id + '" ' +
-    'placeholder="Ex: Folga autorizada, Atestado entregue..." ' +
-    'value="' + escapeHtml(obsAtual) + '" data-action="set-obs" data-id="' + id + '">' +
-    '</div>';
-
-  var cpfText = c.cpf ? ' • CPF: ' + escapeHtml(c.cpf) : '';
-  var empresaText = escapeHtml(c.empresa || 'Sem empresa');
-  var postoText = c.posto_nome ? ' • ' + escapeHtml(c.posto_nome) : '';
-
-  var chevron = expanded ? '▼' : '►';
-  var detalhesClass = expanded ? '' : 'd-none';
-
-  return ''
-    + '<div id="card-' + id + '" class="card mb-2 border-start border-3 ' + borderClass + '">'
-    + '  <div class="card-body p-3">'
-
-    // CABEÇALHO COMPACTO (sempre visível)
-    + '    <div class="d-flex justify-content-between align-items-center gap-3">'
-    + '      <button type="button" class="btn btn-link p-0 text-decoration-none text-start flex-grow-1"'
-    + '              data-action="toggle-details" data-id="' + id + '">'
-    + '        <div class="fw-semibold">' + escapeHtml(c.nome) + '</div>'
-    + '        <div class="text-muted small">' + empresaText + cpfText + postoText + '</div>'
-    + '      </button>'
-
-    + '      <div class="text-end" style="min-width: 140px;">'
-    + '        <div><span class="badge ' + badge.cls + '">' + badge.text + '</span></div>'
-    + '        <div class="mt-1">' + pendBadge + '</div>'
-    + '      </div>'
-
-    + '      <button type="button" class="btn btn-outline-secondary btn-sm"'
-    + '              data-action="toggle-details" data-id="' + id + '"'
-    + '              aria-label="Expandir/Recolher">'
-    +          chevron
-    + '      </button>'
-    + '    </div>'
-
-    // DETALHES (botões + observação) – só aparece quando expandido
-    + '    <div id="detalhes-' + id + '" class="mt-3 ' + detalhesClass + '">'
-    + '      <div class="d-flex flex-wrap gap-2">'
-    +          btns
-    + '      </div>'
-    +        obsHtml
-    + '    </div>'
-
-    + '  </div>'
-    + '</div>';
+function needsCobertura(status) {
+return STATUS_COM_COBERTURA.indexOf(status) !== -1;
 }
 
+function isPendente(id) {
+var s = estado[String(id)];
+if (!s) return false;
 
-  function rerenderCardById(id, colaboradorRaw) {
-    var el = document.getElementById('card-' + id);
-    if (!el) return;
-    el.outerHTML = renderCard(colaboradorRaw);
-  }
+var mudouStatus = (s.status !== s.originalStatus);
+var mudouObs = ((s.observacoes || '') !== (s.originalObs || ''));
+var mudouCob = ((s.cobertura_id || null) !== (s.originalCobertura_id || null));
+var naoSalvoAinda = !s.presenca_id;
 
-  function buscarColaboradores() {
-    var data = inputData.value;
-    var condId = inputCondominio.value;
+return mudouStatus || mudouObs || mudouCob || naoSalvoAinda;
 
-    if (!data || !condId) {
-      showAlert('warning', 'Preencha data e condomínio.');
-      return;
-    }
+}
 
-    alerta.classList.add('d-none');
+function atualizarResumo() {
+var total = listaIds.length;
+var pendentes = 0;
+var jaSalvos = 0;
 
-    areaColaboradores.innerHTML =
-      '<div class="text-center py-4"><div class="spinner-border" role="status"></div><div class="mt-2">Carregando colaboradores...</div></div>';
-
-    fetch('/presenca/api/colaboradores/condominio/' + condId + '?data=' + encodeURIComponent(data))
-      .then(function(resp) { return resp.json(); })
-      .then(function(colaboradores) {
-        if (!Array.isArray(colaboradores) || colaboradores.length === 0) {
-          estado = {};
-          listaIds = [];
-          window.__colaboradoresRaw = {};
-          areaColaboradores.innerHTML = '<div class="alert alert-warning">Nenhum colaborador encontrado para este condomínio.</div>';
-          atualizarResumo();
-          return;
-        }
-
-        estado = {};
-        listaIds = colaboradores.map(function(c) { return String(c.id); });
-        window.__colaboradoresRaw = {};
-
-        colaboradores.forEach(function(c) {
-            var id = String(c.id);
-            var originalStatus = c.status || '';      // não força "presente"
-            var originalObs = c.observacoes || '';
-            estado[id] = {
-              status: originalStatus,                 // pode ser vazio (não lançado)
-              observacoes: originalObs,
-              originalStatus: originalStatus,
-              originalObs: originalObs,
-              presenca_id: c.presenca_id || null,
-              expanded: false                         // começa recolhido
-  };
-  window.__colaboradoresRaw[id] = c;
+listaIds.forEach(function(id) {
+  if (isPendente(id)) pendentes++;
+  else jaSalvos++;
 });
 
+resumo.textContent = 'Total: ' + total + ' | Pendentes: ' + pendentes + ' | Já salvos: ' + jaSalvos;
 
-        var html = '';
-        colaboradores.forEach(function(c) {
-          html += renderCard(c);
-        });
-        areaColaboradores.innerHTML = html;
+btnConfirmarTudo.disabled = (total === 0);
+btnSelecionarTodosPresente.disabled = (total === 0);
 
-        atualizarResumo();
-      })
-      .catch(function(e) {
-        console.error(e);
-        areaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao buscar colaboradores.</div>';
-        estado = {};
-        listaIds = [];
-        window.__colaboradoresRaw = {};
-        atualizarResumo();
-      });
-  }
+}
 
-  // Eventos
-  inputData.value = hojeISO();
+function getCoberturasCached(empresaId) {
+if (!empresaId) return null;
+return window.__coberturasPorEmpresa[String(empresaId)] || null;
+}
 
-  inputCondominio.addEventListener('change', function() {
-    btnBuscar.disabled = !this.value;
+function carregarCoberturasEmpresa(empresaId, onDone) {
+var key = String(empresaId || '');
+if (!key) {
+if (typeof onDone === 'function') onDone(null);
+return;
+}
+
+// já em cache
+if (window.__coberturasPorEmpresa[key]) {
+  if (typeof onDone === 'function') onDone(window.__coberturasPorEmpresa[key]);
+  return;
+}
+
+// já carregando
+if (window.__coberturasLoading[key]) {
+  // espera um pouco e tenta de novo
+  setTimeout(function() { carregarCoberturasEmpresa(empresaId, onDone); }, 150);
+  return;
+}
+
+window.__coberturasLoading[key] = true;
+
+fetch('/presenca/api/coberturas/empresa/' + encodeURIComponent(key))
+  .then(function(resp) { return resp.json(); })
+  .then(function(lista) {
+    if (!Array.isArray(lista)) lista = [];
+    window.__coberturasPorEmpresa[key] = lista;
+    window.__coberturasLoading[key] = false;
+    if (typeof onDone === 'function') onDone(lista);
+  })
+  .catch(function(e) {
+    console.error(e);
+    window.__coberturasPorEmpresa[key] = [];
+    window.__coberturasLoading[key] = false;
+    if (typeof onDone === 'function') onDone([]);
   });
 
-  btnBuscar.addEventListener('click', buscarColaboradores);
+}
 
-  // Clique nos botões de status
-  areaColaboradores.addEventListener('click', function(evt) {
-  // 1) Toggle de detalhes (progressive disclosure)
-  var tg = evt.target.closest('[data-action="toggle-details"]');
-  if (tg) {
-    var idT = String(tg.getAttribute('data-id'));
-    var st = estado[idT];
-    if (st) {
-      st.expanded = !st.expanded;
-      estado[idT] = st;
-      var rawT = window.__colaboradoresRaw[idT];
-      if (rawT) rerenderCardById(idT, rawT);
+function buildCoberturaSelectHtml(c, s) {
+var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
+var mostrar = needsCobertura(statusAtual);
+
+var wrapClass = mostrar ? '' : 'd-none';
+var empresaId = c.empresa_id ? String(c.empresa_id) : '';
+var cobIdAtual = s.cobertura_id ? String(s.cobertura_id) : '';
+
+var lista = getCoberturasCached(empresaId);
+var loading = !!window.__coberturasLoading[empresaId];
+var disabled = false;
+
+var options = '';
+if (!empresaId) {
+  options = '<option value="">Sem empresa</option>';
+  disabled = true;
+} else if (lista === null) {
+  options = '<option value="">Carregando...</option>';
+  disabled = true;
+} else if (Array.isArray(lista) && lista.length === 0) {
+  options = '<option value="">Nenhuma cobertura cadastrada</option>';
+  disabled = true;
+} else {
+  options = '<option value="">Selecione...</option>';
+  lista.forEach(function(cb) {
+    var cbId = String(cb.id);
+    var selected = (cbId === cobIdAtual) ? ' selected' : '';
+    options += '<option value="' + escapeHtml(cbId) + '"' + selected + '>' + escapeHtml(cb.nome) + '</option>';
+  });
+  disabled = false;
+}
+
+var disAttr = (disabled || loading) ? ' disabled' : '';
+
+return ''
+  + '<div class="mt-2 ' + wrapClass + '" id="cob-wrap-' + escapeHtml(c.id) + '">'
+  + '  <label class="form-label mb-1">Cobertura</label>'
+  + '  <select class="form-select form-select-sm" data-action="set-cobertura" data-id="' + escapeHtml(c.id) + '" data-empresa-id="' + escapeHtml(empresaId) + '"' + disAttr + '>'
+  +      options
+  + '  </select>'
+  + '</div>';
+
+}
+
+function renderCard(c) {
+var id = String(c.id);
+var s = estado[id] || {};
+var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
+var obsAtual = s.observacoes || '';
+var expanded = s.expanded ? true : false;
+
+var badge = badgeStatus(statusAtual);
+var pendente = isPendente(id);
+
+var borderClass =
+  statusAtual === 'presente' ? 'border-success' :
+  statusAtual === 'falta' ? 'border-danger' :
+  'border-secondary';
+
+var pendBadge = pendente
+  ? '<span class="badge bg-primary">Pendente</span>'
+  : '<span class="badge bg-success">Confirmado</span>';
+
+var btns = '';
+STATUSES.forEach(function(st) {
+  var active = (st.key === statusAtual);
+  var cls = active ? st.btnActive : st.btn;
+  btns += '<button type="button" class="btn ' + cls + ' btn-sm" data-action="set-status" data-id="' + id + '" data-status="' + st.key + '">' + st.label + '</button> ';
+});
+
+var obsVisible = STATUS_COM_OBS.indexOf(statusAtual) !== -1;
+var obsHtml = ''
+  + '<div class="mt-2 ' + (obsVisible ? '' : 'd-none') + '" id="obs-wrap-' + id + '">'
+  + '  <label class="form-label mb-1">Observação</label>'
+  + '  <input type="text" class="form-control form-control-sm" id="obs-' + id + '" '
+  + '         placeholder="Ex: Folga autorizada, Atestado entregue..." '
+  + '         value="' + escapeHtml(obsAtual) + '" data-action="set-obs" data-id="' + id + '">'
+  + '</div>';
+
+var empresaText = escapeHtml(c.empresa || 'Sem empresa');
+var postoText = c.posto_nome ? ' • ' + escapeHtml(c.posto_nome) : '';
+
+var chevron = expanded ? '▼' : '►';
+var detalhesClass = expanded ? '' : 'd-none';
+
+var coberturaHtml = buildCoberturaSelectHtml(c, s);
+
+return ''
+  + '<div id="card-' + id + '" class="card mb-2 border-start border-3 ' + borderClass + '">'
+  + '  <div class="card-body p-3">'
+
+  + '    <div class="d-flex justify-content-between align-items-center gap-3">'
+  + '      <button type="button" class="btn btn-link p-0 text-decoration-none text-start flex-grow-1"'
+  + '              data-action="toggle-details" data-id="' + id + '">'
+  + '        <div class="fw-semibold">' + escapeHtml(c.nome) + '</div>'
+  + '        <div class="text-muted small">' + empresaText + postoText + '</div>'
+  + '      </button>'
+
+  + '      <div class="text-end" style="min-width: 140px;">'
+  + '        <div><span class="badge ' + badge.cls + '">' + badge.text + '</span></div>'
+  + '        <div class="mt-1">' + pendBadge + '</div>'
+  + '      </div>'
+
+  + '      <button type="button" class="btn btn-outline-secondary btn-sm"'
+  + '              data-action="toggle-details" data-id="' + id + '"'
+  + '              aria-label="Expandir/Recolher">'
+  +          chevron
+  + '      </button>'
+  + '    </div>'
+
+  + '    <div id="detalhes-' + id + '" class="mt-3 ' + detalhesClass + '">'
+  + '      <div class="d-flex flex-wrap gap-2">'
+  +          btns
+  + '      </div>'
+  +        coberturaHtml
+  +        obsHtml
+  + '    </div>'
+
+  + '  </div>'
+  + '</div>';
+
+}
+
+function rerenderCardById(id) {
+var raw = window.__colaboradoresRaw[String(id)];
+if (!raw) return;
+var el = document.getElementById('card-' + String(id));
+if (!el) return;
+el.outerHTML = renderCard(raw);
+}
+
+function ensureCoberturaLoadedIfNeededForCard(id) {
+var raw = window.__colaboradoresRaw[String(id)];
+var s = estado[String(id)];
+if (!raw || !s) return;
+
+var status = (s.status != null && s.status !== '') ? s.status : '';
+if (!needsCobertura(status)) return;
+
+var empresaId = raw.empresa_id;
+if (!empresaId) return;
+
+// Se ainda não carregou, carrega e rerenderiza esse card quando terminar
+if (getCoberturasCached(String(empresaId)) === null) {
+  carregarCoberturasEmpresa(String(empresaId), function() {
+    rerenderCardById(id);
+  });
+}
+
+}
+
+function buscarColaboradores() {
+var data = inputData.value;
+var condId = inputCondominio.value;
+
+if (!data || !condId) {
+  showAlert('warning', 'Preencha data e condomínio.');
+  return;
+}
+
+alerta.classList.add('d-none');
+
+areaColaboradores.innerHTML =
+  '<div class="text-center py-4"><div class="spinner-border" role="status"></div><div class="mt-2">Carregando colaboradores...</div></div>';
+
+fetch('/presenca/api/colaboradores/condominio/' + condId + '?data=' + encodeURIComponent(data))
+  .then(function(resp) { return resp.json(); })
+  .then(function(colaboradores) {
+    if (!Array.isArray(colaboradores) || colaboradores.length === 0) {
+      estado = {};
+      listaIds = [];
+      window.__colaboradoresRaw = {};
+      areaColaboradores.innerHTML = '<div class="alert alert-warning">Nenhum colaborador encontrado para este condomínio.</div>';
       atualizarResumo();
-    }
-    return;
-  }
-
-  // 2) Clique nos botões de status
-  var btn = evt.target.closest('button[data-action="set-status"]');
-  if (!btn) return;
-
-  var id = String(btn.getAttribute('data-id'));
-  var novoStatus = btn.getAttribute('data-status');
-
-  var s = estado[id];
-  if (!s) return;
-
-  s.status = novoStatus;
-
-  if (STATUS_COM_OBS.indexOf(novoStatus) === -1) {
-    s.observacoes = '';
-  }
-
-  estado[id] = s;
-
-  var raw = window.__colaboradoresRaw[id];
-  if (raw) rerenderCardById(id, raw);
-
-  atualizarResumo();
-});
-
-
-  // Digitação de observação
-  areaColaboradores.addEventListener('input', function(evt) {
-    var inp = evt.target.closest('input[data-action="set-obs"]');
-    if (!inp) return;
-
-    var id = String(inp.getAttribute('data-id'));
-    var s = estado[id];
-    if (!s) return;
-
-    s.observacoes = inp.value || '';
-    estado[id] = s;
-
-    atualizarResumo();
-  });
-
-  // Selecionar todos Presente
-  btnSelecionarTodosPresente.addEventListener('click', function() {
-    listaIds.forEach(function(id) {
-      var s = estado[String(id)];
-      if (!s) return;
-      s.status = 'presente';
-      s.observacoes = '';
-      estado[String(id)] = s;
-
-      var raw = window.__colaboradoresRaw[String(id)];
-      if (raw) rerenderCardById(String(id), raw);
-    });
-    atualizarResumo();
-  });
-
-  // Confirmar lançamentos
-  btnConfirmarTudo.addEventListener('click', function() {
-    var data = inputData.value;
-    var condId = inputCondominio.value;
-
-    if (!data || !condId) {
-      showAlert('warning', 'Preencha data e condomínio.');
       return;
     }
 
-    if (listaIds.length === 0) {
-      showAlert('warning', 'Nenhum colaborador para confirmar.');
-      return;
-    }
+    estado = {};
+    listaIds = colaboradores.map(function(c) { return String(c.id); });
+    window.__colaboradoresRaw = {};
 
-    var condominioTexto = inputCondominio.options[inputCondominio.selectedIndex].text;
+    colaboradores.forEach(function(c) {
+      var id = String(c.id);
+      window.__colaboradoresRaw[id] = c;
 
-    var msg = 'Confirma salvar os lançamentos?\n\n' +
-      'Data: ' + data + '\n' +
-      'Condomínio: ' + condominioTexto + '\n' +
-      'Total de colaboradores: ' + listaIds.length + '\n\n' +
-      'Isso vai gravar/atualizar as presenças no sistema.';
+      var originalStatus = c.status || '';
+      var originalObs = c.observacoes || '';
+      var originalCob = c.cobertura_id || null;
 
-    if (!confirm(msg)) {
-      return;
-    }
+      estado[id] = {
+        status: originalStatus,
+        observacoes: originalObs,
+        cobertura_id: originalCob,
 
-    var presencas = listaIds.map(function(id) {
-      var s = estado[String(id)];
-      var raw = window.__colaboradoresRaw[String(id)];
-      var postoIdColab = raw && raw.posto_id ? raw.posto_id : null;
+        originalStatus: originalStatus,
+        originalObs: originalObs,
+        originalCobertura_id: originalCob,
 
-      return {
-        colaborador_id: Number(id),
-        status: (s && s.status) ? s.status : '',
-        observacoes: ((s && s.observacoes) ? s.observacoes : '').trim(),
-        posto_id: postoIdColab
+        presenca_id: c.presenca_id || null,
+        expanded: false
       };
     });
 
-    btnConfirmarTudo.disabled = true;
-
-    fetch('/presenca/api/lancar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: data,
-        condominio_id: condId,
-        presencas: presencas
-      })
-    })
-    .then(function(resp) { return resp.json(); })
-    .then(function(result) {
-      if (!result.success) {
-        showAlert('danger', result.message || 'Erro ao salvar presenças.');
-        btnConfirmarTudo.disabled = false;
-        return;
-      }
-
-      showAlert('success', 'Presenças confirmadas com sucesso!');
-      buscarColaboradores();
-    })
-    .catch(function(e) {
-      console.error(e);
-      showAlert('danger', 'Erro ao salvar presenças.');
-      btnConfirmarTudo.disabled = false;
+    var html = '';
+    colaboradores.forEach(function(c) {
+      html += renderCard(c);
     });
+    areaColaboradores.innerHTML = html;
+
+    atualizarResumo();
+  })
+  .catch(function(e) {
+    console.error(e);
+    areaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao buscar colaboradores.</div>';
+    estado = {};
+    listaIds = [];
+    window.__colaboradoresRaw = {};
+    atualizarResumo();
   });
+
+}
+
+// Eventos
+inputData.value = hojeISO();
+
+inputCondominio.addEventListener('change', function() {
+btnBuscar.disabled = !this.value;
+});
+
+btnBuscar.addEventListener('click', buscarColaboradores);
+
+// Clique/ações dentro dos cards
+areaColaboradores.addEventListener('click', function(evt) {
+// Toggle detalhes
+var tg = evt.target.closest('[data-action="toggle-details"]');
+if (tg) {
+var idT = String(tg.getAttribute('data-id'));
+var st = estado[idT];
+if (st) {
+st.expanded = !st.expanded;
+estado[idT] = st;
+rerenderCardById(idT);
+atualizarResumo();
+
+    // Se abriu e precisa de cobertura, garante que carregou a lista
+    if (st.expanded) ensureCoberturaLoadedIfNeededForCard(idT);
+  }
+  return;
+}
+
+// Set status
+var btn = evt.target.closest('button[data-action="set-status"]');
+if (!btn) return;
+
+var id = String(btn.getAttribute('data-id'));
+var novoStatus = btn.getAttribute('data-status');
+
+var s = estado[id];
+if (!s) return;
+
+s.status = novoStatus;
+
+// Se status não exige obs, limpa
+if (STATUS_COM_OBS.indexOf(novoStatus) === -1) {
+  s.observacoes = '';
+}
+
+// Se status não exige cobertura, limpa cobertura
+if (!needsCobertura(novoStatus)) {
+  s.cobertura_id = null;
+}
+
+// Auto-close:
+// - Se for "presente": fecha
+// - Se for ausência: mantém aberto até escolher cobertura
+if (novoStatus === 'presente') {
+  s.expanded = false;
+} else if (needsCobertura(novoStatus)) {
+  s.expanded = true;
+} else {
+  s.expanded = false;
+}
+
+estado[id] = s;
+rerenderCardById(id);
+atualizarResumo();
+
+// Se virou ausência, carrega coberturas da empresa
+if (needsCobertura(novoStatus)) {
+  ensureCoberturaLoadedIfNeededForCard(id);
+}
+
+});
+
+// Observação
+areaColaboradores.addEventListener('input', function(evt) {
+var inp = evt.target.closest('input[data-action="set-obs"]');
+if (!inp) return;
+
+var id = String(inp.getAttribute('data-id'));
+var s = estado[id];
+if (!s) return;
+
+s.observacoes = inp.value || '';
+estado[id] = s;
+
+atualizarResumo();
+
+});
+
+// Cobertura (select)
+areaColaboradores.addEventListener('change', function(evt) {
+var sel = evt.target.closest('select[data-action="set-cobertura"]');
+if (!sel) return;
+
+var id = String(sel.getAttribute('data-id'));
+var s = estado[id];
+if (!s) return;
+
+var val = sel.value ? Number(sel.value) : null;
+s.cobertura_id = val;
+
+// Se já escolheu cobertura e o status é ausência, fecha o card automaticamente
+var status = (s.status != null && s.status !== '') ? s.status : '';
+if (needsCobertura(status) && s.cobertura_id) {
+  s.expanded = false;
+}
+
+estado[id] = s;
+rerenderCardById(id);
+atualizarResumo();
+
+});
+
+// Selecionar todos Presente
+btnSelecionarTodosPresente.addEventListener('click', function() {
+listaIds.forEach(function(id) {
+var s = estado[String(id)];
+if (!s) return;
+
+  s.status = 'presente';
+  s.observacoes = '';
+  s.cobertura_id = null;
+  s.expanded = false;
+
+  estado[String(id)] = s;
+  rerenderCardById(String(id));
+});
+atualizarResumo();
+
+});
+
+// Confirmar lançamentos
+btnConfirmarTudo.addEventListener('click', function() {
+var data = inputData.value;
+var condId = inputCondominio.value;
+
+if (!data || !condId) {
+  showAlert('warning', 'Preencha data e condomínio.');
+  return;
+}
+
+if (listaIds.length === 0) {
+  showAlert('warning', 'Nenhum colaborador para confirmar.');
+  return;
+}
+
+// Validação: ausência exige cobertura
+var idsSemCobertura = [];
+listaIds.forEach(function(id) {
+  var s = estado[String(id)];
+  if (!s) return;
+
+  var status = (s.status != null && s.status !== '') ? s.status : '';
+  if (needsCobertura(status) && !s.cobertura_id) {
+    idsSemCobertura.push(String(id));
+  }
+});
+
+if (idsSemCobertura.length > 0) {
+  // abre os cards que faltam cobertura
+  idsSemCobertura.slice(0, 10).forEach(function(id) { // não explode a tela
+    if (estado[id]) {
+      estado[id].expanded = true;
+      rerenderCardById(id);
+      ensureCoberturaLoadedIfNeededForCard(id);
+    }
+  });
+
+  showAlert('warning', 'Há ausências sem Cobertura selecionada. Complete antes de confirmar.', 5000);
+  atualizarResumo();
+  return;
+}
+
+var condominioTexto = inputCondominio.options[inputCondominio.selectedIndex].text;
+
+var msg = 'Confirma salvar os lançamentos?\n\n' +
+  'Data: ' + data + '\n' +
+  'Condomínio: ' + condominioTexto + '\n' +
+  'Total de colaboradores: ' + listaIds.length + '\n\n' +
+  'Isso vai gravar/atualizar as presenças no sistema.';
+
+if (!confirm(msg)) return;
+
+var presencas = listaIds.map(function(id) {
+  var s = estado[String(id)];
+  var raw = window.__colaboradoresRaw[String(id)];
+
+  var postoIdColab = raw && raw.posto_id ? raw.posto_id : null;
+
+  return {
+    colaborador_id: Number(id),
+    status: (s && s.status) ? s.status : '',
+    observacoes: ((s && s.observacoes) ? s.observacoes : '').trim(),
+    posto_id: postoIdColab,
+    cobertura_id: (s && s.cobertura_id) ? s.cobertura_id : null
+  };
+});
+
+btnConfirmarTudo.disabled = true;
+
+fetch('/presenca/api/lancar', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    data: data,
+    condominio_id: condId,
+    presencas: presencas
+  })
+})
+.then(function(resp) { return resp.json(); })
+.then(function(result) {
+  if (!result.success) {
+    showAlert('danger', result.message || 'Erro ao salvar presenças.', 5000);
+    btnConfirmarTudo.disabled = false;
+    return;
+  }
+
+  showAlert('success', 'Presenças confirmadas com sucesso!');
+  buscarColaboradores();
+})
+.catch(function(e) {
+  console.error(e);
+  showAlert('danger', 'Erro ao salvar presenças.', 5000);
+  btnConfirmarTudo.disabled = false;
+});
+
+});
 </script>

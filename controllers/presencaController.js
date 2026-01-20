@@ -118,6 +118,7 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
         c.id,
         c.nome,
         c.cpf,
+        c.empresa_id,
         e.nome AS empresa,
         c.posto_id,
         p.nome AS posto_nome
@@ -155,41 +156,47 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
     }
 
     var sqlPres = `
-      SELECT 
-        colaborador_id,
-        status,
-        observacoes,
-        id AS presenca_id
-      FROM presencas_diarias
-      WHERE data = ?
-        AND condominio_id = ?
-        AND colaborador_id IN (?)
-    `;
+  SELECT 
+    colaborador_id,
+    status,
+    observacoes,
+    cobertura_id,
+    id AS presenca_id
+  FROM presencas_diarias
+  WHERE data = ?
+    AND condominio_id = ?
+    AND colaborador_id IN (?)
+`;
+
 
     var resultPres = await db.query(sqlPres, [data, condominio_id, ids]);
     var presencas = resultPres[0];
 
     var mapaPresencas = {};
-    presencas.forEach(function(p) {
-      mapaPresencas[p.colaborador_id] = {
-        presenca_id: p.presenca_id,
-        status: p.status,
-        observacoes: p.observacoes
-      };
-    });
+presencas.forEach(function(p) {
+  mapaPresencas[p.colaborador_id] = {
+    presenca_id: p.presenca_id,
+    status: p.status,
+    observacoes: p.observacoes,
+    cobertura_id: p.cobertura_id
+  };
+});
+
 
     colaboradores.forEach(function(c) {
-      if (mapaPresencas[c.id]) {
-        c.presenca_id = mapaPresencas[c.id].presenca_id;
-        c.status = mapaPresencas[c.id].status;
-        c.observacoes = mapaPresencas[c.id].observacoes;
-      } else {
-        // IMPORTANTE: não deixar default "presente"
-        c.presenca_id = null;
-        c.status = null;       // significa "não lançado"
-        c.observacoes = '';
-      }
-    });
+  if (mapaPresencas[c.id]) {
+    c.presenca_id = mapaPresencas[c.id].presenca_id;
+    c.status = mapaPresencas[c.id].status;
+    c.observacoes = mapaPresencas[c.id].observacoes;
+    c.cobertura_id = mapaPresencas[c.id].cobertura_id || null;
+  } else {
+    c.presenca_id = null;
+    c.status = null;       // significa "não lançado"
+    c.observacoes = '';
+    c.cobertura_id = null;
+  }
+});
+
 
     res.json(colaboradores);
   } catch (error) {
@@ -350,7 +357,9 @@ exports.lancarPresenca = async (req, res) => {
 // - modelo antigo: data, condominio_id, posto_id (único) + presencas[]
 // - modelo novo:  data, condominio_id, presencas[] com posto_id por colaborador
 // ========================================
-exports.lancarPresenca = async (req, res) => {
+
+
+/*exports.lancarPresenca = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const data = req.body.data;
@@ -409,6 +418,121 @@ exports.lancarPresenca = async (req, res) => {
     });
   } finally {
     connection.release();
+  }
+};*/
+
+exports.lancarPresenca = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const data = req.body.data;
+    const condominio_id = req.body.condominio_id;
+    const presencas = req.body.presencas;
+
+    if (!data || !condominio_id || !Array.isArray(presencas)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dados inválidos'
+      });
+    }
+
+    await connection.beginTransaction();
+
+    for (const p of presencas) {
+      const colaborador_id = p.colaborador_id;
+      const status = p.status;
+      const observacoes = p.observacoes || null;
+      const posto_id = p.posto_id || null;       // vindo do colaborador
+      const cobertura_id = p.cobertura_id || null;
+
+      if (!colaborador_id || !status) {
+        continue;
+      }
+
+      // 1) UP SERT da presença do TITULAR
+      await connection.query(
+        `
+        INSERT INTO presencas_diarias 
+          (data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          status = VALUES(status),
+          observacoes = VALUES(observacoes),
+          cobertura_id = VALUES(cobertura_id),
+          atualizado_em = CURRENT_TIMESTAMP
+        `,
+        [data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id]
+      );
+
+      const ehAusencia = ['falta', 'folga', 'atestado', 'ferias'].includes(status);
+
+      // 2) Tratamento da tabela de COBERTURA
+      if (ehAusencia && cobertura_id && posto_id) {
+        // Cria/atualiza presença de cobertura: repete condominio + posto do titular
+        await connection.query(
+          `
+          INSERT INTO presencas_coberturas
+            (data, condominio_id, posto_id, cobertura_id, colaborador_substituido_id, observacoes)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            cobertura_id = VALUES(cobertura_id),
+            observacoes = VALUES(observacoes),
+            atualizado_em = CURRENT_TIMESTAMP
+          `,
+          [data, condominio_id, posto_id, cobertura_id, colaborador_id, observacoes]
+        );
+      } else {
+        // Se não é ausência OU não tem cobertura, remove eventual registro de cobertura
+        await connection.query(
+          `
+          DELETE FROM presencas_coberturas
+          WHERE data = ?
+            AND colaborador_substituido_id = ?
+          `,
+          [data, colaborador_id]
+        );
+      }
+    }
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message: 'Presenças salvas com sucesso!'
+    });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error('Erro ao salvar presenças:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao salvar presenças'
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+
+exports.getCoberturasPorEmpresa = async (req, res) => {
+  try {
+    var empresa_id = req.params.empresa_id;
+    if (!empresa_id) {
+      return res.status(400).json({ error: 'empresa_id é obrigatório' });
+    }
+
+    var sql = `
+      SELECT id, nome
+      FROM coberturas
+      WHERE empresa_id = ?
+        AND ativo = 1
+      ORDER BY nome
+    `;
+
+    var result = await db.query(sql, [empresa_id]);
+    res.json(result[0]);
+  } catch (error) {
+    console.error('Erro ao buscar coberturas:', error);
+    res.status(500).json({ error: 'Erro ao buscar coberturas' });
   }
 };
 
