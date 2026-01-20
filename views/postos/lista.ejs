@@ -29,7 +29,17 @@
   <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1 class="h4 mb-0">Postos de Trabalho</h1>
-      <a href="/postos/novo" class="btn btn-primary">+ Novo Posto</a>
+
+      <!-- Botão Novo Posto via HTMX + Modal -->
+      <button
+        type="button"
+        class="btn btn-primary"
+        hx-get="/postos/novo?partial=1"
+        hx-target="#postoModalBody"
+        hx-swap="innerHTML"
+      >
+        + Novo Posto
+      </button>
     </div>
 
     <% if (postos.length === 0) { %>
@@ -47,45 +57,57 @@
             <th style="width: 200px;">Ações</th>
           </tr>
         </thead>
-        <tbody>
-          <% postos.forEach(p => { %>
-            <tr>
-              <td><%= p.id %></td>
-              <td><%= p.nome %></td>
-              <td><%= p.descricao || '-' %></td>
-              <td>
-                <% if (p.ativo) { %>
-                  <span class="badge bg-success">Ativo</span>
-                <% } else { %>
-                  <span class="badge bg-secondary">Inativo</span>
-                <% } %>
-              </td>
-              <td>
-                <a href="/postos/editar/<%= p.id %>" class="btn btn-sm btn-outline-primary me-2">
-                  Editar
-                </a>
 
-                <form action="/postos/toggle-ativo/<%= p.id %>" method="POST" class="d-inline">
-                  <% if (p.ativo) { %>
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                      onclick="return confirm('Tem certeza que deseja inativar este posto?');">
-                      Inativar
-                    </button>
-                  <% } else { %>
-                    <button type="submit" class="btn btn-sm btn-outline-success"
-                      onclick="return confirm('Tem certeza que deseja ativar este posto?');">
-                      Ativar
-                    </button>
-                  <% } %>
-                </form>
-              </td>
-            </tr>
+        <!-- IMPORTANTE: tbody com id e include do _linha.ejs -->
+        <tbody id="tabelaPostos">
+          <% postos.forEach(p => { %>
+            <%- include('_linha', { p: p }) %>
           <% }) %>
         </tbody>
       </table>
     <% } %>
   </div>
 
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <!-- Bootstrap Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Scripts para abrir/fechar modal com HTMX -->
+  <script>
+    // Abrir modal quando o conteúdo do formulário for carregado via HTMX
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+      if (evt.target && evt.target.id === 'postoModalBody') {
+        const modalEl = document.getElementById('postoModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    });
+
+    // Fechar modal após salvar com sucesso (novo ou editar)
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+      if (evt.detail.elt && evt.detail.elt.id === 'formPostoHtmx' && evt.detail.successful) {
+        const modalEl = document.getElementById('postoModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) {
+          modal.hide();
+        }
+      }
+    });
+  </script>
+
+  <!-- Modal para criar/editar Posto via HTMX -->
+  <div class="modal fade" id="postoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Posto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="postoModalBody"></div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

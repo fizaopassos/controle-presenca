@@ -1,11 +1,14 @@
-// controllers/condominiosController.js
 const db = require('../config/db');
+
+function isHTMX(req) {
+  return req.get('HX-Request') === 'true';
+}
 
 // Listar todos os condomínios
 exports.listar = async (req, res) => {
   try {
     const usuario = req.session.user;
-    let sql = 'SELECT id, nome, codigo_interno, cidade, ativo FROM condominios';
+    let sql = 'SELECT id, nome, codigo_interno, endereco, cidade, estado, ativo FROM condominios';
     let params = [];
 
     // Se não for admin, filtra pelos condomínios que tem acesso
@@ -22,10 +25,8 @@ exports.listar = async (req, res) => {
 
     const [condominios] = await db.query(sql, params);
 
-    res.render('layout', {
-      title: 'Condomínios',
-      menuAtivo: 'cadastros',
-      page: 'condominios/index',
+    res.render('condominios/lista', {
+      usuario: req.session.user,
       condominios
     });
   } catch (error) {
@@ -35,14 +36,24 @@ exports.listar = async (req, res) => {
 };
 
 // Mostrar formulário de novo condomínio
-exports.formNovo = (req, res) => {
-  res.render('layout', {
-    title: 'Novo Condomínio',
-    menuAtivo: 'cadastros',
-    page: 'condominios/form',
-    condominio: null,
-    acao: 'novo'
-  });
+exports.formNovo = async (req, res) => {
+  try {
+    if (req.query.partial === '1' || isHTMX(req)) {
+      return res.render('condominios/_form', {
+        condominio: null,
+        acao: 'novo'
+      });
+    }
+
+    res.render('condominios/form', {
+      usuario: req.session.user,
+      condominio: null,
+      acao: 'novo'
+    });
+  } catch (error) {
+    console.error('Erro ao carregar formulário:', error);
+    res.status(500).send('Erro ao carregar formulário');
+  }
 };
 
 // Criar novo condomínio
@@ -54,10 +65,16 @@ exports.criar = async (req, res) => {
   }
 
   try {
-    await db.query(
+    const [result] = await db.query(
       'INSERT INTO condominios (nome, codigo_interno, endereco, cidade, estado, ativo) VALUES (?, ?, ?, ?, ?, TRUE)',
       [nome, codigo_interno || null, endereco || null, cidade || null, estado || null]
     );
+
+    if (isHTMX(req)) {
+      const insertedId = result.insertId;
+      const [rows] = await db.query('SELECT * FROM condominios WHERE id = ?', [insertedId]);
+      return res.render('condominios/_linha', { c: rows[0] });
+    }
 
     res.redirect('/condominios');
   } catch (error) {
@@ -71,19 +88,21 @@ exports.formEditar = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [rows] = await db.query(
-      'SELECT * FROM condominios WHERE id = ?',
-      [id]
-    );
+    const [rows] = await db.query('SELECT * FROM condominios WHERE id = ?', [id]);
 
     if (rows.length === 0) {
       return res.status(404).send('Condomínio não encontrado');
     }
 
-    res.render('layout', {
-      title: 'Editar Condomínio',
-      menuAtivo: 'cadastros',
-      page: 'condominios/form',
+    if (req.query.partial === '1' || isHTMX(req)) {
+      return res.render('condominios/_form', {
+        condominio: rows[0],
+        acao: 'editar'
+      });
+    }
+
+    res.render('condominios/form', {
+      usuario: req.session.user,
       condominio: rows[0],
       acao: 'editar'
     });
@@ -110,6 +129,11 @@ exports.atualizar = async (req, res) => {
       [nome, codigo_interno || null, endereco || null, cidade || null, estado || null, ativoBool, id]
     );
 
+    if (isHTMX(req)) {
+      const [rows] = await db.query('SELECT * FROM condominios WHERE id = ?', [id]);
+      return res.render('condominios/_linha', { c: rows[0] });
+    }
+
     res.redirect('/condominios');
   } catch (error) {
     console.error('Erro ao atualizar condomínio:', error);
@@ -123,12 +147,10 @@ exports.deletar = async (req, res) => {
 
   try {
     // Verifica se há postos vinculados
-    
     const [postos] = await db.query(
-  'SELECT COUNT(*) as total FROM condominio_postos WHERE condominio_id = ?',
-  [id]
-);
-
+      'SELECT COUNT(*) as total FROM condominio_postos WHERE condominio_id = ?',
+      [id]
+    );
 
     if (postos[0].total > 0) {
       return res.status(400).json({ 
@@ -172,10 +194,7 @@ exports.toggleAtivo = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [rows] = await db.query(
-      'SELECT ativo FROM condominios WHERE id = ?',
-      [id]
-    );
+    const [rows] = await db.query('SELECT ativo FROM condominios WHERE id = ?', [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ 
@@ -187,10 +206,7 @@ exports.toggleAtivo = async (req, res) => {
     const ativoAtual = rows[0].ativo;
     const novoAtivo = !ativoAtual;
 
-    await db.query(
-      'UPDATE condominios SET ativo = ? WHERE id = ?',
-      [novoAtivo, id]
-    );
+    await db.query('UPDATE condominios SET ativo = ? WHERE id = ?', [novoAtivo, id]);
 
     res.json({ 
       success: true, 
@@ -211,10 +227,7 @@ exports.detalhes = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [rows] = await db.query(
-      'SELECT * FROM condominios WHERE id = ?',
-      [id]
-    );
+    const [rows] = await db.query('SELECT * FROM condominios WHERE id = ?', [id]);
 
     if (rows.length === 0) {
       return res.status(404).send('Condomínio não encontrado');
@@ -222,17 +235,16 @@ exports.detalhes = async (req, res) => {
 
     // Busca postos do condomínio
     const [postos] = await db.query(
-  `SELECT 
-     p.id, 
-     p.nome, 
-     p.ativo
-   FROM condominio_postos cp
-   INNER JOIN postos p ON cp.posto_id = p.id
-   WHERE cp.condominio_id = ?
-   ORDER BY p.nome`,
-  [id]
-);
-
+      `SELECT 
+         p.id, 
+         p.nome, 
+         p.ativo
+       FROM condominio_postos cp
+       INNER JOIN postos p ON cp.posto_id = p.id
+       WHERE cp.condominio_id = ?
+       ORDER BY p.nome`,
+      [id]
+    );
 
     // Busca usuários com acesso
     const [usuarios] = await db.query(`
@@ -243,10 +255,8 @@ exports.detalhes = async (req, res) => {
       ORDER BY u.nome
     `, [id]);
 
-    res.render('layout', {
-      title: 'Detalhes do Condomínio',
-      menuAtivo: 'cadastros',
-      page: 'condominios/detalhes',
+    res.render('condominios/detalhes', {
+      usuario: req.session.user,
       condominio: rows[0],
       postos,
       usuarios

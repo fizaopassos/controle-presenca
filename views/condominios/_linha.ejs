@@ -1,0 +1,41 @@
+<tr id="condominio-<%= c.id %>">
+  <td><%= c.id %></td>
+  <td><%= c.nome %></td>
+  <td><%= c.codigo_interno || '-' %></td>
+  <td>
+    <%= c.cidade || '' %>
+    <% if (c.estado) { %> - <%= c.estado %><% } %>
+  </td>
+  <td>
+    <% if (c.ativo) { %>
+      <span class="badge bg-success">Ativo</span>
+    <% } else { %>
+      <span class="badge bg-secondary">Inativo</span>
+    <% } %>
+  </td>
+  <td>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary me-2"
+      hx-get="/condominios/<%= c.id %>/editar?partial=1"
+      hx-target="#condominioModalBody"
+      hx-swap="innerHTML"
+    >
+      Editar
+    </button>
+
+    <form action="/condominios/toggle-ativo/<%= c.id %>" method="POST" class="d-inline">
+      <% if (c.ativo) { %>
+        <button type="submit" class="btn btn-sm btn-outline-danger"
+          onclick="return confirm('Tem certeza que deseja inativar este condomínio?');">
+          Inativar
+        </button>
+      <% } else { %>
+        <button type="submit" class="btn btn-sm btn-outline-success"
+          onclick="return confirm('Tem certeza que deseja ativar este condomínio?');">
+          Ativar
+        </button>
+      <% } %>
+    </form>
+  </td>
+</tr>

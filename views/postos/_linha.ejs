@@ -1,0 +1,37 @@
+<tr id="posto-<%= p.id %>">
+  <td><%= p.id %></td>
+  <td><%= p.nome %></td>
+  <td><%= p.descricao || '-' %></td>
+  <td>
+    <% if (p.ativo) { %>
+      <span class="badge bg-success">Ativo</span>
+    <% } else { %>
+      <span class="badge bg-secondary">Inativo</span>
+    <% } %>
+  </td>
+  <td>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary me-2"
+      hx-get="/postos/editar/<%= p.id %>?partial=1"
+      hx-target="#postoModalBody"
+      hx-swap="innerHTML"
+    >
+      Editar
+    </button>
+
+    <form action="/postos/toggle-ativo/<%= p.id %>" method="POST" class="d-inline">
+      <% if (p.ativo) { %>
+        <button type="submit" class="btn btn-sm btn-outline-danger"
+          onclick="return confirm('Tem certeza que deseja inativar este posto?');">
+          Inativar
+        </button>
+      <% } else { %>
+        <button type="submit" class="btn btn-sm btn-outline-success"
+          onclick="return confirm('Tem certeza que deseja ativar este posto?');">
+          Ativar
+        </button>
+      <% } %>
+    </form>
+  </td>
+</tr>
