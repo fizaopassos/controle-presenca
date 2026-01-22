@@ -15,6 +15,7 @@ const hxSwap = isNovo ? 'beforeend' : 'outerHTML';
 <form
 id="formColaboradorHtmx"
 class="row g-3"
+method="post"
 hx-post="<%= postUrl %>"
 hx-target="<%= hxTarget %>"
 hx-swap="<%= hxSwap %>"
@@ -28,7 +29,7 @@ hx-swap="<%= hxSwap %>"
 <input class="form-control" name="nome" required value="<%= colaborador ? colaborador.nome : '' %>">
 </div>
 
-<div class="col-md-6">
+<div class="col-md-3">
 <label class="form-label">Empresa *</label>
 <select class="form-select" name="empresa_id" required>
 <option value="">Selecione...</option>
@@ -40,19 +41,15 @@ hx-swap="<%= hxSwap %>"
 </select>
 </div>
 
-<div class="col-md-4">
-<label class="form-label">CPF</label>
-<input class="form-control" name="cpf" value="<%= colaborador ? (colaborador.cpf || '') : '' %>">
-</div>
-
-<div class="col-md-4">
-<label class="form-label">Telefone</label>
-<input class="form-control" name="telefone" value="<%= colaborador ? (colaborador.telefone || '') : '' %>">
-</div>
-
-<div class="col-md-4">
-<label class="form-label">Email</label>
-<input class="form-control" type="email" name="email" value="<%= colaborador ? (colaborador.email || '') : '' %>">
+<div class="col-md-3">
+<label class="form-label">Tipo *</label>
+<select class="form-select" name="tipo" required>
+<%
+const tipoAtual = colaborador && colaborador.tipo ? colaborador.tipo : 'fixo';
+%>
+<option value="fixo" <%= tipoAtual === 'fixo' ? 'selected' : '' %>>Fixo</option>
+<option value="cobertura" <%= tipoAtual === 'cobertura' ? 'selected' : '' %>>Cobertura</option>
+</select>
 </div>
 
 <div class="col-md-6">
@@ -65,6 +62,7 @@ hx-swap="<%= hxSwap %>"
 </option>
 <% }) %>
 </select>
+<small class="text-muted">Para colaboradores de Cobertura, este campo pode ficar em branco.</small>
 </div>
 
 <div class="col-md-6">
@@ -77,16 +75,7 @@ hx-swap="<%= hxSwap %>"
 </option>
 <% }) %>
 </select>
-</div>
-
-<div class="col-md-6">
-<label class="form-label">Cargo</label>
-<input class="form-control" name="cargo" value="<%= colaborador ? (colaborador.cargo || '') : '' %>">
-</div>
-
-<div class="col-md-6">
-<label class="form-label">Foto URL</label>
-<input class="form-control" name="foto_url" value="<%= colaborador ? (colaborador.foto_url || '') : '' %>">
+<small class="text-muted">Para colaboradores de Cobertura, este campo pode ficar em branco.</small>
 </div>
 
 <% if (!isNovo) { %>

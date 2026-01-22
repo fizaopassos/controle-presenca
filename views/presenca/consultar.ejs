@@ -1,393 +1,397 @@
 <div class="row">
-  <div class="col-12">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2><i class="bi bi-clipboard-data"></i> <%= title %></h2>
-      <div>
-        <a href="/presenca/lancar" class="btn btn-primary me-2">
-          <i class="bi bi-calendar-check"></i> Lançar Presença
-        </a>
-        <a href="/dashboard" class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+<div class="col-12">
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h2><i class="bi bi-clipboard-data"></i> <%= title %></h2>
+<div>
+<a href="/presenca/lancar" class="btn btn-primary me-2">
+<i class="bi bi-calendar-check"></i> Lançar Presença
+</a>
+<a href="/dashboard" class="btn btn-outline-secondary">
+<i class="bi bi-arrow-left"></i> Voltar
+</a>
+</div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <i class="bi bi-funnel"></i> Filtros de Consulta
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-2">
+        <label class="form-label">Data Início *</label>
+        <input type="date" class="form-control" id="dataInicio" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Data Fim *</label>
+        <input type="date" class="form-control" id="dataFim" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Condomínio</label>
+        <select class="form-select" id="condominio">
+          <option value="">Todos</option>
+          <% condominios.forEach(c => { %>
+            <option value="<%= c.id %>"><%= c.nome %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Empresa</label>
+        <select class="form-select" id="empresa">
+          <option value="">Todas</option>
+          <% empresas.forEach(e => { %>
+            <option value="<%= e.id %>"><%= e.nome %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="status">
+          <option value="">Todos</option>
+          <option value="presente">Presente</option>
+          <option value="falta">Falta</option>
+          <option value="folga">Folga</option>
+          <option value="atestado">Atestado</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="button" class="btn btn-success w-100" id="btnBuscar">
+          <i class="bi bi-search"></i> Buscar
+        </button>
       </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="card mb-4">
-      <div class="card-header bg-primary text-white">
-        <i class="bi bi-funnel"></i> Filtros de Consulta
+    <div class="row g-3 mt-2">
+      <div class="col-md-4">
+        <label class="form-label">Colaborador (nome)</label>
+        <input type="text" class="form-control" id="colaboradorBusca" placeholder="Digite para buscar...">
+        <input type="hidden" id="colaboradorId">
+        <div id="colaboradorSugestoes" class="list-group mt-1"
+             style="position: absolute; z-index: 1000; display: none; max-width: 350px;"></div>
       </div>
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-2">
-            <label class="form-label">Data Início *</label>
-            <input type="date" class="form-control" id="dataInicio" required>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Data Fim *</label>
-            <input type="date" class="form-control" id="dataFim" required>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Condomínio</label>
-            <select class="form-select" id="condominio">
-              <option value="">Todos</option>
-              <% condominios.forEach(c => { %>
-                <option value="<%= c.id %>"><%= c.nome %></option>
-              <% }) %>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Empresa</label>
-            <select class="form-select" id="empresa">
-              <option value="">Todas</option>
-              <% empresas.forEach(e => { %>
-                <option value="<%= e.id %>"><%= e.nome %></option>
-              <% }) %>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Status</label>
-            <select class="form-select" id="status">
-              <option value="">Todos</option>
-              <option value="presente">Presente</option>
-              <option value="falta">Falta</option>
-              <option value="folga">Folga</option>
-              <option value="atestado">Atestado</option>
-            </select>
-          </div>
-          <div class="col-md-2 d-flex align-items-end">
-            <button type="button" class="btn btn-success w-100" id="btnBuscar">
-              <i class="bi bi-search"></i> Buscar
-            </button>
-          </div>
-        </div>
-
-        <div class="row g-3 mt-2">
-          <div class="col-md-4">
-            <label class="form-label">Colaborador (nome ou CPF)</label>
-            <input type="text" class="form-control" id="colaboradorBusca" placeholder="Digite para buscar...">
-            <input type="hidden" id="colaboradorId">
-            <div id="colaboradorSugestoes" class="list-group mt-1"
-                 style="position: absolute; z-index: 1000; display: none; max-width: 350px;"></div>
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button type="button" class="btn btn-secondary w-100" id="btnLimpar">
-              <i class="bi bi-x-circle"></i> Limpar Filtros
-            </button>
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button type="button" class="btn btn-outline-success w-100" id="btnExportar" disabled>
-              <i class="bi bi-file-earmark-excel"></i> Exportar Excel (CSV)
-            </button>
-          </div>
-        </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button type="button" class="btn btn-secondary w-100" id="btnLimpar">
+          <i class="bi bi-x-circle"></i> Limpar Filtros
+        </button>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button type="button" class="btn btn-outline-success w-100" id="btnExportar" disabled>
+          <i class="bi bi-file-earmark-excel"></i> Exportar Excel (CSV)
+        </button>
       </div>
     </div>
-
-    <!-- Totalizadores -->
-    <div id="areaTotalizadores" style="display: none;">
-      <div class="row g-3 mb-4">
-        <div class="col-md-3">
-          <div class="card text-white bg-success">
-            <div class="card-body text-center">
-              <h3 id="totalPresente">0</h3>
-              <p class="mb-0">Presenças</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-white bg-danger">
-            <div class="card-body text-center">
-              <h3 id="totalFalta">0</h3>
-              <p class="mb-0">Faltas</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-white bg-secondary">
-            <div class="card-body text-center">
-              <h3 id="totalFolga">0</h3>
-              <p class="mb-0">Folgas</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-dark bg-warning">
-            <div class="card-body text-center">
-              <h3 id="totalAtestado">0</h3>
-              <p class="mb-0">Atestados</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Resultados -->
-    <div class="card">
-      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-table"></i> Relatório de Presenças</span>
-        <span id="totalRegistros" class="badge bg-light text-dark">0 registros</span>
-      </div>
-      <div class="card-body">
-        <div id="areaResultados">
-          <div class="text-center text-muted py-5">
-            <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
-            <p class="mt-3">
-              Selecione os filtros e clique em <strong>Buscar</strong> para visualizar o relatório.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
+<!-- Totalizadores -->
+<div id="areaTotalizadores" style="display: none;">
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card text-white bg-success">
+        <div class="card-body text-center">
+          <h3 id="totalPresente">0</h3>
+          <p class="mb-0">Presenças</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-white bg-danger">
+        <div class="card-body text-center">
+          <h3 id="totalFalta">0</h3>
+          <p class="mb-0">Faltas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-white bg-secondary">
+        <div class="card-body text-center">
+          <h3 id="totalFolga">0</h3>
+          <p class="mb-0">Folgas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-dark bg-warning">
+        <div class="card-body text-center">
+          <h3 id="totalAtestado">0</h3>
+          <p class="mb-0">Atestados</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Resultados -->
+<div class="card">
+  <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-table"></i> Relatório de Presenças</span>
+    <span id="totalRegistros" class="badge bg-light text-dark">0 registros</span>
+  </div>
+  <div class="card-body">
+    <div id="areaResultados">
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+        <p class="mt-3">
+          Selecione os filtros e clique em <strong>Buscar</strong> para visualizar o relatório.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
 <script>
-  // Período padrão: últimos 7 dias
-  (function definirPeriodoPadrao() {
-    const hoje = new Date();
-    const seteDiasAtras = new Date();
-    seteDiasAtras.setDate(hoje.getDate() - 7);
+// Período padrão: últimos 7 dias
+(function definirPeriodoPadrao() {
+const hoje = new Date();
+const seteDiasAtras = new Date();
+seteDiasAtras.setDate(hoje.getDate() - 7);
 
-    document.getElementById('dataInicio').valueAsDate = seteDiasAtras;
-    document.getElementById('dataFim').valueAsDate = hoje;
-  })();
+document.getElementById('dataInicio').valueAsDate = seteDiasAtras;
+document.getElementById('dataFim').valueAsDate = hoje;
 
-  let presencasGlobal = [];
-  let timeoutBusca;
+})();
 
-  function formatarData(valor) {
-    if (!valor) return '-';
+let presencasGlobal = [];
+let timeoutBusca;
 
-    // tenta converter direto
-    var d = new Date(valor);
-    if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString('pt-BR');
-    }
+function formatarData(valor) {
+if (!valor) return '-';
 
-    // se vier 'YYYY-MM-DD'
-    if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
-      var partes = valor.split('-'); // [ano, mes, dia]
-      return partes[2] + '/' + partes[1] + '/' + partes[0];
-    }
+// tenta converter direto
+var d = new Date(valor);
+if (!isNaN(d.getTime())) {
+  return d.toLocaleDateString('pt-BR');
+}
 
-    return valor;
-  }
+// se vier 'YYYY-MM-DD'
+if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+  var partes = valor.split('-'); // [ano, mes, dia]
+  return partes[2] + '/' + partes[1] + '/' + partes[0];
+}
 
-  // Autocomplete colaborador
-  document.getElementById('colaboradorBusca').addEventListener('input', function () {
-    const termo = this.value;
-    clearTimeout(timeoutBusca);
+return valor;
 
-    if (termo.length < 2) {
-      document.getElementById('colaboradorSugestoes').style.display = 'none';
-      document.getElementById('colaboradorId').value = '';
+}
+
+// Autocomplete colaborador
+document.getElementById('colaboradorBusca').addEventListener('input', function () {
+const termo = this.value;
+clearTimeout(timeoutBusca);
+
+if (termo.length < 2) {
+  document.getElementById('colaboradorSugestoes').style.display = 'none';
+  document.getElementById('colaboradorId').value = '';
+  return;
+}
+
+timeoutBusca = setTimeout(async function () {
+  try {
+    const res = await fetch('/presenca/api/colaboradores?termo=' + encodeURIComponent(termo));
+    const colaboradores = await res.json();
+
+    const divSug = document.getElementById('colaboradorSugestoes');
+    divSug.innerHTML = '';
+
+    if (!colaboradores || colaboradores.length === 0) {
+      divSug.style.display = 'none';
       return;
     }
 
-    timeoutBusca = setTimeout(async function () {
-      try {
-        const res = await fetch('/presenca/api/colaboradores?termo=' + encodeURIComponent(termo));
-        const colaboradores = await res.json();
-
-        const divSug = document.getElementById('colaboradorSugestoes');
-        divSug.innerHTML = '';
-
-        if (!colaboradores || colaboradores.length === 0) {
-          divSug.style.display = 'none';
-          return;
-        }
-
-        colaboradores.forEach(function (c) {
-          const item = document.createElement('a');
-          item.href = '#';
-          item.className = 'list-group-item list-group-item-action';
-          item.textContent = c.nome + ' - ' + (c.cpf || 'Sem CPF');
-          item.onclick = function (e) {
-            e.preventDefault();
-            document.getElementById('colaboradorBusca').value = c.nome;
-            document.getElementById('colaboradorId').value = c.id;
-            divSug.style.display = 'none';
-          };
-          divSug.appendChild(item);
-        });
-
-        divSug.style.display = 'block';
-      } catch (error) {
-        console.error('Erro ao buscar colaboradores:', error);
-      }
-    }, 300);
-  });
-
-  // Buscar presenças
-  document.getElementById('btnBuscar').addEventListener('click', async function () {
-    const dataInicio = document.getElementById('dataInicio').value;
-    const dataFim = document.getElementById('dataFim').value;
-
-    if (!dataInicio || !dataFim) {
-      alert('Informe Data Início e Data Fim');
-      return;
-    }
-
-    const params = new URLSearchParams();
-    params.append('data_inicio', dataInicio);
-    params.append('data_fim', dataFim);
-
-    const condominio = document.getElementById('condominio').value;
-    const empresa = document.getElementById('empresa').value;
-    const colaborador = document.getElementById('colaboradorId').value;
-    const status = document.getElementById('status').value;
-
-    if (condominio) params.append('condominio_id', condominio);
-    if (empresa) params.append('empresa_id', empresa);
-    if (colaborador) params.append('colaborador_id', colaborador);
-    if (status) params.append('status', status);
-
-    try {
-      const res = await fetch('/presenca/api/consultar?' + params.toString());
-      presencasGlobal = await res.json();
-
-      renderizarResultados(presencasGlobal);
-    } catch (error) {
-      console.error('Erro ao buscar presenças:', error);
-      alert('Erro ao buscar presenças');
-    }
-  });
-
-  function renderizarResultados(presencas) {
-    const areaResultados = document.getElementById('areaResultados');
-
-    if (!presencas || presencas.length === 0) {
-      areaResultados.innerHTML =
-        '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Nenhum registro encontrado com os filtros selecionados.</div>';
-      document.getElementById('areaTotalizadores').style.display = 'none';
-      document.getElementById('totalRegistros').textContent = '0 registros';
-      document.getElementById('btnExportar').disabled = true;
-      return;
-    }
-
-    // Totalizadores
-    let totais = {
-      presente: 0,
-      falta: 0,
-      folga: 0,
-      atestado: 0
-    };
-
-    presencas.forEach(function (p) {
-      if (totais[p.status] !== undefined) {
-        totais[p.status]++;
-      }
+    colaboradores.forEach(function (c) {
+      const item = document.createElement('a');
+      item.href = '#';
+      item.className = 'list-group-item list-group-item-action';
+      item.textContent = c.nome;
+      item.onclick = function (e) {
+        e.preventDefault();
+        document.getElementById('colaboradorBusca').value = c.nome;
+        document.getElementById('colaboradorId').value = c.id;
+        divSug.style.display = 'none';
+      };
+      divSug.appendChild(item);
     });
 
-    document.getElementById('totalPresente').textContent = totais.presente;
-    document.getElementById('totalFalta').textContent = totais.falta;
-    document.getElementById('totalFolga').textContent = totais.folga;
-    document.getElementById('totalAtestado').textContent = totais.atestado;
-    document.getElementById('areaTotalizadores').style.display = 'block';
-
-    // Tabela
-    let html = '<div class="table-responsive"><table class="table table-striped table-hover table-sm">';
-    html += '<thead class="table-dark">';
-    html += '<tr>';
-    html += '<th>Data</th>';
-    html += '<th>Colaborador</th>';
-    html += '<th>CPF</th>';
-    html += '<th>Empresa</th>';
-    html += '<th>Condomínio</th>';
-    html += '<th>Posto</th>';
-    html += '<th style="text-align: center;">Status</th>';
-    html += '<th>Observações</th>';
-    html += '</tr>';
-    html += '</thead><tbody>';
-
-    presencas.forEach(function (p) {
-      const dataFormatada = formatarData(p.data);
-      const statusBadge = getStatusBadge(p.status);
-
-      html += '<tr>';
-      html += '<td>' + dataFormatada + '</td>';
-      html += '<td>' + p.colaborador + '</td>';
-      html += '<td>' + (p.cpf || '-') + '</td>';
-      html += '<td>' + (p.empresa || '-') + '</td>';
-      html += '<td>' + p.condominio + '</td>';
-      html += '<td>' + (p.posto || '-') + '</td>';
-      html += '<td style="text-align: center;">' + statusBadge + '</td>';
-      html += '<td>' + (p.observacoes || '-') + '</td>';
-      html += '</tr>';
-    });
-
-    html += '</tbody></table></div>';
-
-    areaResultados.innerHTML = html;
-    document.getElementById('totalRegistros').textContent = presencas.length + ' registro(s)';
-    document.getElementById('btnExportar').disabled = false;
+    divSug.style.display = 'block';
+  } catch (error) {
+    console.error('Erro ao buscar colaboradores:', error);
   }
+}, 300);
 
-  function getStatusBadge(status) {
-    const badges = {
-      presente: '<span class="badge bg-success">Presente</span>',
-      falta: '<span class="badge bg-danger">Falta</span>',
-      folga: '<span class="badge bg-secondary">Folga</span>',
-      atestado: '<span class="badge bg-warning text-dark">Atestado</span>'
-    };
-    return badges[status] || '<span class="badge bg-light text-dark">' + status + '</span>';
+});
+
+// Buscar presenças
+document.getElementById('btnBuscar').addEventListener('click', async function () {
+const dataInicio = document.getElementById('dataInicio').value;
+const dataFim = document.getElementById('dataFim').value;
+
+if (!dataInicio || !dataFim) {
+  alert('Informe Data Início e Data Fim');
+  return;
+}
+
+const params = new URLSearchParams();
+params.append('data_inicio', dataInicio);
+params.append('data_fim', dataFim);
+
+const condominio = document.getElementById('condominio').value;
+const empresa = document.getElementById('empresa').value;
+const colaborador = document.getElementById('colaboradorId').value;
+const status = document.getElementById('status').value;
+
+if (condominio) params.append('condominio_id', condominio);
+if (empresa) params.append('empresa_id', empresa);
+if (colaborador) params.append('colaborador_id', colaborador);
+if (status) params.append('status', status);
+
+try {
+  const res = await fetch('/presenca/api/consultar?' + params.toString());
+  presencasGlobal = await res.json();
+
+  renderizarResultados(presencasGlobal);
+} catch (error) {
+  console.error('Erro ao buscar presenças:', error);
+  alert('Erro ao buscar presenças');
+}
+
+});
+
+function renderizarResultados(presencas) {
+const areaResultados = document.getElementById('areaResultados');
+
+if (!presencas || presencas.length === 0) {
+  areaResultados.innerHTML =
+    '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Nenhum registro encontrado com os filtros selecionados.</div>';
+  document.getElementById('areaTotalizadores').style.display = 'none';
+  document.getElementById('totalRegistros').textContent = '0 registros';
+  document.getElementById('btnExportar').disabled = true;
+  return;
+}
+
+// Totalizadores
+let totais = {
+  presente: 0,
+  falta: 0,
+  folga: 0,
+  atestado: 0
+};
+
+presencas.forEach(function (p) {
+  if (totais[p.status] !== undefined) {
+    totais[p.status]++;
   }
+});
 
-  // Limpar filtros
-  document.getElementById('btnLimpar').addEventListener('click', function () {
-    const hoje = new Date();
-    const seteDiasAtras = new Date();
-    seteDiasAtras.setDate(hoje.getDate() - 7);
+document.getElementById('totalPresente').textContent = totais.presente;
+document.getElementById('totalFalta').textContent = totais.falta;
+document.getElementById('totalFolga').textContent = totais.folga;
+document.getElementById('totalAtestado').textContent = totais.atestado;
+document.getElementById('areaTotalizadores').style.display = 'block';
 
-    document.getElementById('dataInicio').valueAsDate = seteDiasAtras;
-    document.getElementById('dataFim').valueAsDate = hoje;
-    document.getElementById('condominio').value = '';
-    document.getElementById('empresa').value = '';
-    document.getElementById('colaboradorBusca').value = '';
-    document.getElementById('colaboradorId').value = '';
-    document.getElementById('status').value = '';
+// Tabela
+let html = '<div class="table-responsive"><table class="table table-striped table-hover table-sm">';
+html += '<thead class="table-dark">';
+html += '<tr>';
+html += '<th>Data</th>';
+html += '<th>Colaborador</th>';
+html += '<th>Empresa</th>';
+html += '<th>Condomínio</th>';
+html += '<th>Posto</th>';
+html += '<th style="text-align: center;">Status</th>';
+html += '<th>Observações</th>';
+html += '</tr>';
+html += '</thead><tbody>';
 
-    document.getElementById('areaResultados').innerHTML =
-      '<div class="text-center text-muted py-5"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><p class="mt-3">Selecione os filtros e clique em <strong>Buscar</strong> para visualizar o relatório.</p></div>';
-    document.getElementById('areaTotalizadores').style.display = 'none';
-    document.getElementById('totalRegistros').textContent = '0 registros';
-    document.getElementById('btnExportar').disabled = true;
-  });
+presencas.forEach(function (p) {
+  const dataFormatada = formatarData(p.data);
+  const statusBadge = getStatusBadge(p.status);
 
-  // Exportar CSV
-  document.getElementById('btnExportar').addEventListener('click', function () {
-    if (!presencasGlobal || presencasGlobal.length === 0) {
-      alert('Nenhum registro para exportar');
-      return;
-    }
-    exportarCSV(presencasGlobal);
-  });
+  html += '<tr>';
+  html += '<td>' + dataFormatada + '</td>';
+  html += '<td>' + p.colaborador + '</td>';
+  html += '<td>' + (p.empresa || '-') + '</td>';
+  html += '<td>' + p.condominio + '</td>';
+  html += '<td>' + (p.posto || '-') + '</td>';
+  html += '<td style="text-align: center;">' + statusBadge + '</td>';
+  html += '<td>' + (p.observacoes || '-') + '</td>';
+  html += '</tr>';
+});
 
-  function exportarCSV(dados) {
-    let csv = 'Data;Colaborador;CPF;Empresa;Condomínio;Posto;Status;Observações\n';
+html += '</tbody></table></div>';
 
-    dados.forEach(function (p) {
-      const dataFormatada = formatarData(p.data);
-      csv += dataFormatada + ';';
-      csv += p.colaborador + ';';
-      csv += (p.cpf || '-') + ';';
-      csv += (p.empresa || '-') + ';';
-      csv += p.condominio + ';';
-      csv += (p.posto || '-') + ';';
-      csv += p.status + ';';
-      csv += (p.observacoes || '-') + '\n';
-    });
+areaResultados.innerHTML = html;
+document.getElementById('totalRegistros').textContent = presencas.length + ' registro(s)';
+document.getElementById('btnExportar').disabled = false;
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'relatorio_presencas_' + new Date().getTime() + '.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+}
+
+function getStatusBadge(status) {
+const badges = {
+presente: '<span class="badge bg-success">Presente</span>',
+falta: '<span class="badge bg-danger">Falta</span>',
+folga: '<span class="badge bg-secondary">Folga</span>',
+atestado: '<span class="badge bg-warning text-dark">Atestado</span>'
+};
+return badges[status] || '<span class="badge bg-light text-dark">' + status + '</span>';
+}
+
+// Limpar filtros
+document.getElementById('btnLimpar').addEventListener('click', function () {
+const hoje = new Date();
+const seteDiasAtras = new Date();
+seteDiasAtras.setDate(hoje.getDate() - 7);
+
+document.getElementById('dataInicio').valueAsDate = seteDiasAtras;
+document.getElementById('dataFim').valueAsDate = hoje;
+document.getElementById('condominio').value = '';
+document.getElementById('empresa').value = '';
+document.getElementById('colaboradorBusca').value = '';
+document.getElementById('colaboradorId').value = '';
+document.getElementById('status').value = '';
+
+document.getElementById('areaResultados').innerHTML =
+  '<div class="text-center text-muted py-5"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><p class="mt-3">Selecione os filtros e clique em <strong>Buscar</strong> para visualizar o relatório.</p></div>';
+document.getElementById('areaTotalizadores').style.display = 'none';
+document.getElementById('totalRegistros').textContent = '0 registros';
+document.getElementById('btnExportar').disabled = true;
+
+});
+
+// Exportar CSV
+document.getElementById('btnExportar').addEventListener('click', function () {
+if (!presencasGlobal || presencasGlobal.length === 0) {
+alert('Nenhum registro para exportar');
+return;
+}
+exportarCSV(presencasGlobal);
+});
+
+function exportarCSV(dados) {
+let csv = 'Data;Colaborador;Empresa;Condomínio;Posto;Status;Observações\n';
+
+dados.forEach(function (p) {
+  const dataFormatada = formatarData(p.data);
+  csv += dataFormatada + ';';
+  csv += p.colaborador + ';';
+  csv += (p.empresa || '-') + ';';
+  csv += p.condominio + ';';
+  csv += (p.posto || '-') + ';';
+  csv += p.status + ';';
+  csv += (p.observacoes || '-') + '\n';
+});
+
+const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+const link = document.createElement('a');
+const url = URL.createObjectURL(blob);
+link.setAttribute('href', url);
+link.setAttribute('download', 'relatorio_presencas_' + new Date().getTime() + '.csv');
+link.style.visibility = 'hidden';
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+
+}
 </script>

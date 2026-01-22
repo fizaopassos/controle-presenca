@@ -1,12 +1,16 @@
 <tr id="colaborador-<%= c.id %>">
 <td><%= c.id %></td>
 <td><%= c.nome %></td>
-<td><%= c.cpf || '-' %></td>
-<td><%= c.telefone || '-' %></td>
-<td><%= c.condominio_nome || '-' %></td>
 <td><%= c.empresa_nome || '-' %></td>
+<td><%= c.condominio_nome || '-' %></td>
 <td><%= c.posto_nome || '-' %></td>
-<td><%= c.cargo || '-' %></td>
+<td>
+<% if (c.tipo === 'cobertura') { %>
+<span class="badge bg-info text-dark">Cobertura</span>
+<% } else { %>
+<span class="badge bg-primary">Fixo</span>
+<% } %>
+</td>
 <td>
 <% if (c.ativo) { %>
 <span class="badge bg-success">Ativo</span>

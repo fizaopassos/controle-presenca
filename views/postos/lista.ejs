@@ -42,30 +42,31 @@
       </button>
     </div>
 
-    <% if (postos.length === 0) { %>
-      <div class="alert alert-info">
-        Nenhum posto cadastrado ainda.
-      </div>
-    <% } else { %>
-      <table class="table table-striped table-hover">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nome do Posto</th>
-            <th>Descrição</th>
-            <th>Ativo</th>
-            <th style="width: 200px;">Ações</th>
-          </tr>
-        </thead>
+    <table class="table table-striped table-hover">
+<thead>
+<tr>
+<th>ID</th>
+<th>Nome do Posto</th>
+<th>Descrição</th>
+<th>Ativo</th>
+<th style="width: 200px;">Ações</th>
+</tr>
+</thead>
 
-        <!-- IMPORTANTE: tbody com id e include do _linha.ejs -->
-        <tbody id="tabelaPostos">
-          <% postos.forEach(p => { %>
-            <%- include('_linha', { p: p }) %>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
+<tbody id="tabelaPostos">
+<% if (postos.length === 0) { %>
+<tr id="linhaVaziaPostos">
+<td colspan="5" class="text-center text-muted py-4">
+Nenhum posto cadastrado ainda.
+</td>
+</tr>
+<% } else { %>
+<% postos.forEach(p => { %>
+<%- include('_linha', { p: p }) %>
+<% }) %>
+<% } %>
+</tbody>
+</table>
   </div>
 
   <!-- HTMX -->

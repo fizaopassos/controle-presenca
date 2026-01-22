@@ -42,31 +42,32 @@
       </button>
     </div>
 
-    <% if (condominios.length === 0) { %>
-      <div class="alert alert-info">
-        Nenhum condomínio cadastrado ainda.
-      </div>
-    <% } else { %>
-      <table class="table table-striped table-hover">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nome</th>
-            <th>Código Interno</th>
-            <th>Cidade/UF</th>
-            <th>Ativo</th>
-            <th style="width: 200px;">Ações</th>
-          </tr>
-        </thead>
+    <table class="table table-striped table-hover">
+<thead>
+<tr>
+<th>ID</th>
+<th>Nome</th>
+<th>Código Interno</th>
+<th>Cidade/UF</th>
+<th>Ativo</th>
+<th style="width: 200px;">Ações</th>
+</tr>
+</thead>
 
-        <!-- IMPORTANTE: tbody com id e include do _linha.ejs -->
-        <tbody id="tabelaCondominios">
-          <% condominios.forEach(c => { %>
-            <%- include('_linha', { c: c }) %>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
+<tbody id="tabelaCondominios">
+<% if (condominios.length === 0) { %>
+<tr id="linhaVaziaCondominios">
+<td colspan="6" class="text-center text-muted py-4">
+Nenhum condomínio cadastrado ainda.
+</td>
+</tr>
+<% } else { %>
+<% condominios.forEach(c => { %>
+<%- include('_linha', { c: c }) %>
+<% }) %>
+<% } %>
+</tbody>
+</table>
   </div>
 
   <!-- HTMX -->
