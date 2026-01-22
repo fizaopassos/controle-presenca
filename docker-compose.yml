@@ -50,6 +50,26 @@ services:
       - ./views:/app/views
       - ./css:/app/css
 
+  # Serviço do phpMyAdmin para gerenciar o banco
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: controle-presenca-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: appuser
+      PMA_PASSWORD: apppassword123
+      MYSQL_ROOT_PASSWORD: rootpassword123
+      UPLOAD_LIMIT: 100M
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - controle-presenca-network
+
 volumes:
   mysql_data:
 

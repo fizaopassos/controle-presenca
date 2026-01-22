@@ -2,7 +2,11 @@
 -- Este arquivo será executado automaticamente na primeira vez que o container MySQL for criado
 -- Baseado no dump do banco original
 
-CREATE DATABASE IF NOT EXISTS controle_presenca;
+SET NAMES utf8mb4;
+
+SET CHARACTER SET utf8mb4;
+
+CREATE DATABASE IF NOT EXISTS controle_presenca CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE controle_presenca;
 
