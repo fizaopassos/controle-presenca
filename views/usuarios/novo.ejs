@@ -39,19 +39,18 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Perfil *</label>
-            <select name="perfil" id="perfil" class="form-select" required>
-              <option value="">Selecione...</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="GESTOR">GESTOR</option>
-              <option value="OPERADOR">OPERADOR</option>
-            </select>
-            <div class="form-text">
-              ADMIN enxerga todos os condomínios e gerencia usuários
-            </div>
-          </div>
-        </div>
-      </div>
+  <label class="form-label">Perfil *</label>
+  <select name="perfil" id="perfil" class="form-select" required>
+    <option value="">Selecione...</option>
+    <option value="admin">ADMIN</option>
+    <option value="gestor">GESTOR</option>
+    <option value="lancador">OPERADOR</option>
+  </select>
+  <div class="form-text">
+    ADMIN enxerga todos os condomínios e gerencia usuários
+  </div>
+</div>
+
 
       <div class="card mb-4" id="cardCondominios" style="display: none;">
         <div class="card-header bg-light">
@@ -96,13 +95,18 @@
   const btnSalvar = document.getElementById('btnSalvar');
 
   // Mostra/oculta card de condomínios conforme perfil
-  selectPerfil.addEventListener('change', function() {
-    if (this.value === 'ADMIN' || this.value === '') {
-      cardCondominios.style.display = 'none';
-    } else {
-      cardCondominios.style.display = 'block';
-    }
-  });
+  function atualizarCardCondominios() {
+// admin e gestor: não escolhem condomínios
+if (selectPerfil.value === 'admin' || selectPerfil.value === 'gestor' || selectPerfil.value === '') {
+cardCondominios.style.display = 'none';
+} else {
+// lancador
+cardCondominios.style.display = 'block';
+}
+}
+
+selectPerfil.addEventListener('change', atualizarCardCondominios);
+atualizarCardCondominios(); // chama uma vez ao carregar
 
   // Validação de senhas
   function validarSenhas() {

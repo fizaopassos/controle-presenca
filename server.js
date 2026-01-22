@@ -7,19 +7,27 @@ const app = express();
 // Definir a porta
 const PORT = process.env.PORT || 3000;
 
-// Configurar view engine (EJS)
+// ========================
+// View engine (EJS)
+// ========================
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middleware para parsear body
+// ========================
+// Middlewares de parsing
+// ========================
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Arquivos estáticos (CSS, JS, imagens)
+// ========================
+// Arquivos estáticos
+// ========================
 app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração de sessão
+// ========================
+// Sessão
+// ========================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'seu-secret-super-seguro-aqui',
   resave: false,
@@ -27,20 +35,22 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24
+    maxAge: 1000 * 60 * 60 * 24 // 1 dia
   }
 }));
 
-// Middleware para disponibilizar usuário nas views
+// ========================
+// Usuário disponível nas views
+// ========================
 app.use((req, res, next) => {
-  res.locals.usuario = req.session.user || null;
+  const sess = req.session || {};
+  res.locals.usuario = sess.user || null;
   next();
 });
 
-// Servir arquivos estáticos
-app.use(express.static(path.join(__dirname, 'public')));
-
+// ========================
 // Rotas
+// ========================
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const condominiosRoutes = require('./routes/condominios');
@@ -50,18 +60,24 @@ const colaboradoresRoutes = require('./routes/colaboradores');
 const presencaRoutes = require('./routes/presenca');
 const usuariosRoutes = require('./routes/usuarios');
 
+// Se não precisar mais dos logs de debug, pode apagar:
+console.log('authRoutes typeof:', typeof authRoutes);
+console.log('authRoutes keys:', authRoutes && Object.keys(authRoutes));
+console.log('authRoutes value:', authRoutes);
 
-app.use('/', authRoutes); // mudei de /auth para / para funcionar /login
+// Montagem das rotas
+app.use('/', authRoutes); // /login, /logout, etc.
+app.use('/dashboard', dashboardRoutes);
 app.use('/condominios', condominiosRoutes);
 app.use('/empresas', empresasRoutes);
 app.use('/postos', postosRoutes);
 app.use('/colaboradores', colaboradoresRoutes);
-app.use('/dashboard', dashboardRoutes);
 app.use('/presenca', presencaRoutes);
 app.use('/usuarios', usuariosRoutes);
 
-
+// ========================
 // Iniciar servidor
+// ========================
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
 });

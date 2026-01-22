@@ -1,31 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated } = require('../middlewares/auth');
+
+const auth = require('../middlewares/auth');
 const usuariosController = require('../controllers/usuariosController');
 
-// Verificação de segurança
-if (typeof isAuthenticated !== 'function') {
-  throw new Error('isAuthenticated não é uma função válida');
+// Diagnóstico (deixe até funcionar; depois pode remover)
+console.log('[usuarios routes] auth exports:', Object.keys(auth));
+console.log('[usuarios routes] typeof isAuthenticated:', typeof auth.isAuthenticated);
+console.log('[usuarios routes] typeof isAdmin:', typeof auth.isAdmin);
+
+if (typeof auth.isAuthenticated !== 'function') {
+throw new Error('middlewares/auth.js não exportou isAuthenticated como função');
+}
+if (typeof auth.isAdmin !== 'function') {
+throw new Error('middlewares/auth.js não exportou isAdmin como função');
 }
 
-// ===== ROTAS DE USUÁRIOS =====
+// Todas as rotas de usuário só para ADMIN
+router.use(auth.isAuthenticated);
+router.use(auth.isAdmin);
 
 // Tela de listagem
-router.get('/', isAuthenticated, usuariosController.listar);
+router.get('/', usuariosController.listar);
 
 // Tela de cadastro
-router.get('/novo', isAuthenticated, usuariosController.novoForm);
+router.get('/novo', usuariosController.novoForm);
 
 // Criar usuário
-router.post('/criar', isAuthenticated, usuariosController.novoSalvar);
+router.post('/novo', usuariosController.novoSalvar);
 
 // Tela de edição
-router.get('/editar/:id', isAuthenticated, usuariosController.editarForm);
+router.get('/editar/:id', usuariosController.editarForm);
 
 // Atualizar usuário
-router.post('/atualizar/:id', isAuthenticated, usuariosController.editarSalvar);
+router.post('/editar/:id', usuariosController.editarSalvar);
 
-// Deletar usuário
-router.post('/deletar/:id', isAuthenticated, usuariosController.excluir);
+// Excluir usuário
+router.delete('/excluir/:id', usuariosController.excluir);
 
 module.exports = router;

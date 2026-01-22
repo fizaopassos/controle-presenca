@@ -40,14 +40,18 @@
                     <td class="td-nome"><%= u.nome %></td>
                     <td class="td-email"><%= u.email %></td>
                     <td>
-                      <% if (u.perfil === 'ADMIN') { %>
-                        <span class="badge bg-danger">ADMIN</span>
-                      <% } else if (u.perfil === 'GESTOR') { %>
-                        <span class="badge bg-primary">GESTOR</span>
-                      <% } else { %>
-                        <span class="badge bg-secondary"><%= u.perfil %></span>
-                      <% } %>
-                    </td>
+                      <td>
+                    <% if (u.perfil === 'admin') { %>
+                      <span class="badge bg-danger">ADMIN</span>
+                    <% } else if (u.perfil === 'gestor') { %>
+                      <span class="badge bg-primary">GESTOR</span>
+                    <% } else { %>
+                      <span class="badge bg-secondary">
+                        <%= u.perfil === 'lancador' ? 'OPERADOR' : u.perfil %>
+                      </span>
+                    <% } %>
+                  </td>
+
                     <td>
                       <!-- Editar -->
                       <a 

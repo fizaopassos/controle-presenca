@@ -1,24 +1,30 @@
+// routes/postos.js
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated } = require('../middlewares/auth');
+
+const { isAuthenticated, allowPerfis } = require('../middlewares/auth');
 const postosController = require('../controllers/postosController');
 
+// Todas as rotas de postos: usuário logado e perfil admin ou gestor
+router.use(isAuthenticated, allowPerfis(['admin', 'gestor']));
+
 // Listar postos
-router.get('/', isAuthenticated, postosController.listar);
+router.get('/', postosController.listar);
 
 // Formulário de novo posto
-router.get('/novo', isAuthenticated, postosController.formNovo);
+router.get('/novo', postosController.formNovo);
 
 // Salvar novo posto
-router.post('/novo', isAuthenticated, postosController.criar);
+router.post('/novo', postosController.criar);
 
 // Formulário de edição
-router.get('/editar/:id', isAuthenticated, postosController.formEditar);
+router.get('/editar/:id', postosController.formEditar);
 
 // Atualizar posto
-router.post('/editar/:id', isAuthenticated, postosController.atualizar);
+router.post('/editar/:id', postosController.atualizar);
 
 // Ativar / Inativar (toggle)
-router.post('/toggle-ativo/:id', isAuthenticated, postosController.toggleAtivo);
+router.post('/toggle-ativo/:id', postosController.toggleAtivo);
 
 module.exports = router;
+

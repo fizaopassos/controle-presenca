@@ -1,49 +1,27 @@
-/*const express = require('express');
-const router = express.Router();
-const { isAuthenticated } = require('../middlewares/auth');
-const empresasController = require('../controllers/empresasController');
-
-// Listar empresas
-router.get('/', isAuthenticated, empresasController.listar);
-
-// Formulário de nova empresa
-router.get('/novo', isAuthenticated, empresasController.formNovo);
-
-// Salvar nova empresa
-router.post('/novo', isAuthenticated, empresasController.criar);
-
-// Formulário de edição
-router.get('/editar/:id', isAuthenticated, empresasController.formEditar);
-
-// Atualizar empresa
-router.post('/editar/:id', isAuthenticated, empresasController.atualizar);
-
-// Ativar / Inativar (toggle)
-router.post('/toggle-ativo/:id', isAuthenticated, empresasController.toggleAtivo);
-
-module.exports = router;*/
-
+// routes/empresas.js
 const express = require('express');
 const router = express.Router();
-const empresasController = require('../controllers/empresasController');
-const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 
-// Se só ADMIN pode mexer em empresas, use os dois middlewares
-// Se qualquer usuário autenticado pode ver/mexer, use só isAuthenticated
+const { isAuthenticated, allowPerfis } = require('../middlewares/auth');
+const empresasController = require('../controllers/empresasController');
+
+// Todas as rotas de empresas: usuário logado e perfil admin ou gestor
+router.use(isAuthenticated, allowPerfis(['admin', 'gestor']));
 
 // Listagem  -> GET /empresas
-router.get('/', isAuthenticated, empresasController.listar);
+router.get('/', empresasController.listar);
 
 // Novo      -> GET /empresas/novo  | POST /empresas/novo
-router.get('/novo', isAuthenticated, isAdmin, empresasController.formNovo);
-router.post('/novo', isAuthenticated, isAdmin, empresasController.criar);
+router.get('/novo', empresasController.formNovo);
+router.post('/novo', empresasController.criar);
 
 // Editar    -> GET /empresas/editar/:id  | POST /empresas/editar/:id
-router.get('/editar/:id', isAuthenticated, isAdmin, empresasController.formEditar);
-router.post('/editar/:id', isAuthenticated, isAdmin, empresasController.atualizar);
+router.get('/editar/:id', empresasController.formEditar);
+router.post('/editar/:id', empresasController.atualizar);
 
 // Toggle ativo -> GET /empresas/toggle/:id
-router.get('/toggle/:id', isAuthenticated, isAdmin, empresasController.toggleAtivo);
+router.get('/toggle/:id', empresasController.toggleAtivo);
 
 module.exports = router;
+
 

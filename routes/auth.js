@@ -23,7 +23,7 @@ if (!email || !senha) {
   });
 }
 
-// Busca usuário
+// Busca usuário ativo
 const [usuarios] = await db.query(
   'SELECT * FROM usuarios WHERE email = ? AND ativo = 1',
   [email]
@@ -35,53 +35,18 @@ if (usuarios.length === 0) {
   });
 }
 
-/*const usuario = usuarios[0];
-
-console.log('=== DEBUG LOGIN ===');
-console.log('Email:', email);
-console.log('Campos:', Object.keys(usuario));
-console.log('senha_hash existe?', !!usuario.senha_hash);
-
-// Garante que existe hash
-const hashSenha = usuario.senha_hash;
-if (!hashSenha) {
-  console.error('⚠️ Usuário sem senha_hash:', email);
-  return res.render('auth/login', { 
-    error: 'Usuário sem senha cadastrada. Contate o administrador.' 
-  });
-}*/
-
 const usuario = usuarios[0];
 
-// Normaliza perfil para minúsculo (admin, user, etc.)
-const perfilNormalizado = (usuario.perfil || '').toLowerCase();
-
-// DEBUG opcional – pode deixar por enquanto
-console.log('=== DEBUG LOGIN ===');
-console.log('Email:', email);
-console.log('Perfil no banco:', usuario.perfil);
-console.log('Perfil na sessão (normalizado):', perfilNormalizado);
-console.log('Campos disponíveis no usuário:', Object.keys(usuario));
-console.log('Resumo senha:', {
-  senha: usuario.senha ? 'EXISTE' : 'undefined/null',
-  senha_hash: usuario.senha_hash ? 'EXISTE' : 'undefined/null',
-  password: usuario.password ? 'EXISTE' : 'undefined/null'
-});
-
-// Descobre qual coluna tem o hash da senha
-const hashSenha = usuario.senha || usuario.senha_hash || usuario.password;
-
-if (!hashSenha) {
-  console.error('⚠️ Usuário sem hash de senha armazenado:', email);
+// Garante que existe senha_hash
+if (!usuario.senha_hash) {
+  console.error('Usuário sem senha_hash:', email);
   return res.render('auth/login', { 
     error: 'Usuário sem senha cadastrada. Contate o administrador.' 
   });
 }
 
-
-// Verifica senha
-const senhaValida = await bcrypt.compare(senha, hashSenha);
-console.log('Senha válida?', senhaValida);
+// Verifica senha (bcryptjs)
+const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
 
 if (!senhaValida) {
   return res.render('auth/login', { 
@@ -89,7 +54,7 @@ if (!senhaValida) {
   });
 }
 
-// Busca condomínios do usuário
+// Busca condomínios do usuário (se usar controle por condomínio)
 const [condominios] = await db.query(`
   SELECT c.id, c.nome 
   FROM condominios c
@@ -98,23 +63,14 @@ const [condominios] = await db.query(`
   ORDER BY c.nome
 `, [usuario.id]);
 
-/*// Salva na sessão
+// Salva usuário na sessão
 req.session.user = {
   id: usuario.id,
   nome: usuario.nome,
   email: usuario.email,
-  perfil: usuario.perfil,
-  condominios: condominios
-};*/
-
-req.session.user = {
-  id: usuario.id,
-  nome: usuario.nome,
-  email: usuario.email,
-  perfil: perfilNormalizado,
-  condominios: condominios
+  perfil: usuario.perfil, // 'admin', 'gestor', 'lancador'
+  condominios
 };
-
 
 res.redirect('/dashboard');
 

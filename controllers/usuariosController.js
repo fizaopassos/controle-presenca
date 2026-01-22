@@ -1,10 +1,5 @@
 const db = require('../config/db'); // mysql2/promise
-
-// Adicionar Usuários
-
-const bcrypt = require('bcrypt');
-
-// ... funções existentes (listar, editarForm, editarSalvar)
+const bcrypt = require('bcryptjs');
 
 // Form de novo usuário
 exports.novoForm = async (req, res) => {
@@ -25,40 +20,19 @@ exports.novoForm = async (req, res) => {
   }
 };
 
-// Excluir usuário
-
-exports.excluir = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Não permite excluir o próprio usuário logado
-    if (parseInt(id) === req.session.user.id) {
-      return res.status(400).json({ erro: 'Você não pode excluir seu próprio usuário' });
-    }
-
-    // Remove vínculos de condomínios
-    await db.query('DELETE FROM usuario_condominios WHERE usuario_id = ?', [id]);
-
-    // Remove usuário
-    await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
-
-    res.json({ sucesso: true });
-  } catch (error) {
-    console.error('Erro ao excluir usuário:', error);
-    res.status(500).json({ erro: 'Erro ao excluir usuário' });
-  }
-};
-
-
 // Salvar novo usuário
 exports.novoSalvar = async (req, res) => {
   try {
-    const { nome, email, senha, perfil, condominios } = req.body;
+    let { nome, email, senha, perfil, condominios } = req.body;
 
     // Validações básicas
     if (!nome || !email || !senha || !perfil) {
       return res.status(400).send('Todos os campos obrigatórios devem ser preenchidos');
     }
+
+    // Normaliza perfil para os valores do ENUM do banco
+    // Na tela vamos mandar: admin, gestor, lancador
+    perfil = perfil.toLowerCase();
 
     // Verifica se e-mail já existe
     const [existente] = await db.query(
@@ -73,25 +47,26 @@ exports.novoSalvar = async (req, res) => {
     // Hash da senha
     const senhaHash = await bcrypt.hash(senha, 10);
 
-    // Insere usuário
+    // Insere usuário (campo correto é senha_hash)
     const [result] = await db.query(
-      'INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)',
+      'INSERT INTO usuarios (nome, email, senha_hash, perfil) VALUES (?, ?, ?, ?)',
       [nome, email, senhaHash, perfil]
     );
 
     const usuarioId = result.insertId;
 
-    // Se não for ADMIN, vincula condomínios
-    if (perfil !== 'ADMIN' && condominios) {
-      const condoArray = Array.isArray(condominios) ? condominios : [condominios];
+    // Se for lançador, vincula condomínios selecionados
+if (perfil === 'lancador' && condominios) {
+  const condoArray = Array.isArray(condominios) ? condominios : [condominios];
 
-      for (const condId of condoArray) {
-        await db.query(
-          'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
-          [usuarioId, condId]
-        );
-      }
-    }
+  for (const condId of condoArray) {
+    await db.query(
+      'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
+      [usuarioId, condId]
+    );
+  }
+}
+
 
     res.redirect('/usuarios');
   } catch (error) {
@@ -99,8 +74,6 @@ exports.novoSalvar = async (req, res) => {
     res.status(500).send('Erro ao criar usuário');
   }
 };
-
-
 
 // Lista usuários
 exports.listar = async (req, res) => {
@@ -122,7 +95,6 @@ exports.listar = async (req, res) => {
     res.status(500).send('Erro ao listar usuários');
   }
 };
-
 
 // Form de edição (perfil + condomínios)
 exports.editarForm = async (req, res) => {
@@ -167,7 +139,10 @@ exports.editarForm = async (req, res) => {
 exports.editarSalvar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, email, perfil, condominios } = req.body;
+    let { nome, email, perfil, condominios } = req.body;
+
+    // Normaliza perfil
+    perfil = perfil.toLowerCase();
 
     // Atualiza dados básicos
     await db.query(
@@ -176,26 +151,24 @@ exports.editarSalvar = async (req, res) => {
     );
 
     // Atualiza permissões de condomínios
-    // 1) Remove todas as permissões atuais
     await db.query(
       'DELETE FROM usuario_condominios WHERE usuario_id = ?',
       [id]
     );
 
-    // 2) Se não for ADMIN, insere as seleções (ADMIN vê tudo, não precisa vincular)
-    if (perfil !== 'ADMIN' && condominios) {
-      // condominios pode ser string (um valor) ou array (vários)
-      const condoArray = Array.isArray(condominios) ? condominios : [condominios];
+    // Se não for admin, insere as seleções
+    // 2) Se for lançador, insere as seleções (admin/gestor veem todos, não precisam vincular)
+if (perfil === 'lancador' && condominios) {
+  const condoArray = Array.isArray(condominios) ? condominios : [condominios];
 
-      for (const condId of condoArray) {
-        await db.query(
-          'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
-          [id, condId]
-        );
-      }
-    }
+  for (const condId of condoArray) {
+    await db.query(
+      'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
+      [id, condId]
+    );
+  }
+}
 
-  // Adicionar Usuários
 
     res.redirect('/usuarios');
   } catch (error) {
@@ -203,3 +176,27 @@ exports.editarSalvar = async (req, res) => {
     res.status(500).send('Erro ao salvar edição de usuário');
   }
 };
+
+// Excluir usuário
+exports.excluir = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Não permite excluir o próprio usuário logado
+    if (parseInt(id, 10) === req.session.user.id) {
+      return res.status(400).json({ erro: 'Você não pode excluir seu próprio usuário' });
+    }
+
+    // Remove vínculos de condomínios
+    await db.query('DELETE FROM usuario_condominios WHERE usuario_id = ?', [id]);
+
+    // Remove usuário
+    await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
+
+    res.json({ sucesso: true });
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error);
+    res.status(500).json({ erro: 'Erro ao excluir usuário' });
+  }
+};
+

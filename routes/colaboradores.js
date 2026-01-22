@@ -1,24 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated } = require('../middlewares/auth');
+
+const { isAuthenticated, allowPerfis /*, checkCondominioAccess */ } = require('../middlewares/auth');
 const colaboradoresController = require('../controllers/colaboradoresController');
 
+// Todas as rotas de colaboradores: usuário logado e perfil admin/gestor/lancador
+router.use(isAuthenticated, allowPerfis(['admin', 'gestor', 'lancador']));
+
 // Listar colaboradores
-router.get('/', isAuthenticated, colaboradoresController.listar);
+router.get('/', colaboradoresController.listar);
 
 // Formulário de novo colaborador
-router.get('/novo', isAuthenticated, colaboradoresController.formNovo);
+router.get('/novo', colaboradoresController.formNovo);
 
 // Salvar novo colaborador
-router.post('/novo', isAuthenticated, colaboradoresController.criar);
+router.post('/novo', colaboradoresController.criar);
 
 // Formulário de edição
-router.get('/editar/:id', isAuthenticated, colaboradoresController.formEditar);
+router.get('/editar/:id', colaboradoresController.formEditar);
 
 // Atualizar colaborador
-router.post('/editar/:id', isAuthenticated, colaboradoresController.atualizar);
+router.post('/editar/:id', colaboradoresController.atualizar);
 
 // Ativar / Inativar (toggle)
-router.post('/toggle-ativo/:id', isAuthenticated, colaboradoresController.toggleAtivo);
+router.post('/toggle-ativo/:id', colaboradoresController.toggleAtivo);
 
 module.exports = router;

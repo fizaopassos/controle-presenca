@@ -24,9 +24,11 @@
           <div class="mb-3">
             <label class="form-label">Perfil</label>
             <select name="perfil" id="perfil" class="form-select" required>
-              <option value="ADMIN" <%= usuario.perfil === 'ADMIN' ? 'selected' : '' %>>ADMIN</option>
-              <option value="GESTOR" <%= usuario.perfil === 'GESTOR' ? 'selected' : '' %>>GESTOR</option>
-              <option value="OPERADOR" <%= usuario.perfil === 'OPERADOR' ? 'selected' : '' %>>OPERADOR</option>
+                    <option value="admin"    <%= usuario.perfil === 'admin'    ? 'selected' : '' %>>ADMIN</option>
+                    <option value="gestor"   <%= usuario.perfil === 'gestor'   ? 'selected' : '' %>>GESTOR</option>
+                    <option value="lancador" <%= usuario.perfil === 'lancador' ? 'selected' : '' %>>OPERADOR</option>
+</select>
+
               <!-- Adicione outros perfis aqui se quiser -->
             </select>
             <div class="form-text">
@@ -79,18 +81,20 @@
   const cardCondominios = document.getElementById('cardCondominios');
 
   function atualizarVisibilidadeCondominios() {
-    if (selectPerfil.value === 'ADMIN') {
-      cardCondominios.classList.add('opacity-50');
-      Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
-        chk.disabled = true;
-      });
-    } else {
-      cardCondominios.classList.remove('opacity-50');
-      Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
-        chk.disabled = false;
-      });
-    }
-  }
+// admin e gestor: ignoram lista de condomínios
+if (selectPerfil.value === 'admin' || selectPerfil.value === 'gestor') {
+cardCondominios.classList.add('opacity-50');
+Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
+chk.disabled = true;
+});
+} else {
+// lancador
+cardCondominios.classList.remove('opacity-50');
+Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
+chk.disabled = false;
+});
+}
+}
 
   selectPerfil.addEventListener('change', atualizarVisibilidadeCondominios);
   atualizarVisibilidadeCondominios();

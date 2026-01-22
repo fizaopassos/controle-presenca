@@ -1,29 +1,44 @@
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated, isAdmin, checkCondominioAccess } = require('../middlewares/auth');
+
+const {
+isAuthenticated,
+isAdmin,
+allowPerfis,
+checkCondominioAccess
+} = require('../middlewares/auth');
+
 const condominiosController = require('../controllers/condominiosController');
 
-// Listar condomínios (todos podem ver os seus)
-router.get('/', isAuthenticated, condominiosController.listar);
+// Todas as rotas exigem estar logado
+router.use(isAuthenticated);
 
-// Formulário de novo condomínio
-router.get('/novo', isAuthenticated, isAdmin, condominiosController.formNovo);
+// Listar condomínios
+// admin/gestor: veem todos
+// lancador: depois a gente pode filtrar no controller se quiser, mas já está logado
+router.get('/', allowPerfis(['admin', 'gestor', 'lancador']), condominiosController.listar);
 
-// Criar condomínio (apenas admin)
-router.post('/', isAuthenticated, isAdmin, condominiosController.criar);
+// Formulário de novo condomínio (admin e gestor podem)
+router.get('/novo', allowPerfis(['admin', 'gestor']), condominiosController.formNovo);
 
-// Formulário de edição
-router.get('/:id/editar', isAuthenticated, isAdmin, condominiosController.formEditar);
+// Criar condomínio (admin e gestor)
+router.post('/', allowPerfis(['admin', 'gestor']), condominiosController.criar);
 
-// Atualizar condomínio (apenas admin)
-router.post('/:id', isAuthenticated, isAdmin, condominiosController.atualizar);
-// Toggle ativo/inativo
-router.patch('/:id/toggle', isAuthenticated, isAdmin, condominiosController.toggleAtivo);
+// Formulário de edição (admin e gestor)
+router.get('/:id/editar', allowPerfis(['admin', 'gestor']), condominiosController.formEditar);
 
-// Deletar condomínio (apenas admin)
-router.delete('/:id', isAuthenticated, isAdmin, condominiosController.deletar);
+// Atualizar condomínio (admin e gestor)
+router.post('/:id', allowPerfis(['admin', 'gestor']), condominiosController.atualizar);
 
-// Ver detalhes de um condomínio (precisa ter acesso)
-router.get('/:id', isAuthenticated, checkCondominioAccess, condominiosController.detalhes);
+// Toggle ativo/inativo (admin e gestor)
+router.patch('/:id/toggle', allowPerfis(['admin', 'gestor']), condominiosController.toggleAtivo);
+
+// Deletar condomínio (se quiser só admin, troca o allowPerfis por isAdmin)
+router.delete('/:id', isAdmin, condominiosController.deletar);
+
+// Ver detalhes de um condomínio
+// admin/gestor: acesso total
+// lancador: passa pelo checkCondominioAccess para conferir se tem acesso àquele condomínio
+router.get('/:id', allowPerfis(['admin', 'gestor', 'lancador']), checkCondominioAccess, condominiosController.detalhes);
 
 module.exports = router;

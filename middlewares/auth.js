@@ -1,103 +1,98 @@
 // middlewares/auth.js
 
-/*// Verifica se o usuário está autenticado
-const isAuthenticated = (req, res, next) => {
-  if (req.session && req.session.user) {
-    return next();
-  }
-  res.redirect('/login');
-};
-
-// Verifica se o usuário é admin
-const isAdmin = (req, res, next) => {
-  if (req.session && req.session.user && req.session.user.perfil === 'admin') {
-    return next();
-  }
-  res.status(403).send('Acesso negado. Apenas administradores.');
-};
-
-// Verifica se o usuário tem acesso ao condomínio
-const checkCondominioAccess = async (req, res, next) => {
-  const user = req.session.user;
-  const condominioId = req.params.id || req.body.condominio_id || req.query.condominio_id;
-
-  // Admin tem acesso a tudo
-  if (user.perfil === 'admin') {
-    return next();
-  }
-
-  // Verifica se o usuário tem acesso ao condomínio
-  const db = require('../config/db');
-  const [acesso] = await db.query(
-    'SELECT 1 FROM usuario_condominios WHERE usuario_id = ? AND condominio_id = ?',
-    [user.id, condominioId]
-  );
-
-  if (acesso.length > 0) {
-    return next();
-  }
-
-  res.status(403).send('Você não tem acesso a este condomínio.');
-};
-
-module.exports = {
-  isAuthenticated,
-  isAdmin,
-  checkCondominioAccess
-};*/
-
-// Middleware para verificar se usuário está autenticado
+// Usuário autenticado
 function isAuthenticated(req, res, next) {
   if (req.session && req.session.user) {
     return next();
   }
-  res.redirect('/login');
+  return res.redirect('/login');
 }
 
-// Middleware para verificar se é admin
+// Apenas admin
 function isAdmin(req, res, next) {
   if (req.session && req.session.user && req.session.user.perfil === 'admin') {
     return next();
   }
-  res.status(403).render('error', { 
-    message: 'Acesso negado. Apenas administradores podem acessar.' 
-  });
+  return res.status(403).send('Acesso negado. Apenas administradores podem acessar.');
 }
 
-// Middleware para verificar acesso ao condomínio
-async function checkCondominioAccess(req, res, next) {
-  try {
-    const condominioId = req.params.condominio_id || req.params.id;
-    const usuario = req.session.user;
+// Permitir apenas certos perfis
+function allowPerfis(perfisPermitidos) {
+  return function (req, res, next) {
+    const usuario = req.session && req.session.user;
 
-    // Admin tem acesso a tudo
-    if (usuario.perfil === 'admin') {
+    if (!usuario) {
+      return res.redirect('/login');
+    }
+
+    if (perfisPermitidos.includes(usuario.perfil)) {
       return next();
     }
 
-    // Verifica se o usuário tem acesso ao condomínio
-    const temAcesso = usuario.condominios.some(
-      c => c.id === parseInt(condominioId)
-    );
+    return res.status(403).send('Acesso negado para seu perfil.');
+  };
+}
+
+// Verificar acesso ao condomínio
+async function checkCondominioAccess(req, res, next) {
+  try {
+    const usuario = req.session && req.session.user;
+
+    if (!usuario) {
+      return res.redirect('/login');
+    }
+
+    // Garante que nunca vamos ler de undefined
+    const params = req.params || {};
+    const body   = req.body   || {};
+    const query  = req.query  || {};
+
+    const condominioId =
+      params.condominio_id ||
+      params.id ||
+      body.condominio_id ||
+      query.condominio_id;
+
+    // Se não tiver condominio_id na rota, não bloqueia
+    // (por exemplo, primeira abertura de /presenca/lancar)
+    if (!condominioId) {
+      return next();
+    }
+
+    // Admin e gestor têm acesso a todos os condomínios
+    if (usuario.perfil === 'admin' || usuario.perfil === 'gestor') {
+      return next();
+    }
+
+    // Lançador: confere se condomínio está na lista da sessão
+    const lista = Array.isArray(usuario.condominios) ? usuario.condominios : [];
+    const idNum = parseInt(condominioId, 10);
+
+    if (!Number.isFinite(idNum)) {
+      return res.status(400).send('condominio_id inválido.');
+    }
+
+    const temAcesso = lista.some(c => Number(c.id) === idNum);
 
     if (temAcesso) {
       return next();
     }
 
-    res.status(403).render('error', { 
-      message: 'Você não tem acesso a este condomínio.' 
-    });
-
+    return res.status(403).send('Você não tem acesso a este condomínio.');
   } catch (error) {
     console.error('Erro ao verificar acesso ao condomínio:', error);
-    res.status(500).render('error', { 
-      message: 'Erro ao verificar permissões.' 
-    });
+
+    const msg = (process.env.NODE_ENV !== 'production')
+      ? 'Erro ao verificar permissões: ' + (error && error.message ? error.message : String(error))
+      : 'Erro ao verificar permissões.';
+
+    return res.status(500).send(msg);
   }
 }
 
 module.exports = {
   isAuthenticated,
   isAdmin,
-  checkCondominioAccess
+  checkCondominioAccess,
+  allowPerfis
 };

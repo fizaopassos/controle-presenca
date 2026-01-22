@@ -1,66 +1,79 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="/dashboard">
-      <i class="bi bi-clipboard-check"></i> Controle de Presença
-    </a>
+<div class="container-fluid">
+<a class="navbar-brand" href="/dashboard">
+<i class="bi bi-clipboard-check"></i> Controle de Presença
+</a>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+  <span class="navbar-toggler-icon"></span>
+</button>
 
-    <div class="collapse navbar-collapse" id="mainNavbar">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+<div class="collapse navbar-collapse" id="mainNavbar">
+  <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-        <li class="nav-item">
-          <a class="nav-link <%= menuAtivo === 'dashboard' ? 'active' : '' %>" href="/dashboard">
-            <i class="bi bi-speedometer2"></i> Dashboard
-          </a>
-        </li>
+    <li class="nav-item">
+      <a class="nav-link <%= menuAtivo === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+    </li>
 
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle <%= menuAtivo === 'cadastros' ? 'active' : '' %>" href="#" id="cadastrosDropdown" role="button" data-bs-toggle="dropdown">
-            <i class="bi bi-folder2"></i> Cadastros
-          </a>
-          <ul class="dropdown-menu">
+    <% if (usuario) { %>
+      <% const perfil = usuario.perfil; %>
+
+      <!-- CADASTROS -->
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle <%= menuAtivo === 'cadastros' ? 'active' : '' %>" href="#" id="cadastrosDropdown" role="button" data-bs-toggle="dropdown">
+          <i class="bi bi-folder2"></i> Cadastros
+        </a>
+        <ul class="dropdown-menu">
+          <% if (perfil === 'admin' || perfil === 'gestor') { %>
             <li><a class="dropdown-item" href="/condominios">Condomínios</a></li>
             <li><a class="dropdown-item" href="/empresas">Empresas</a></li>
             <li><a class="dropdown-item" href="/postos">Postos</a></li>
-            <li><a class="dropdown-item" href="/colaboradores">Colaboradores</a></li>
-          </ul>
-        </li>
+          <% } %>
+          <!-- Colaboradores: todos os perfis (admin, gestor, lancador) -->
+          <li><a class="dropdown-item" href="/colaboradores">Colaboradores</a></li>
+        </ul>
+      </li>
 
+      <!-- PRESENÇAS: todos os perfis -->
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle <%= menuAtivo === 'presenca' ? 'active' : '' %>" href="#" id="presencaDropdown" role="button" data-bs-toggle="dropdown">
+          <i class="bi bi-calendar-check"></i> Presenças
+        </a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="/presenca/lancar">Lançar Presença</a></li>
+          <li><a class="dropdown-item" href="/presenca/consultar">Consultar Presenças</a></li>
+        </ul>
+      </li>
+
+      <!-- ADMINISTRAÇÃO: só admin -->
+      <% if (perfil === 'admin') { %>
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle <%= menuAtivo === 'presenca' ? 'active' : '' %>" href="#" id="presencaDropdown" role="button" data-bs-toggle="dropdown">
-            <i class="bi bi-calendar-check"></i> Presenças
+          <a class="nav-link dropdown-toggle <%= menuAtivo === 'admin' ? 'active' : '' %>" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="bi bi-shield-lock"></i> Administração
           </a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="/presenca/lancar">Lançar Presença</a></li>
-            <li><a class="dropdown-item" href="/presenca/consultar">Consultar Presenças</a></li>
+            <li><a class="dropdown-item" href="/usuarios">Usuários</a></li>
+            <!-- Se não usar /perfis, pode remover esta linha -->
+            <!-- <li><a class="dropdown-item" href="/perfis">Perfis</a></li> -->
           </ul>
         </li>
+      <% } %>
+    <% } %>
 
-        <% if (usuario && usuario.perfil === 'ADMIN') { %>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle <%= menuAtivo === 'admin' ? 'active' : '' %>" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
-              <i class="bi bi-shield-lock"></i> Administração
-            </a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="/user">Usuários</a></li>
-              <li><a class="dropdown-item" href="/perfis">Perfis</a></li>
-            </ul>
-          </li>
-        <% } %>
+  </ul>
 
-      </ul>
-
-      <div class="d-flex">
-        <% if (usuario) { %>
-          <span class="navbar-text text-white me-3">
-            Olá, <%= usuario.nome %> (<%= usuario.perfil %>)
-          </span>
-          <a href="/auth/logout" class="btn btn-outline-light btn-sm">Sair</a>
-        <% } %>
-      </div>
-    </div>
+  <div class="d-flex">
+    <% if (usuario) { %>
+      <span class="navbar-text text-white me-3">
+        Olá, <%= usuario.nome %> (<%= usuario.perfil %>)
+      </span>
+      <!-- Seu logout hoje está em /logout (rotas de auth montadas em '/') -->
+      <a href="/logout" class="btn btn-outline-light btn-sm">Sair</a>
+    <% } %>
   </div>
+</div>
+
+</div>
 </nav>
