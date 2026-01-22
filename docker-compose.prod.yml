@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Serviço do banco de dados MySQL
+  db:
+    image: mysql:8.0
+    container_name: controle-presenca-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: controle_presenca
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - controle-presenca-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+      interval: 10s
+
+  # Serviço da aplicação Node.js
+  app:
+    build: .
+    container_name: controle-presenca-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SESSION_SECRET: ${SESSION_SECRET}
+      DB_HOST: db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: controle_presenca
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 24h
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - controle-presenca-network
+
+  # Serviço do phpMyAdmin (opcional em produção)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: controle-presenca-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      UPLOAD_LIMIT: 100M
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - controle-presenca-network
+
+  # Nginx como proxy reverso
+  nginx:
+    image: nginx:alpine
+    container_name: controle-presenca-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - controle-presenca-network
+
+volumes:
+  mysql_data:
+
+networks:
+  controle-presenca-network:
+    driver: bridge
