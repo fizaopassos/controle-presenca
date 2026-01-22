@@ -2,9 +2,13 @@
 
 // Usuário autenticado
 function isAuthenticated(req, res, next) {
+  console.log('Middleware isAuthenticated - Sessão:', req.session);
+  console.log('Usuário na sessão:', req.session?.user);
+
   if (req.session && req.session.user) {
     return next();
   }
+  console.log('Não autenticado - redirecionando para login');
   return res.redirect('/login');
 }
 
@@ -44,8 +48,8 @@ async function checkCondominioAccess(req, res, next) {
 
     // Garante que nunca vamos ler de undefined
     const params = req.params || {};
-    const body   = req.body   || {};
-    const query  = req.query  || {};
+    const body = req.body || {};
+    const query = req.query || {};
 
     const condominioId =
       params.condominio_id ||
