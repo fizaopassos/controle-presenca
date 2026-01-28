@@ -9,29 +9,40 @@
       <span class="badge bg-secondary">Inativo</span>
     <% } %>
   </td>
-  <td>
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-primary me-2"
-      hx-get="/postos/editar/<%= p.id %>?partial=1"
-      hx-target="#postoModalBody"
-      hx-swap="innerHTML"
-    >
-      Editar
-    </button>
+  <td class="text-end">
+<button
+type="button"
+class="btn btn-sm btn-outline-primary me-2"
+hx-get="/postos/editar/<%= p.id %>?partial=1"
+hx-target="#postoModalBody"
+hx-swap="innerHTML"
 
-    <form action="/postos/toggle-ativo/<%= p.id %>" method="POST" class="d-inline">
-      <% if (p.ativo) { %>
-        <button type="submit" class="btn btn-sm btn-outline-danger"
-          onclick="return confirm('Tem certeza que deseja inativar este posto?');">
-          Inativar
-        </button>
-      <% } else { %>
-        <button type="submit" class="btn btn-sm btn-outline-success"
-          onclick="return confirm('Tem certeza que deseja ativar este posto?');">
-          Ativar
-        </button>
-      <% } %>
-    </form>
-  </td>
+Editar
+
+</button>
+
+<% if (p.ativo) { %>
+<button
+type="button"
+class="btn btn-sm btn-outline-danger"
+hx-post="/postos/toggle-ativo/<%= p.id %>"
+hx-target="#posto-<%= p.id %>"
+hx-swap="outerHTML"
+hx-confirm="Tem certeza que deseja inativar este posto?"
+>
+Inativar
+</button>
+<% } else { %>
+<button
+type="button"
+class="btn btn-sm btn-outline-success"
+hx-post="/postos/toggle-ativo/<%= p.id %>"
+hx-target="#posto-<%= p.id %>"
+hx-swap="outerHTML"
+hx-confirm="Tem certeza que deseja ativar este posto?"
+>
+Ativar
+</button>
+<% } %>
+</td>
 </tr>

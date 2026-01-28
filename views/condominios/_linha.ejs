@@ -13,29 +13,40 @@
       <span class="badge bg-secondary">Inativo</span>
     <% } %>
   </td>
-  <td>
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-primary me-2"
-      hx-get="/condominios/<%= c.id %>/editar?partial=1"
-      hx-target="#condominioModalBody"
-      hx-swap="innerHTML"
-    >
-      Editar
-    </button>
+  <td class="text-end">
+<button
+type="button"
+class="btn btn-sm btn-outline-primary me-2"
+hx-get="/condominios/<%= c.id %>/editar?partial=1"
+hx-target="#condominioModalBody"
+hx-swap="innerHTML"
 
-    <form action="/condominios/toggle-ativo/<%= c.id %>" method="POST" class="d-inline">
-      <% if (c.ativo) { %>
-        <button type="submit" class="btn btn-sm btn-outline-danger"
-          onclick="return confirm('Tem certeza que deseja inativar este condomínio?');">
-          Inativar
-        </button>
-      <% } else { %>
-        <button type="submit" class="btn btn-sm btn-outline-success"
-          onclick="return confirm('Tem certeza que deseja ativar este condomínio?');">
-          Ativar
-        </button>
-      <% } %>
-    </form>
-  </td>
+Editar
+
+</button>
+
+<% if (c.ativo) { %>
+<button
+type="button"
+class="btn btn-sm btn-outline-danger"
+hx-patch="/condominios/<%= c.id %>/toggle"
+hx-target="#condominio-<%= c.id %>"
+hx-swap="outerHTML"
+hx-confirm="Tem certeza que deseja inativar este condomínio?"
+>
+Inativar
+</button>
+<% } else { %>
+<button
+type="button"
+class="btn btn-sm btn-outline-success"
+hx-patch="/condominios/<%= c.id %>/toggle"
+hx-target="#condominio-<%= c.id %>"
+hx-swap="outerHTML"
+hx-confirm="Tem certeza que deseja ativar este condomínio?"
+>
+Ativar
+</button>
+<% } %>
+</td>
 </tr>

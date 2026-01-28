@@ -48,6 +48,7 @@ app.use((req, res, next) => {
   next();
 });
 
+
 // ========================
 // Rotas
 // ========================
@@ -66,7 +67,7 @@ console.log('authRoutes keys:', authRoutes && Object.keys(authRoutes));
 console.log('authRoutes value:', authRoutes);
 
 // Montagem das rotas
-app.use('/', authRoutes); // /login, /logout, etc.
+app.use('/auth', authRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/condominios', condominiosRoutes);
 app.use('/empresas', empresasRoutes);
@@ -74,6 +75,9 @@ app.use('/postos', postosRoutes);
 app.use('/colaboradores', colaboradoresRoutes);
 app.use('/presenca', presencaRoutes);
 app.use('/usuarios', usuariosRoutes);
+
+app.get('/login', (req, res) => res.redirect('/auth/login'));
+app.post('/login', (req, res) => res.redirect(307, '/auth/login'));
 
 // ========================
 // Iniciar servidor

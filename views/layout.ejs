@@ -1,36 +1,129 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title || 'Controle de Presença' %></title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= title || 'Controle de Presença' %></title>
 
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 
-  <!-- Bootstrap CSS -->
-  <link 
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
-    rel="stylesheet"
-  >
-  <!-- Ícones Bootstrap -->
-  <link 
-    rel="stylesheet" 
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
-  >
-  <!-- Seu CSS -->
-  <link rel="stylesheet" href="/css/style.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/theme.css">
 </head>
 <body>
 
-  <!-- Navbar global -->
-  <%- include('partials/navbar', { menuAtivo: menuAtivo || '' }) %>
+<% const _showNavbar = (typeof showNavbar === 'undefined') ? true : showNavbar; %>
+<% const _mainClass  = (typeof mainClass  === 'undefined') ? 'container-fluid mt-4' : mainClass; %>
 
-  <!-- Conteúdo principal -->
-  <main class="container-fluid mt-4">
-    <%- include(page) %>
-  </main>
+<% if (_showNavbar) { %>
+<%- include('partials/navbar', { menuAtivo: menuAtivo || '' }) %>
+<% } %>
 
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<main class="<%= _mainClass %>">
+<%- include(page) %>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title" id="confirmSubmitTitle">Confirmar</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body" id="confirmSubmitBody">Confirma salvar?</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button type="button" class="btn btn-primary" id="confirmSubmitOk">Confirmar</button>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+(function () {
+const modalEl = document.getElementById('confirmSubmitModal');
+const okBtn   = document.getElementById('confirmSubmitOk');
+const titleEl = document.getElementById('confirmSubmitTitle');
+const bodyEl  = document.getElementById('confirmSubmitBody');
+if (!modalEl || !okBtn || !titleEl || !bodyEl) return;
+
+let pending = null;
+
+function openConfirmModal({ title, body, okText }) {
+  titleEl.textContent = title || 'Confirmar';
+  bodyEl.textContent = body || 'Confirma salvar?';
+  okBtn.textContent = okText || 'Confirmar';
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: false });
+  modal.show();
+}
+
+document.body.addEventListener('htmx:confirm', function (e) {
+  const elt = e.detail && e.detail.elt ? e.detail.elt : null;
+  if (!elt) return;
+
+  const form = elt.closest && elt.closest('form') ? elt.closest('form') : null;
+  const target = form || elt;
+  if (!target || target.dataset.confirm !== '1') return;
+
+  e.preventDefault();
+  pending = { type: 'htmx', issueRequest: e.detail.issueRequest };
+
+  openConfirmModal({
+    title: target.dataset.confirmTitle || 'Confirmar',
+    body: target.dataset.confirmBody || 'Confirma salvar?',
+    okText: target.dataset.confirmOk || 'Confirmar'
+  });
+});
+
+document.addEventListener('submit', function (e) {
+  const form = e.target;
+  if (!form || form.nodeName !== 'FORM') return;
+  if (form.dataset.confirm !== '1') return;
+
+  if (form.hasAttribute('hx-post') || form.hasAttribute('hx-put') || form.hasAttribute('hx-patch') || form.hasAttribute('hx-delete')) return;
+
+  if (form.dataset.confirmed === '1') {
+    form.dataset.confirmed = '0';
+    return;
+  }
+
+  e.preventDefault();
+  pending = { type: 'form', form };
+
+  openConfirmModal({
+    title: form.dataset.confirmTitle || 'Confirmar',
+    body: form.dataset.confirmBody || 'Confirma salvar?',
+    okText: form.dataset.confirmOk || 'Confirmar'
+  });
+}, true);
+
+okBtn.addEventListener('click', function () {
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  if (modal) modal.hide();
+
+  if (!pending) return;
+  const current = pending;
+  pending = null;
+
+  if (current.type === 'htmx') return current.issueRequest();
+  if (current.type === 'form') {
+    current.form.dataset.confirmed = '1';
+    return current.form.submit();
+  }
+});
+
+modalEl.addEventListener('hidden.bs.modal', function () {
+  pending = null;
+});
+
+})();
+</script>
+
 </body>
 </html>

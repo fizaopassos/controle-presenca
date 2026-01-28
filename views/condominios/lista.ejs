@@ -1,115 +1,89 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Condomínios - Controle de Presença</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+<div>
+<h4 class="page-title mb-1">
+<i class="bi bi-buildings text-primary me-2"></i>
+Condomínios
+</h4>
+<p class="text-muted mb-0">
+Gerencie condomínios e seus dados principais.
+</p>
+</div>
 
-  <link 
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
-    rel="stylesheet"
-  >
-  <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
+<button
+type="button"
+class="btn btn-primary"
+hx-get="/condominios/novo?partial=1"
+hx-target="#condominioModalBody"
+hx-swap="innerHTML"
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="/dashboard">Controle de Presença</a>
-      <div class="d-flex">
-        <span class="navbar-text text-white me-3">
-          Olá, <%= usuario.nome %> (<%= usuario.perfil %>)
-        </span>
-        <a href="/auth/logout" class="btn btn-outline-light btn-sm">Sair</a>
-      </div>
-    </div>
-  </nav>
+<i class="bi bi-plus-circle me-1"></i>
+Novo condomínio
 
-  <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1 class="h4 mb-0">Condomínios</h1>
+</button>
+</div>
 
-      <!-- Botão Novo Condomínio via HTMX + Modal -->
-      <button
-        type="button"
-        class="btn btn-primary"
-        hx-get="/condominios/novo?partial=1"
-        hx-target="#condominioModalBody"
-        hx-swap="innerHTML"
-      >
-        + Novo Condomínio
-      </button>
-    </div>
-
-    <table class="table table-striped table-hover">
+<div class="card">
+<div class="card-body">
+<% if (!condominios || condominios.length === 0) { %>
+<p class="text-muted mb-0">Nenhum condomínio cadastrado ainda.</p>
+<% } else { %>
+<div class="table-responsive">
+<table class="table align-middle">
 <thead>
 <tr>
 <th>ID</th>
 <th>Nome</th>
 <th>Código Interno</th>
 <th>Cidade/UF</th>
-<th>Ativo</th>
-<th style="width: 200px;">Ações</th>
+<th>Status</th>
+<th class="text-end" style="width: 240px;">Ações</th>
 </tr>
 </thead>
-
 <tbody id="tabelaCondominios">
-<% if (condominios.length === 0) { %>
-<tr id="linhaVaziaCondominios">
-<td colspan="6" class="text-center text-muted py-4">
-Nenhum condomínio cadastrado ainda.
-</td>
-</tr>
-<% } else { %>
 <% condominios.forEach(c => { %>
 <%- include('_linha', { c: c }) %>
 <% }) %>
-<% } %>
 </tbody>
 </table>
-  </div>
+</div>
+<% } %>
+</div>
+</div>
 
-  <!-- HTMX -->
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <!-- Bootstrap Bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 
-  <!-- Scripts para abrir/fechar modal com HTMX -->
-  <script>
-    // Abrir modal quando o conteúdo do formulário for carregado via HTMX
-    document.body.addEventListener('htmx:afterSwap', function (evt) {
-      if (evt.target && evt.target.id === 'condominioModalBody') {
-        const modalEl = document.getElementById('condominioModal');
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
-      }
-    });
+<script>
+// Abrir modal quando carregar o formulário
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+if (evt.target && evt.target.id === 'condominioModalBody') {
+const modalEl = document.getElementById('condominioModal');
+const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+modal.show();
+}
+});
 
-    // Fechar modal após salvar com sucesso (novo ou editar)
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-      if (evt.detail.elt && evt.detail.elt.id === 'formCondominioHtmx' && evt.detail.successful) {
-        const modalEl = document.getElementById('condominioModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) {
-          modal.hide();
-        }
-      }
-    });
-  </script>
+// Fechar modal após salvar (form HTMX)
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
+if (!el || !evt.detail.successful) return;
 
-  <!-- Modal para criar/editar Condomínio via HTMX -->
-  <div class="modal fade" id="condominioModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Condomínio</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body" id="condominioModalBody"></div>
-      </div>
-    </div>
-  </div>
+if (el.id === 'formCondominioHtmx') {
+  const modalEl = document.getElementById('condominioModal');
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  if (modal) modal.hide();
+}
 
-</body>
-</html>
+});
+</script>
+
+<div class="modal fade" id="condominioModal" tabindex="-1">
+<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Condomínio</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body" id="condominioModalBody"></div>
+</div>
+</div>
+</div>

@@ -1,15 +1,19 @@
 // middlewares/auth.js
 
+function redirectToLogin(req, res) {
+const loginUrl = '/auth/login';
+
+if (req.get('HX-Request') === 'true') {
+res.set('HX-Redirect', loginUrl);
+return res.status(200).send(''); // mais confiável que 204 no seu caso
+}
+
+return res.redirect(loginUrl);
+}
 // Usuário autenticado
 function isAuthenticated(req, res, next) {
-  console.log('Middleware isAuthenticated - Sessão:', req.session);
-  console.log('Usuário na sessão:', req.session?.user);
-
-  if (req.session && req.session.user) {
-    return next();
-  }
-  console.log('Não autenticado - redirecionando para login');
-  return res.redirect('/login');
+if (req.session && req.session.user) return next();
+return redirectToLogin(req, res);
 }
 
 // Apenas admin
@@ -25,10 +29,9 @@ function allowPerfis(perfisPermitidos) {
   return function (req, res, next) {
     const usuario = req.session && req.session.user;
 
-    if (!usuario) {
-      return res.redirect('/login');
-    }
-
+   if (!usuario) {
+return redirectToLogin(req, res);
+}
     if (perfisPermitidos.includes(usuario.perfil)) {
       return next();
     }
@@ -42,9 +45,9 @@ async function checkCondominioAccess(req, res, next) {
   try {
     const usuario = req.session && req.session.user;
 
-    if (!usuario) {
-      return res.redirect('/login');
-    }
+   if (!usuario) {
+return redirectToLogin(req, res);
+}
 
     // Garante que nunca vamos ler de undefined
     const params = req.params || {};

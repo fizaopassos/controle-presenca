@@ -1,0 +1,173 @@
+:root{
+--brand-900:#254086;
+--brand-800:#2A3760;
+--brand-600:#4376B1;
+--brand-400:#718EC4;
+
+--app-bg:#F5F7FB;
+--card-bg:#FFFFFF;
+--text-strong:#2A3760;
+--text-normal:#24324A;
+--border-soft:#E3E9F3;
+}
+
+/* Fundo geral e texto padrão */
+body{
+background: linear-gradient(180deg, #F7F9FF 0%, #EEF3FF 100%);
+color: var(--text-normal);
+font-family: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* NAVBAR */
+.navbar.bg-dark {
+  background-color: var(--brand-800) !important;
+}
+
+.navbar .navbar-brand {
+  font-weight: 600;
+}
+
+.navbar .nav-link,
+.navbar .navbar-brand {
+  color: #fff !important;
+}
+
+.navbar .nav-link:hover {
+  opacity: 0.9;
+}
+
+/* Navbar – realce do menu ativo / hover mais elegante */
+.navbar .nav-link.active {
+background-color: rgba(255, 255, 255, 0.14);
+border-radius: 999px;
+}
+
+.navbar .nav-link i {
+font-size: 0.95rem;
+}
+
+/* Título da marca um pouco maior */
+.navbar .navbar-brand {
+font-size: 1.1rem;
+letter-spacing: 0.01em;
+}
+
+/* BOTÕES */
+.btn-primary {
+  background-color: var(--brand-600) !important;
+  border-color: var(--brand-600) !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--brand-800) !important;
+  border-color: var(--brand-800) !important;
+}
+
+.btn-outline-primary {
+  color: var(--brand-800) !important;
+  border-color: var(--brand-400) !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--brand-800) !important;
+  border-color: var(--brand-800) !important;
+  color: #fff !important;
+}
+
+/* CARDS */
+.card {
+  border-color: var(--border-soft);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.card-header {
+  background: #fff;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+/* TÍTULOS DE PÁGINA */
+.page-title {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+/* TABELAS */
+.table thead th {
+background: #F2F4FF;
+color: var(--text-strong);
+border-bottom-color: var(--border-soft);
+}
+
+.table tbody tr:hover {
+background: #F1F5FF;
+}
+
+.table td,
+.table th {
+padding-top: 0.75rem;
+padding-bottom: 0.75rem;
+}
+
+/* FORMULÁRIOS */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--brand-400);
+  box-shadow: 0 0 0 0.2rem rgba(67, 118, 177, 0.20);
+}
+
+/* BADGES */
+.badge.bg-primary {
+  background-color: var(--brand-600) !important;
+}
+
+/* Links em geral */
+a {
+  color: var(--brand-600);
+}
+
+a:hover {
+  color: var(--brand-800);
+}
+
+/* Pequeno ajuste no main */
+main.container-fluid {
+  padding-top: 16px;
+  padding-bottom: 24px;
+}
+
+/* Modal com cara de card grande */
+.modal-content {
+border-radius: 18px;
+border-color: var(--border-soft);
+box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+}
+
+.modal-header {
+background: var(--card-bg);
+border-bottom-color: var(--border-soft);
+color: var(--text-strong);
+}
+
+.modal-title {
+font-weight: 600;
+}
+
+/* Fundo do modal um pouco mais escuro */
+.modal-backdrop.show {
+opacity: 0.4;
+}
+
+.btn {
+border-radius: 999px;
+}
+
+/* Badges neutras combinando com a paleta */
+.badge.bg-secondary {
+background-color: #D2D7EB !important;
+color: var(--text-strong) !important;
+}
+
+

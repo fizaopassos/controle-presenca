@@ -25,10 +25,12 @@ exports.listar = async (req, res) => {
 
     const [condominios] = await db.query(sql, params);
 
-    res.render('condominios/lista', {
-      usuario: req.session.user,
-      condominios
-    });
+    return res.render('layout', {
+title: 'Condomínios',
+page: 'condominios/lista',
+menuAtivo: 'cadastros',
+condominios
+});
   } catch (error) {
     console.error('Erro ao listar condomínios:', error);
     res.status(500).send('Erro ao listar condomínios');
@@ -37,23 +39,30 @@ exports.listar = async (req, res) => {
 
 // Mostrar formulário de novo condomínio
 exports.formNovo = async (req, res) => {
-  try {
-    if (req.query.partial === '1' || isHTMX(req)) {
-      return res.render('condominios/_form', {
-        condominio: null,
-        acao: 'novo'
-      });
-    }
+try {
+const isPartial = req.query.partial === '1' || isHTMX(req);
 
-    res.render('condominios/form', {
-      usuario: req.session.user,
-      condominio: null,
-      acao: 'novo'
-    });
-  } catch (error) {
-    console.error('Erro ao carregar formulário:', error);
-    res.status(500).send('Erro ao carregar formulário');
-  }
+const viewData = {
+  condominio: null,
+  acao: 'novo',
+  isModal: isPartial
+};
+
+if (isPartial) {
+  return res.render('condominios/_form', viewData);
+}
+
+return res.render('layout', {
+  title: 'Novo Condomínio',
+  page: 'condominios/form',
+  menuAtivo: 'cadastros',
+  ...viewData
+});
+
+} catch (error) {
+console.error('Erro ao carregar formulário:', error);
+return res.status(500).send('Erro ao carregar formulário');
+}
 };
 
 // Criar novo condomínio
@@ -85,31 +94,35 @@ exports.criar = async (req, res) => {
 
 // Mostrar formulário de edição
 exports.formEditar = async (req, res) => {
-  const { id } = req.params;
+const { id } = req.params;
 
-  try {
-    const [rows] = await db.query('SELECT * FROM condominios WHERE id = ?', [id]);
+try {
+const [rows] = await db.query('SELECT * FROM condominios WHERE id = ?', [id]);
+if (rows.length === 0) return res.status(404).send('Condomínio não encontrado');
 
-    if (rows.length === 0) {
-      return res.status(404).send('Condomínio não encontrado');
-    }
+const isPartial = req.query.partial === '1' || isHTMX(req);
 
-    if (req.query.partial === '1' || isHTMX(req)) {
-      return res.render('condominios/_form', {
-        condominio: rows[0],
-        acao: 'editar'
-      });
-    }
+const viewData = {
+  condominio: rows[0],
+  acao: 'editar',
+  isModal: isPartial
+};
 
-    res.render('condominios/form', {
-      usuario: req.session.user,
-      condominio: rows[0],
-      acao: 'editar'
-    });
-  } catch (error) {
-    console.error('Erro ao carregar condomínio:', error);
-    res.status(500).send('Erro ao carregar condomínio');
-  }
+if (isPartial) {
+  return res.render('condominios/_form', viewData);
+}
+
+return res.render('layout', {
+  title: 'Editar Condomínio',
+  page: 'condominios/form',
+  menuAtivo: 'cadastros',
+  ...viewData
+});
+
+} catch (error) {
+console.error('Erro ao carregar condomínio:', error);
+return res.status(500).send('Erro ao carregar condomínio');
+}
 };
 
 // Atualizar condomínio
@@ -191,35 +204,41 @@ exports.deletar = async (req, res) => {
 
 // Ativar / Inativar condomínio (toggle)
 exports.toggleAtivo = async (req, res) => {
-  const { id } = req.params;
+const { id } = req.params;
 
-  try {
-    const [rows] = await db.query('SELECT ativo FROM condominios WHERE id = ?', [id]);
+try {
+const [rows] = await db.query('SELECT ativo FROM condominios WHERE id = ?', [id]);
+if (rows.length === 0) {
+if (isHTMX(req)) return res.status(404).send('Condomínio não encontrado');
+return res.status(404).json({ success: false, message: 'Condomínio não encontrado' });
+}
 
-    if (rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Condomínio não encontrado' 
-      });
-    }
+const ativoAtual = rows[0].ativo;
+const novoAtivo = !ativoAtual;
 
-    const ativoAtual = rows[0].ativo;
-    const novoAtivo = !ativoAtual;
+await db.query('UPDATE condominios SET ativo = ? WHERE id = ?', [novoAtivo, id]);
 
-    await db.query('UPDATE condominios SET ativo = ? WHERE id = ?', [novoAtivo, id]);
+// Se for HTMX, devolve a linha atualizada (HTML) para trocar na tabela
+if (isHTMX(req)) {
+  const [updated] = await db.query(
+    'SELECT id, nome, codigo_interno, cidade, estado, ativo FROM condominios WHERE id = ?',
+    [id]
+  );
+  return res.render('condominios/_linha', { c: updated[0] });
+}
 
-    res.json({ 
-      success: true, 
-      message: `Condomínio ${novoAtivo ? 'ativado' : 'inativado'} com sucesso`,
-      ativo: novoAtivo
-    });
-  } catch (error) {
-    console.error('Erro ao alterar status do condomínio:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao alterar status do condomínio' 
-    });
-  }
+// Se não for HTMX, mantém JSON (útil caso você use fetch em algum lugar)
+return res.json({
+  success: true,
+  message: `Condomínio ${novoAtivo ? 'ativado' : 'inativado'} com sucesso`,
+  ativo: novoAtivo
+});
+
+} catch (error) {
+console.error('Erro ao alterar status do condomínio:', error);
+if (isHTMX(req)) return res.status(500).send('Erro ao alterar status do condomínio');
+return res.status(500).json({ success: false, message: 'Erro ao alterar status do condomínio' });
+}
 };
 
 // Ver detalhes de um condomínio

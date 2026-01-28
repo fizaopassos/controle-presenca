@@ -21,14 +21,16 @@ const sql =
 
 const [rows] = await db.query(sql);
 
-res.render('colaboradores/lista', {
-  usuario: req.session.user,
+return res.render('layout', {
+  title: 'Colaboradores',
+  page: 'colaboradores/lista',
+  menuAtivo: 'cadastros',
   colaboradores: rows
 });
 
 } catch (error) {
 console.error('Erro ao listar colaboradores:', error);
-res.status(500).send('Erro ao listar colaboradores');
+return res.status(500).send('Erro ao listar colaboradores');
 }
 };
 
@@ -39,28 +41,30 @@ const [empresas] = await db.query('SELECT id, nome FROM empresas WHERE ativo = T
 const [postos] = await db.query('SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome');
 const [condominios] = await db.query('SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome');
 
-if (req.query.partial === '1' || isHTMX(req)) {
-  return res.render('colaboradores/_form', {
-    colaborador: null,
-    acao: 'novo',
-    empresas,
-    postos,
-    condominios
-  });
-}
+const isPartial = req.query.partial === '1' || isHTMX(req);
 
-res.render('colaboradores/form', {
-  usuario: req.session.user,
+const viewData = {
   colaborador: null,
   acao: 'novo',
   empresas,
   postos,
   condominios
+};
+
+if (isPartial) {
+  return res.render('colaboradores/_form', viewData);
+}
+
+return res.render('layout', {
+  title: 'Novo Colaborador',
+  page: 'colaboradores/form',
+  menuAtivo: 'cadastros',
+  ...viewData
 });
 
 } catch (error) {
 console.error('Erro ao carregar formulário:', error);
-res.status(500).send('Erro ao carregar formulário');
+return res.status(500).send('Erro ao carregar formulário');
 }
 };
 
@@ -72,8 +76,6 @@ if (!nome || nome.trim() === '') return res.status(400).send('Nome é obrigatór
 if (!empresa_id) return res.status(400).send('Empresa é obrigatória.');
 
 const tipoFinal = (tipo === 'cobertura') ? 'cobertura' : 'fixo';
-
-// Se for cobertura, não vincula a condomínio/posto
 const condFinal = (tipoFinal === 'cobertura') ? null : (condominio_id || null);
 const postoFinal = (tipoFinal === 'cobertura') ? null : (posto_id || null);
 
@@ -106,15 +108,14 @@ if (isHTMX(req)) {
     'WHERE c.id = ?';
 
   const [rows] = await db.query(sqlSelectUm, [insertedId]);
-
   return res.render('colaboradores/_linha', { c: rows[0] });
 }
 
-res.redirect('/colaboradores');
+return res.redirect('/colaboradores');
 
 } catch (error) {
 console.error('Erro ao criar colaborador:', error);
-res.status(500).send('Erro ao criar colaborador');
+return res.status(500).send('Erro ao criar colaborador');
 }
 };
 
@@ -130,28 +131,30 @@ const [empresas] = await db.query('SELECT id, nome FROM empresas WHERE ativo = T
 const [postos] = await db.query('SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome');
 const [condominios] = await db.query('SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome');
 
-if (req.query.partial === '1' || isHTMX(req)) {
-  return res.render('colaboradores/_form', {
-    colaborador: rows[0],
-    acao: 'editar',
-    empresas,
-    postos,
-    condominios
-  });
-}
+const isPartial = req.query.partial === '1' || isHTMX(req);
 
-res.render('colaboradores/form', {
-  usuario: req.session.user,
+const viewData = {
   colaborador: rows[0],
   acao: 'editar',
   empresas,
   postos,
   condominios
+};
+
+if (isPartial) {
+  return res.render('colaboradores/_form', viewData);
+}
+
+return res.render('layout', {
+  title: 'Editar Colaborador',
+  page: 'colaboradores/form',
+  menuAtivo: 'cadastros',
+  ...viewData
 });
 
 } catch (error) {
 console.error('Erro ao carregar colaborador:', error);
-res.status(500).send('Erro ao carregar colaborador');
+return res.status(500).send('Erro ao carregar colaborador');
 }
 };
 
@@ -164,11 +167,8 @@ if (!nome || nome.trim() === '') return res.status(400).send('Nome é obrigatór
 if (!empresa_id) return res.status(400).send('Empresa é obrigatória.');
 
 const tipoFinal = (tipo === 'cobertura') ? 'cobertura' : 'fixo';
-
-// Se for cobertura, zera condomínio/posto
 const condFinal = (tipoFinal === 'cobertura') ? null : (condominio_id || null);
 const postoFinal = (tipoFinal === 'cobertura') ? null : (posto_id || null);
-
 const ativoBool = ativo === 'on' ? 1 : 0;
 
 try {
@@ -201,15 +201,14 @@ if (isHTMX(req)) {
     'WHERE c.id = ?';
 
   const [rows] = await db.query(sqlSelectUm, [id]);
-
   return res.render('colaboradores/_linha', { c: rows[0] });
 }
 
-res.redirect('/colaboradores');
+return res.redirect('/colaboradores');
 
 } catch (error) {
 console.error('Erro ao atualizar colaborador:', error);
-res.status(500).send('Erro ao atualizar colaborador');
+return res.status(500).send('Erro ao atualizar colaborador');
 }
 };
 
@@ -219,20 +218,16 @@ const { id } = req.params;
 
 try {
 const [rows] = await db.query('SELECT ativo FROM colaboradores WHERE id = ?', [id]);
-
-if (rows.length === 0) {
-  return res.status(404).send('Colaborador não encontrado');
-}
+if (rows.length === 0) return res.status(404).send('Colaborador não encontrado');
 
 const ativoAtual = rows[0].ativo;
 const novoAtivo = !ativoAtual;
 
 await db.query('UPDATE colaboradores SET ativo = ? WHERE id = ?', [novoAtivo, id]);
-
-res.redirect('/colaboradores');
+return res.redirect('/colaboradores');
 
 } catch (error) {
 console.error('Erro ao alterar status do colaborador:', error);
-res.status(500).send('Erro ao alterar status do colaborador');
+return res.status(500).send('Erro ao alterar status do colaborador');
 }
 };

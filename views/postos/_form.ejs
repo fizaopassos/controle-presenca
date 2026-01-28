@@ -1,50 +1,62 @@
 <%
-  const isNovo = (acao === 'novo');
+const isNovo = (acao === 'novo');
 
-  const postUrl  = isNovo
-    ? '/postos/novo'
-    : '/postos/editar/' + posto.id;
+const postUrl  = isNovo
+? '/postos/novo'
+: '/postos/editar/' + posto.id;
 
-  const hxTarget = isNovo
-    ? '#tabelaPostos'
-    : '#posto-' + posto.id;
+const hxTarget = isNovo
+? '#tabelaPostos'
+: '#posto-' + posto.id;
 
-  const hxSwap = isNovo ? 'beforeend' : 'outerHTML';
+const hxSwap = isNovo ? 'beforeend' : 'outerHTML';
+
+const _isModal = (typeof isModal === 'undefined') ? false : isModal;
 %>
 
 <form
-  id="formPostoHtmx"
-  class="row g-3"
-  hx-post="<%= postUrl %>"
-  hx-target="<%= hxTarget %>"
-  hx-swap="<%= hxSwap %>"
->
-  <div class="col-12">
-    <h5 class="mb-2"><%= isNovo ? 'Novo Posto' : 'Editar Posto' %></h5>
-  </div>
+id="formPostoHtmx"
+class="row g-3"
+method="post"
+action="<%= postUrl %>"
+<% if (_isModal) { %>
+hx-post="<%= postUrl %>"
+hx-target="<%= hxTarget %>"
+hx-swap="<%= hxSwap %>"
+<% } %>
 
-  <div class="col-md-12">
-    <label class="form-label">Nome do Posto *</label>
-    <input class="form-control" name="nome" required value="<%= posto ? posto.nome : '' %>">
-  </div>
+<% if (_isModal) { %>
+<div class="col-12">
+<h5 class="mb-2"><%= isNovo ? 'Novo Posto' : 'Editar Posto' %></h5>
+</div>
+<% } %>
 
-  <div class="col-md-12">
-    <label class="form-label">Descrição</label>
-    <textarea class="form-control" name="descricao" rows="3"><%= posto ? (posto.descricao || '') : '' %></textarea>
-  </div>
+<div class="col-12">
+<label class="form-label">Nome do Posto *</label>
+<input class="form-control" name="nome" required value="<%= posto ? posto.nome : '' %>">
+</div>
 
-  <% if (!isNovo) { %>
-    <div class="col-12">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" name="ativo" id="ativo"
-          <%= posto && posto.ativo ? 'checked' : '' %>>
-        <label class="form-check-label" for="ativo">Ativo</label>
-      </div>
-    </div>
-  <% } %>
+<div class="col-12">
+<label class="form-label">Descrição</label>
+<textarea class="form-control" name="descricao" rows="3"><%= posto ? (posto.descricao || '') : '' %></textarea>
+</div>
 
-  <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-    <button type="submit" class="btn btn-primary">Salvar</button>
-  </div>
+<% if (!isNovo) { %>
+<div class="col-12">
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="ativo" id="ativo"
+<%= posto && posto.ativo ? 'checked' : '' %>>
+<label class="form-check-label" for="ativo">Ativo</label>
+</div>
+</div>
+<% } %>
+
+<div class="col-12 d-flex justify-content-end gap-2 mt-2">
+<% if (_isModal) { %>
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+<% } else { %>
+<a href="/postos" class="btn btn-outline-secondary">Voltar</a>
+<% } %>
+<button type="submit" class="btn btn-primary">Salvar</button>
+</div>
 </form>

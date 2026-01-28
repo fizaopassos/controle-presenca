@@ -56,14 +56,13 @@ body {
   transition: all 0.15s ease;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+.btn-primary{
+background: linear-gradient(135deg, #4376B1 0%, #254086 100%);
+border: none;
 }
-
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+.btn-primary:hover{
+transform: translateY(-1px);
+box-shadow: 0 4px 12px rgba(37, 64, 134, 0.35);
 }
 
 .btn-success {
@@ -209,4 +208,10 @@ body {
     width: 100%;
     margin-top: 0.5rem;
   }
+}
+
+.login-logo{
+height: 56px;
+width: auto;
+object-fit: contain;
 }
