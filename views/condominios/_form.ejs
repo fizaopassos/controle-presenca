@@ -1,65 +1,129 @@
 <%
-  const isNovo = (acao === 'novo');
+const _isNovo =
+  (typeof acao !== 'undefined')
+    ? (acao === 'novo')
+    : !(condominio && condominio.id);
 
-  const postUrl  = isNovo
-    ? '/condominios'
-    : '/condominios/' + condominio.id;
+const postUrl = _isNovo
+  ? '/condominios'
+  : '/condominios/' + (condominio ? condominio.id : '');
 
-  const hxTarget = isNovo
-    ? '#tabelaCondominios'
-    : '#condominio-' + condominio.id;
+const hxTarget = _isNovo
+  ? '#tabelaCondominios'
+  : '#condominio-' + (condominio ? condominio.id : '');
 
-  const hxSwap = isNovo ? 'beforeend' : 'outerHTML';
+const hxSwap = _isNovo ? 'beforeend' : 'outerHTML';
 %>
 
-<form
-  id="formCondominioHtmx"
-  class="row g-3"
-  hx-post="<%= postUrl %>"
-  hx-target="<%= hxTarget %>"
-  hx-swap="<%= hxSwap %>"
->
+<form id="formCondominioHtmx" method="post" class="row g-3">
+
   <div class="col-12">
-    <h5 class="mb-2"><%= isNovo ? 'Novo Condomínio' : 'Editar Condomínio' %></h5>
+    <h5 class="mb-2"><%= _isNovo ? 'Novo Condomínio' : 'Editar Condomínio' %></h5>
   </div>
 
   <div class="col-md-8">
     <label class="form-label">Nome *</label>
-    <input class="form-control" name="nome" required value="<%= condominio ? condominio.nome : '' %>">
+    <input 
+      class="form-control" 
+      name="nome" 
+      required 
+      value="<%= condominio ? condominio.nome : '' %>"
+    >
   </div>
 
   <div class="col-md-4">
     <label class="form-label">Código Interno</label>
-    <input class="form-control" name="codigo_interno" value="<%= condominio ? (condominio.codigo_interno || '') : '' %>">
+    <input 
+      class="form-control" 
+      name="codigo_interno" 
+      value="<%= condominio ? (condominio.codigo_interno || '') : '' %>"
+    >
   </div>
 
   <div class="col-md-12">
     <label class="form-label">Endereço</label>
-    <input class="form-control" name="endereco" value="<%= condominio ? (condominio.endereco || '') : '' %>">
+    <input 
+      class="form-control" 
+      name="endereco" 
+      value="<%= condominio ? (condominio.endereco || '') : '' %>"
+    >
   </div>
 
   <div class="col-md-8">
     <label class="form-label">Cidade</label>
-    <input class="form-control" name="cidade" value="<%= condominio ? (condominio.cidade || '') : '' %>">
+    <input 
+      class="form-control" 
+      name="cidade" 
+      value="<%= condominio ? (condominio.cidade || '') : '' %>"
+    >
   </div>
 
   <div class="col-md-4">
     <label class="form-label">Estado</label>
-    <input class="form-control" name="estado" maxlength="2" value="<%= condominio ? (condominio.estado || '') : '' %>">
+    <input 
+      class="form-control" 
+      name="estado" 
+      maxlength="2" 
+      value="<%= condominio ? (condominio.estado || '') : '' %>"
+    >
   </div>
 
-  <% if (!isNovo) { %>
+  <% if (!_isNovo) { %>
     <div class="col-12">
       <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" name="ativo" id="ativo"
-          <%= condominio && condominio.ativo ? 'checked' : '' %>>
+        <input 
+          class="form-check-input" 
+          type="checkbox" 
+          name="ativo" 
+          id="ativo"
+          <%= condominio && condominio.ativo ? 'checked' : '' %>
+        >
         <label class="form-check-label" for="ativo">Ativo</label>
       </div>
     </div>
   <% } %>
 
   <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-    <button type="submit" class="btn btn-primary">Salvar</button>
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+      Cancelar
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-primary"
+      id="btnSalvarCondominio"
+      data-confirm="1"
+      data-confirm-title="Confirmar <%= _isNovo ? 'cadastro' : 'edição' %>"
+      data-confirm-body="Deseja realmente <%= _isNovo ? 'cadastrar' : 'salvar as alterações do' %> condomínio?"
+      data-confirm-ok="Sim, continuar"
+      hx-post="<%= postUrl %>"
+      hx-target="<%= hxTarget %>"
+      hx-swap="<%= hxSwap %>"
+      hx-trigger="confirmed"
+      hx-include="#formCondominioHtmx">
+      Salvar
+    </button>
   </div>
+
 </form>
+
+<script>
+(function () {
+  const btn = document.getElementById('btnSalvarCondominio');
+  if (!btn) return;
+
+  document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    if (evt.detail && evt.detail.elt === btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+    }
+  });
+
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail && evt.detail.elt === btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Salvar';
+    }
+  });
+})();
+</script>

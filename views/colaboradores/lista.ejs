@@ -14,11 +14,9 @@ type="button"
 class="btn btn-primary"
 hx-get="/colaboradores/novo?partial=1"
 hx-target="#colaboradorModalBody"
-hx-swap="innerHTML"
-
+hx-swap="innerHTML">
 <i class="bi bi-plus-circle me-1"></i>
 Novo colaborador
-
 </button>
 </div>
 
@@ -54,8 +52,6 @@ Nenhum colaborador cadastrado ainda.
 </div>
 </div>
 
-<!-- HTMX (se ainda não estiver sendo carregado globalmente) -->
-<script src="https://unpkg.com/htmx.org@1.9.12"></script>
 
 <script>
 // Abrir modal quando o conteúdo do formulário for carregado via HTMX
@@ -69,16 +65,18 @@ modal.show();
 
 // Fechar modal após salvar com sucesso (novo ou editar)
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
-if (!el || !evt.detail.successful) return;
+  const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
+  if (!el || !evt.detail.successful) return;
 
-if (el.id === 'formColaboradorHtmx') {
-  const modalEl = document.getElementById('colaboradorModal');
-  const modal = bootstrap.Modal.getInstance(modalEl);
-  if (modal) modal.hide();
-}
-
+  // Verifica se o elemento disparador é o botão de salvar dentro do form de colaborador
+  const form = el.closest('#formColaboradorHtmx');
+  if (form) {
+    const modalEl = document.getElementById('colaboradorModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+  }
 });
+
 </script>
 
 <!-- Modal para criar/editar Colaborador via HTMX -->

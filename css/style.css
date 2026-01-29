@@ -210,8 +210,9 @@ box-shadow: 0 4px 12px rgba(37, 64, 134, 0.35);
   }
 }
 
-.login-logo{
-height: 56px;
-width: auto;
-object-fit: contain;
+.login-logo {
+  max-height: 60px;
+  width: auto;
+  object-fit: contain;
 }
+

@@ -18,10 +18,12 @@
 <span class="badge bg-secondary">Inativo</span>
 <% } %>
 </td>
-<td>
+
+<td class="text-end">
+<div class="d-inline-flex align-items-center gap-2">
 <button
 type="button"
-class="btn btn-sm btn-outline-primary me-2"
+class="btn btn-outline-primary btn-sm rounded-pill px-3"
 hx-get="/colaboradores/editar/<%= c.id %>?partial=1"
 hx-target="#colaboradorModalBody"
 hx-swap="innerHTML"
@@ -29,19 +31,23 @@ hx-swap="innerHTML"
 Editar
 </button>
 
-<form action="/colaboradores/toggle-ativo/<%= c.id %>" method="POST" class="d-inline">
-  <% if (c.ativo) { %>
-    <button type="submit" class="btn btn-sm btn-outline-danger"
-      onclick="return confirm('Tem certeza que deseja inativar este colaborador?');">
-      Inativar
+  <form
+    action="/colaboradores/toggle-ativo/<%= c.id %>"
+    method="POST"
+    class="d-inline"
+    data-confirm="1"
+    data-confirm-title="<%= c.ativo ? 'Inativar colaborador' : 'Ativar colaborador' %>"
+    data-confirm-body="<%= c.ativo ? 'Tem certeza que deseja inativar este colaborador?' : 'Tem certeza que deseja ativar este colaborador?' %>"
+    data-confirm-ok="<%= c.ativo ? 'Inativar' : 'Ativar' %>"
+  >
+    <button
+      type="submit"
+      class="btn btn-sm rounded-pill px-3 <%= c.ativo ? 'btn-outline-danger' : 'btn-outline-success' %>"
+    >
+      <%= c.ativo ? 'Inativar' : 'Ativar' %>
     </button>
-  <% } else { %>
-    <button type="submit" class="btn btn-sm btn-outline-success"
-      onclick="return confirm('Tem certeza que deseja ativar este colaborador?');">
-      Ativar
-    </button>
-  <% } %>
-</form>
+  </form>
+</div>
 
 </td>
 </tr>

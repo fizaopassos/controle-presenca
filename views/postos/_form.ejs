@@ -1,7 +1,7 @@
 <%
 const isNovo = (acao === 'novo');
 
-const postUrl  = isNovo
+const postUrl = isNovo
 ? '/postos/novo'
 : '/postos/editar/' + posto.id;
 
@@ -18,12 +18,7 @@ const _isModal = (typeof isModal === 'undefined') ? false : isModal;
 id="formPostoHtmx"
 class="row g-3"
 method="post"
-action="<%= postUrl %>"
-<% if (_isModal) { %>
-hx-post="<%= postUrl %>"
-hx-target="<%= hxTarget %>"
-hx-swap="<%= hxSwap %>"
-<% } %>
+action="<%= postUrl %>">
 
 <% if (_isModal) { %>
 <div class="col-12">
@@ -54,9 +49,49 @@ hx-swap="<%= hxSwap %>"
 <div class="col-12 d-flex justify-content-end gap-2 mt-2">
 <% if (_isModal) { %>
 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+
+  <button
+    type="button"
+    class="btn btn-primary"
+    id="btnSalvarPosto"
+    data-confirm="1"
+    data-confirm-title="Confirmar <%= isNovo ? 'cadastro' : 'edição' %>"
+    data-confirm-body="Deseja realmente <%= isNovo ? 'cadastrar' : 'salvar as alterações do' %> posto?"
+    data-confirm-ok="Sim, continuar"
+    hx-post="<%= postUrl %>"
+    hx-target="<%= hxTarget %>"
+    hx-swap="<%= hxSwap %>"
+    hx-trigger="confirmed"
+    hx-include="#formPostoHtmx">
+    Salvar
+  </button>
+
 <% } else { %>
-<a href="/postos" class="btn btn-outline-secondary">Voltar</a>
+  <a href="/postos" class="btn btn-outline-secondary">Voltar</a>
+  <button type="submit" class="btn btn-primary">Salvar</button>
 <% } %>
-<button type="submit" class="btn btn-primary">Salvar</button>
+
 </div>
+
 </form>
+
+<script>
+(function () {
+const btn = document.getElementById('btnSalvarPosto');
+if (!btn) return;
+
+document.body.addEventListener('htmx:beforeRequest', function(evt) {
+if (evt.detail && evt.detail.elt === btn) {
+btn.disabled = true;
+btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+}
+});
+
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+if (evt.detail && evt.detail.elt === btn) {
+btn.disabled = false;
+btn.innerHTML = 'Salvar';
+}
+});
+})();
+</script>

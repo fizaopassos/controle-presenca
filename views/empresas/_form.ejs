@@ -1,102 +1,137 @@
-<form
-action="<%= isNovo ? '/empresas/novo' : '/empresas/editar/' + empresa.id %>"
-method="POST"
-class="row g-3"
-id="formEmpresa"
+<%
+const _isNovo =
+  (typeof isNovo !== 'undefined')
+    ? isNovo
+    : (typeof acao !== 'undefined' ? (acao === 'novo') : !(empresa && empresa.id));
 
-<div class="col-12 col-lg-8">
-<label for="nome" class="form-label">Nome da Empresa *</label>
-<input
-type="text"
-class="form-control"
-id="nome"
-name="nome"
-required
-value="<%= (empresa && empresa.nome) ? empresa.nome : '' %>"
-autofocus
->
-</div>
+const postUrl = _isNovo
+  ? '/empresas/novo'
+  : '/empresas/editar/' + (empresa ? empresa.id : '');
 
-<div class="col-12 col-lg-4">
-<label for="cnpj" class="form-label">CNPJ</label>
-<input
-type="text"
-class="form-control"
-id="cnpj"
-name="cnpj"
-maxlength="18"
-value="<%= (empresa && empresa.cnpj) ? empresa.cnpj : '' %>"
->
-</div>
+const hxTarget = _isNovo
+  ? '#tabelaEmpresas'
+  : '#empresa-' + (empresa ? empresa.id : '');
 
-<div class="col-12 col-lg-4">
-<label for="telefone" class="form-label">Telefone</label>
-<input
-type="text"
-class="form-control"
-id="telefone"
-name="telefone"
-value="<%= (empresa && empresa.telefone) ? empresa.telefone : '' %>"
->
-</div>
+const hxSwap = _isNovo ? 'beforeend' : 'outerHTML';
+%>
 
-<div class="col-12 col-lg-8">
-<label for="email" class="form-label">Email</label>
-<input
-type="email"
-class="form-control"
-id="email"
-name="email"
-value="<%= (empresa && empresa.email) ? empresa.email : '' %>"
->
-</div>
+<form id="formEmpresa" method="post" class="row g-3">
 
-<div class="col-12">
-<label for="endereco" class="form-label">Endereço Completo</label>
-<textarea
-class="form-control"
-id="endereco"
-name="endereco"
-rows="2"
-><%= (empresa && empresa.endereco) ? empresa.endereco : '' %></textarea>
-</div>
+  <div class="col-12 col-lg-8">
+    <label for="nome" class="form-label">Nome da Empresa *</label>
+    <input
+      type="text"
+      class="form-control"
+      id="nome"
+      name="nome"
+      required
+      value="<%= (empresa && empresa.nome) ? empresa.nome : '' %>"
+      autofocus
+    >
+  </div>
 
-<% if (!isNovo) { %>
-<div class="col-12">
-<div class="form-check form-switch">
-<input
-class="form-check-input"
-type="checkbox"
-role="switch"
-id="ativo"
-name="ativo"
-<%= (empresa && empresa.ativo) ? 'checked' : '' %>
->
-<label class="form-check-label" for="ativo">Empresa Ativa</label>
-</div>
-</div>
-<% } %>
+  <div class="col-12 col-lg-4">
+    <label for="cnpj" class="form-label">CNPJ</label>
+    <input
+      type="text"
+      class="form-control"
+      id="cnpj"
+      name="cnpj"
+      maxlength="18"
+      value="<%= (empresa && empresa.cnpj) ? empresa.cnpj : '' %>"
+    >
+  </div>
 
-<div class="col-12 d-flex justify-content-end gap-2 pt-2">
-<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-Cancelar
-</button>
-<button type="submit" class="btn btn-primary" id="btnSalvar">
-Salvar
-</button>
-</div>
+  <div class="col-12 col-lg-4">
+    <label for="telefone" class="form-label">Telefone</label>
+    <input
+      type="text"
+      class="form-control"
+      id="telefone"
+      name="telefone"
+      value="<%= (empresa && empresa.telefone) ? empresa.telefone : '' %>"
+    >
+  </div>
+
+  <div class="col-12 col-lg-8">
+    <label for="email" class="form-label">Email</label>
+    <input
+      type="email"
+      class="form-control"
+      id="email"
+      name="email"
+      value="<%= (empresa && empresa.email) ? empresa.email : '' %>"
+    >
+  </div>
+
+  <div class="col-12">
+    <label for="endereco" class="form-label">Endereço Completo</label>
+    <textarea
+      class="form-control"
+      id="endereco"
+      name="endereco"
+      rows="2"
+    ><%= (empresa && empresa.endereco) ? empresa.endereco : '' %></textarea>
+  </div>
+
+  <% if (!_isNovo) { %>
+    <div class="col-12">
+      <div class="form-check form-switch">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          role="switch"
+          id="ativo"
+          name="ativo"
+          <%= (empresa && empresa.ativo) ? 'checked' : '' %>
+        >
+        <label class="form-check-label" for="ativo">Empresa Ativa</label>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="col-12 d-flex justify-content-end gap-2 pt-2">
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+      Cancelar
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-primary"
+      id="btnSalvarEmpresa"
+      data-confirm="1"
+      data-confirm-title="Confirmar <%= _isNovo ? 'cadastro' : 'edição' %>"
+      data-confirm-body="Deseja realmente <%= _isNovo ? 'cadastrar' : 'salvar as alterações da' %> empresa?"
+      data-confirm-ok="Sim, continuar"
+      hx-post="<%= postUrl %>"
+      hx-target="<%= hxTarget %>"
+      hx-swap="<%= hxSwap %>"
+      hx-trigger="confirmed"
+      hx-include="#formEmpresa">
+      Salvar
+    </button>
+  </div>
+
 </form>
 
 <script>
 (function () {
-const form = document.getElementById('formEmpresa');
-const btnSalvar = document.getElementById('btnSalvar');
-if (!form || !btnSalvar) return;
+  const btn = document.getElementById('btnSalvarEmpresa');
+  if (!btn) return;
 
-form.addEventListener('submit', function() {
-  btnSalvar.disabled = true;
-  btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
-});
+  document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    if (evt.detail && evt.detail.elt === btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+    }
+  });
 
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail && evt.detail.elt === btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Salvar';
+    }
+  });
 })();
 </script>
+

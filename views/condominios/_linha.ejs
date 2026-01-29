@@ -1,52 +1,61 @@
 <tr id="condominio-<%= c.id %>">
-  <td><%= c.id %></td>
-  <td><%= c.nome %></td>
-  <td><%= c.codigo_interno || '-' %></td>
-  <td>
-    <%= c.cidade || '' %>
-    <% if (c.estado) { %> - <%= c.estado %><% } %>
-  </td>
-  <td>
-    <% if (c.ativo) { %>
-      <span class="badge bg-success">Ativo</span>
-    <% } else { %>
-      <span class="badge bg-secondary">Inativo</span>
-    <% } %>
-  </td>
-  <td class="text-end">
+<td><%= c.id %></td>
+<td><%= c.nome %></td>
+<td><%= c.codigo_interno || '-' %></td>
+<td>
+<%= c.cidade || '' %>
+<% if (c.estado) { %> - <%= c.estado %><% } %>
+</td>
+<td>
+<% if (c.ativo) { %>
+<span class="badge bg-success">Ativo</span>
+<% } else { %>
+<span class="badge bg-secondary">Inativo</span>
+<% } %>
+</td>
+
+<td class="text-end">
+<div class="d-inline-flex align-items-center gap-2">
 <button
-type="button"
-class="btn btn-sm btn-outline-primary me-2"
-hx-get="/condominios/<%= c.id %>/editar?partial=1"
-hx-target="#condominioModalBody"
-hx-swap="innerHTML"
-
-Editar
-
+  type="button"
+  class="btn btn-outline-primary btn-sm rounded-pill px-3"
+  hx-get="/condominios/<%= c.id %>/editar?partial=1"
+  hx-target="#condominioModalBody"
+  hx-swap="innerHTML">
+  Editar
 </button>
 
-<% if (c.ativo) { %>
-<button
+
+  <% if (c.ativo) { %>
+    <button
 type="button"
-class="btn btn-sm btn-outline-danger"
+class="btn btn-outline-danger btn-sm rounded-pill px-3"
+data-confirm="1"
+data-confirm-title="Inativar condomínio"
+data-confirm-body="Tem certeza que deseja inativar este condomínio?"
+data-confirm-ok="Inativar"
 hx-patch="/condominios/<%= c.id %>/toggle"
 hx-target="#condominio-<%= c.id %>"
 hx-swap="outerHTML"
-hx-confirm="Tem certeza que deseja inativar este condomínio?"
->
+hx-trigger="confirmed">
 Inativar
 </button>
-<% } else { %>
-<button
+  <% } else { %>
+    <button
 type="button"
-class="btn btn-sm btn-outline-success"
+class="btn btn-outline-success btn-sm rounded-pill px-3"
+data-confirm="1"
+data-confirm-title="Ativar condomínio"
+data-confirm-body="Tem certeza que deseja ativar este condomínio?"
+data-confirm-ok="Ativar"
 hx-patch="/condominios/<%= c.id %>/toggle"
 hx-target="#condominio-<%= c.id %>"
 hx-swap="outerHTML"
-hx-confirm="Tem certeza que deseja ativar este condomínio?"
->
+hx-trigger="confirmed">
 Ativar
 </button>
-<% } %>
+  <% } %>
+</div>
+
 </td>
 </tr>

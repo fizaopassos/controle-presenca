@@ -1,4 +1,4 @@
-<tr id="empresa-<%= empresa.id %>" data-nome="<tr data-nome="<%= empresa.nome.toLowerCase() %>" hx-target="this" hx-swap="outerHTML">
+<tr id="empresa-<%= empresa.id %>" data-nome="<%= (empresa.nome || '').toLowerCase() %>">
 <td>
 <div class="d-flex align-items-center">
 <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
@@ -15,6 +15,7 @@
 </div>
 </div>
 </td>
+
 <td>
 <% if (empresa.cnpj) { %>
 <span class="font-monospace small"><%= empresa.cnpj %></span>
@@ -22,6 +23,7 @@
 <span class="text-muted">-</span>
 <% } %>
 </td>
+
 <td>
 <% if (empresa.telefone) { %>
 <i class="bi bi-telephone text-primary me-1"></i>
@@ -30,6 +32,7 @@
 <span class="text-muted">-</span>
 <% } %>
 </td>
+
 <td>
 <% if (empresa.email) { %>
 <a href="mailto:<%= empresa.email %>" class="text-decoration-none">
@@ -40,6 +43,7 @@
 <span class="text-muted">-</span>
 <% } %>
 </td>
+
 <td class="text-center">
 <% if (empresa.ativo) { %>
 <span class="badge bg-success">
@@ -53,28 +57,30 @@ Inativa
 </span>
 <% } %>
 </td>
+
 <td class="text-end">
-<div class="btn-group" role="group">
-<!-- Editar em modal via HTMX -->
+<div class="d-inline-flex align-items-center gap-2">
 <button
 type="button"
-class="btn btn-sm btn-outline-primary"
-title="Editar"
+class="btn btn-outline-primary btn-sm rounded-pill px-3"
+data-bs-toggle="modal"
+data-bs-target="#empresaModal"
 hx-get="/empresas/editar/<%= empresa.id %>?partial=1"
 hx-target="#empresaModalBody"
 hx-swap="innerHTML"
-
 >
-<i class="bi bi-pencil"></i>
+Editar
 </button>
 
-  <!-- Toggle continua normal (page reload) ou depois migramos pra HTMX também -->
-  <a 
-    href="/empresas/toggle/<%= empresa.id %>" 
-    class="btn btn-sm btn-outline-warning"
-    title="<%= empresa.ativo ? 'Inativar' : 'Ativar' %>"
+  <a
+    href="/empresas/toggle/<%= empresa.id %>"
+    class="btn btn-sm rounded-pill px-3 <%= empresa.ativo ? 'btn-outline-danger' : 'btn-outline-success' %>"
+    data-confirm="1"
+    data-confirm-title="<%= empresa.ativo ? 'Inativar empresa' : 'Ativar empresa' %>"
+    data-confirm-body="Confirma essa alteração?"
+    data-confirm-ok="Confirmar"
   >
-    <i class="bi bi-<%= empresa.ativo ? 'toggle-on' : 'toggle-off' %>"></i>
+    <%= empresa.ativo ? 'Inativar' : 'Ativar' %>
   </a>
 </div>
 

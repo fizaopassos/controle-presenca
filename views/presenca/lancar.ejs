@@ -49,6 +49,28 @@ Selecione data e condomínio para carregar os colaboradores.
 </div>
 </div>
 
+<div class="modal fade" id="confirmLancamentoModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar lançamentos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="confirmLancamentoBody">
+        <!-- texto da confirmação entra via JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" id="btnConfirmarLancamentoModal">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 var STATUSES = [
 { key: 'presente', label: 'Presente', btn: 'btn-outline-success', btnActive: 'btn-success' },
@@ -60,6 +82,16 @@ var STATUSES = [
 
 var STATUS_COM_OBS = ['falta', 'folga', 'atestado', 'ferias'];
 var STATUS_COM_COBERTURA = ['falta', 'folga', 'atestado', 'ferias'];
+
+var payloadLancamento = null;
+var modalConfirmLanc = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+  var modalEl = document.getElementById('confirmLancamentoModal');
+  if (modalEl && window.bootstrap) {
+    modalConfirmLanc = new bootstrap.Modal(modalEl);
+  }
+});
 
 var inputData = document.getElementById('inputData');
 var inputCondominio = document.getElementById('inputCondominio');
@@ -545,99 +577,141 @@ atualizarResumo();
 });
 
 // Confirmar lançamentos
+// Confirmar lançamentos (abre modal Bootstrap)
 btnConfirmarTudo.addEventListener('click', function() {
-var data = inputData.value;
-var condId = inputCondominio.value;
+  var data = inputData.value;
+  var condId = inputCondominio.value;
 
-if (!data || !condId) {
-  showAlert('warning', 'Preencha data e condomínio.');
-  return;
-}
-
-if (listaIds.length === 0) {
-  showAlert('warning', 'Nenhum colaborador para confirmar.');
-  return;
-}
-
-// Validação: ausência exige cobertura
-var idsSemCobertura = [];
-listaIds.forEach(function(id) {
-  var s = estado[String(id)];
-  if (!s) return;
-
-  var status = (s.status != null && s.status !== '') ? s.status : '';
-  if (needsCobertura(status) && !s.cobertura_id) {
-    idsSemCobertura.push(String(id));
-  }
-});
-
-if (idsSemCobertura.length > 0) {
-  // abre os cards que faltam cobertura
-  idsSemCobertura.slice(0, 10).forEach(function(id) { // não explode a tela
-    if (estado[id]) {
-      estado[id].expanded = true;
-      rerenderCardById(id);
-      ensureCoberturaLoadedIfNeededForCard(id);
-    }
-  });
-
-  showAlert('warning', 'Há ausências sem Cobertura selecionada. Complete antes de confirmar.', 5000);
-  atualizarResumo();
-  return;
-}
-
-var condominioTexto = inputCondominio.options[inputCondominio.selectedIndex].text;
-
-var msg = 'Confirma salvar os lançamentos?\n\n' +
-  'Data: ' + data + '\n' +
-  'Condomínio: ' + condominioTexto + '\n' +
-  'Total de colaboradores: ' + listaIds.length + '\n\n' +
-  'Isso vai gravar/atualizar as presenças no sistema.';
-
-if (!confirm(msg)) return;
-
-var presencas = listaIds.map(function(id) {
-  var s = estado[String(id)];
-  var raw = window.__colaboradoresRaw[String(id)];
-
-  var postoIdColab = raw && raw.posto_id ? raw.posto_id : null;
-
-  return {
-    colaborador_id: Number(id),
-    status: (s && s.status) ? s.status : '',
-    observacoes: ((s && s.observacoes) ? s.observacoes : '').trim(),
-    posto_id: postoIdColab,
-    cobertura_id: (s && s.cobertura_id) ? s.cobertura_id : null
-  };
-});
-
-btnConfirmarTudo.disabled = true;
-
-fetch('/presenca/api/lancar', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    data: data,
-    condominio_id: condId,
-    presencas: presencas
-  })
-})
-.then(function(resp) { return resp.json(); })
-.then(function(result) {
-  if (!result.success) {
-    showAlert('danger', result.message || 'Erro ao salvar presenças.', 5000);
-    btnConfirmarTudo.disabled = false;
+  if (!data || !condId) {
+    showAlert('warning', 'Preencha data e condomínio.');
     return;
   }
 
-  showAlert('success', 'Presenças confirmadas com sucesso!');
-  buscarColaboradores();
-})
-.catch(function(e) {
-  console.error(e);
-  showAlert('danger', 'Erro ao salvar presenças.', 5000);
-  btnConfirmarTudo.disabled = false;
+  if (listaIds.length === 0) {
+    showAlert('warning', 'Nenhum colaborador para confirmar.');
+    return;
+  }
+
+  // Validação: ausência exige cobertura
+  var idsSemCobertura = [];
+  listaIds.forEach(function(id) {
+    var s = estado[String(id)];
+    if (!s) return;
+
+    var status = (s.status != null && s.status !== '') ? s.status : '';
+    if (needsCobertura(status) && !s.cobertura_id) {
+      idsSemCobertura.push(String(id));
+    }
+  });
+
+  if (idsSemCobertura.length > 0) {
+    // abre os cards que faltam cobertura
+    idsSemCobertura.slice(0, 10).forEach(function(id) {
+      if (estado[id]) {
+        estado[id].expanded = true;
+        rerenderCardById(id);
+        ensureCoberturaLoadedIfNeededForCard(id);
+      }
+    });
+
+    showAlert('warning', 'Há ausências sem Cobertura selecionada. Complete antes de confirmar.', 5000);
+    atualizarResumo();
+    return;
+  }
+
+  var condominioTexto = inputCondominio.options[inputCondominio.selectedIndex].text;
+
+  // Monta o texto de confirmação em HTML
+  var msgHtml =
+    'Confirma salvar os lançamentos?<br><br>' +
+    'Data: <strong>' + escapeHtml(data) + '</strong><br>' +
+    'Condomínio: <strong>' + escapeHtml(condominioTexto) + '</strong><br>' +
+    'Total de colaboradores: <strong>' + listaIds.length + '</strong><br><br>' +
+    'Isso vai gravar/atualizar as presenças no sistema.';
+
+  // Prepara o payload que será enviado após o usuário confirmar no modal
+  var presencas = listaIds.map(function(id) {
+    var s = estado[String(id)];
+    var raw = window.__colaboradoresRaw[String(id)];
+
+    var postoIdColab = raw && raw.posto_id ? raw.posto_id : null;
+
+    return {
+      colaborador_id: Number(id),
+      status: (s && s.status) ? s.status : '',
+      observacoes: ((s && s.observacoes) ? s.observacoes : '').trim(),
+      posto_id: postoIdColab,
+      cobertura_id: (s && s.cobertura_id) ? s.cobertura_id : null
+    };
+  });
+
+  payloadLancamento = {
+    data: data,
+    condId: condId,
+    presencas: presencas
+  };
+
+  // Coloca o texto no modal e abre
+  var bodyEl = document.getElementById('confirmLancamentoBody');
+  if (bodyEl) {
+    bodyEl.innerHTML = msgHtml;
+  }
+
+  if (modalConfirmLanc) {
+    modalConfirmLanc.show();
+  } else {
+    // fallback: se por algum motivo o modal não existir, cai pro confirm nativo
+    if (confirm(msgHtml.replace(/<br>/g, '\n').replace(/<[^>]+>/g, ''))) {
+      enviarLancamentos();
+    }
+  }
 });
 
-});
+function enviarLancamentos() {
+  if (!payloadLancamento) return;
+
+  var data = payloadLancamento.data;
+  var condId = payloadLancamento.condId;
+  var presencas = payloadLancamento.presencas;
+
+  btnConfirmarTudo.disabled = true;
+
+  fetch('/presenca/api/lancar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      data: data,
+      condominio_id: condId,
+      presencas: presencas
+    })
+  })
+  .then(function(resp) { return resp.json(); })
+  .then(function(result) {
+    if (!result.success) {
+      showAlert('danger', result.message || 'Erro ao salvar presenças.', 5000);
+      btnConfirmarTudo.disabled = false;
+      return;
+    }
+
+    showAlert('success', 'Presenças confirmadas com sucesso!');
+    payloadLancamento = null;
+    buscarColaboradores();
+  })
+  .catch(function(e) {
+    console.error(e);
+    showAlert('danger', 'Erro ao salvar presenças.', 5000);
+    btnConfirmarTudo.disabled = false;
+  });
+}
+
+// Clique no botão "Confirmar" do modal de lançamentos
+document.getElementById('btnConfirmarLancamentoModal')
+  .addEventListener('click', function() {
+    if (modalConfirmLanc) {
+      modalConfirmLanc.hide();
+    }
+    enviarLancamentos();
+  });
+
+
 </script>

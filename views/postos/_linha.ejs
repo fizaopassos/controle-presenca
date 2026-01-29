@@ -15,7 +15,7 @@ type="button"
 class="btn btn-sm btn-outline-primary me-2"
 hx-get="/postos/editar/<%= p.id %>?partial=1"
 hx-target="#postoModalBody"
-hx-swap="innerHTML"
+hx-swap="innerHTML">
 
 Editar
 
@@ -25,22 +25,28 @@ Editar
 <button
 type="button"
 class="btn btn-sm btn-outline-danger"
+data-confirm="1"
+data-confirm-title="Inativar posto"
+data-confirm-body="Tem certeza que deseja inativar este posto?"
+data-confirm-ok="Inativar"
 hx-post="/postos/toggle-ativo/<%= p.id %>"
 hx-target="#posto-<%= p.id %>"
 hx-swap="outerHTML"
-hx-confirm="Tem certeza que deseja inativar este posto?"
->
+hx-trigger="confirmed">
 Inativar
 </button>
 <% } else { %>
 <button
 type="button"
 class="btn btn-sm btn-outline-success"
+data-confirm="1"
+data-confirm-title="Ativar posto"
+data-confirm-body="Tem certeza que deseja ativar este posto?"
+data-confirm-ok="Ativar"
 hx-post="/postos/toggle-ativo/<%= p.id %>"
 hx-target="#posto-<%= p.id %>"
 hx-swap="outerHTML"
-hx-confirm="Tem certeza que deseja ativar este posto?"
->
+hx-trigger="confirmed">
 Ativar
 </button>
 <% } %>

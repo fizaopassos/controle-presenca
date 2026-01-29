@@ -14,7 +14,7 @@ type="button"
 class="btn btn-primary"
 hx-get="/postos/novo?partial=1"
 hx-target="#postoModalBody"
-hx-swap="innerHTML"
+hx-swap="innerHTML">
 
 <i class="bi bi-plus-circle me-1"></i>
 Novo posto
@@ -49,8 +49,6 @@ Novo posto
 </div>
 </div>
 
-<script src="https://unpkg.com/htmx.org@1.9.12"></script>
-
 <script>
 document.body.addEventListener('htmx:afterSwap', function (evt) {
 if (evt.target && evt.target.id === 'postoModalBody') {
@@ -61,15 +59,16 @@ modal.show();
 });
 
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
-if (!el || !evt.detail.successful) return;
+if (!evt.detail || !evt.detail.successful) return;
 
-if (el.id === 'formPostoHtmx') {
-  const modalEl = document.getElementById('postoModal');
-  const modal = bootstrap.Modal.getInstance(modalEl);
-  if (modal) modal.hide();
+const el = evt.detail.elt;
+if (!el || !el.closest) return;
+
+if (el.closest('#formPostoHtmx')) {
+const modalEl = document.getElementById('postoModal');
+const modal = bootstrap.Modal.getInstance(modalEl);
+if (modal) modal.hide();
 }
-
 });
 </script>
 

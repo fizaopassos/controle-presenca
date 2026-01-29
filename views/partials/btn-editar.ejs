@@ -1,0 +1,13 @@
+<button
+type="button"
+class="btn btn-outline-primary btn-sm rounded-pill px-4"
+hx-get="<%= url %>"
+hx-target="<%= target || '#modalBody' %>"
+hx-swap="<%= swap || 'innerHTML' %>"
+<% if (modalId) { %>
+data-bs-toggle="modal"
+data-bs-target="#<%= modalId %>"
+<% } %>
+
+Editar
+</button>

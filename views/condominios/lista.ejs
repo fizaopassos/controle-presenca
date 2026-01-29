@@ -14,7 +14,7 @@ type="button"
 class="btn btn-primary"
 hx-get="/condominios/novo?partial=1"
 hx-target="#condominioModalBody"
-hx-swap="innerHTML"
+hx-swap="innerHTML">
 
 <i class="bi bi-plus-circle me-1"></i>
 Novo condomínio
@@ -50,8 +50,6 @@ Novo condomínio
 </div>
 </div>
 
-<script src="https://unpkg.com/htmx.org@1.9.12"></script>
-
 <script>
 // Abrir modal quando carregar o formulário
 document.body.addEventListener('htmx:afterSwap', function (evt) {
@@ -62,18 +60,21 @@ modal.show();
 }
 });
 
-// Fechar modal após salvar (form HTMX)
+// Fechar modal após salvar com sucesso
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
-if (!el || !evt.detail.successful) return;
+  if (!evt.detail || !evt.detail.successful) return;
 
-if (el.id === 'formCondominioHtmx') {
-  const modalEl = document.getElementById('condominioModal');
-  const modal = bootstrap.Modal.getInstance(modalEl);
-  if (modal) modal.hide();
-}
+  const el = evt.detail.elt;
+  if (!el || !el.closest) return;
 
+  // Se a requisição veio do botão dentro do form de condomínio, fecha o modal
+  if (el.closest('#formCondominioHtmx')) {
+    const modalEl = document.getElementById('condominioModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+  }
 });
+
 </script>
 
 <div class="modal fade" id="condominioModal" tabindex="-1">

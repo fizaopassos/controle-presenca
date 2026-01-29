@@ -28,6 +28,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+
+
 <div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-hidden="true">
 <div class="modal-dialog modal-dialog-centered">
 <div class="modal-content">
@@ -55,73 +57,104 @@ if (!modalEl || !okBtn || !titleEl || !bodyEl) return;
 let pending = null;
 
 function openConfirmModal({ title, body, okText }) {
-  titleEl.textContent = title || 'Confirmar';
-  bodyEl.textContent = body || 'Confirma salvar?';
-  okBtn.textContent = okText || 'Confirmar';
+titleEl.textContent = title || 'Confirmar';
+bodyEl.textContent  = body  || 'Tem certeza que deseja continuar?';
+okBtn.textContent   = okText || 'Confirmar';
 
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: false });
-  modal.show();
+const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: false });
+modal.show();
+
 }
 
-document.body.addEventListener('htmx:confirm', function (e) {
-  const elt = e.detail && e.detail.elt ? e.detail.elt : null;
-  if (!elt) return;
+// CONFIRMAÇÃO PADRÃO (SEM hx-confirm):
+// Qualquer elemento com data-confirm="1" será interceptado.
+// - Se for HTMX: precisa ter hx-trigger="confirmed" no próprio elemento.
+// - Se for link normal: redireciona após confirmar.
+document.addEventListener('click', function (e) {
+// Só intercepta BOTÕES/LINKS com data-confirm="1"
+const el = (e.target && e.target.closest)
+? e.target.closest('button[data-confirm="1"], a[data-confirm="1"], [role="button"][data-confirm="1"]')
+: null;
 
-  const form = elt.closest && elt.closest('form') ? elt.closest('form') : null;
-  const target = form || elt;
-  if (!target || target.dataset.confirm !== '1') return;
+if (!el) return;
 
-  e.preventDefault();
-  pending = { type: 'htmx', issueRequest: e.detail.issueRequest };
+const isMutation =
+el.hasAttribute('hx-post') ||
+el.hasAttribute('hx-put') ||
+el.hasAttribute('hx-patch') ||
+el.hasAttribute('hx-delete');
 
-  openConfirmModal({
-    title: target.dataset.confirmTitle || 'Confirmar',
-    body: target.dataset.confirmBody || 'Confirma salvar?',
-    okText: target.dataset.confirmOk || 'Confirmar'
-  });
+const isLink = el.tagName === 'A' && el.getAttribute('href');
+
+if (!isMutation && !isLink) return;
+
+e.preventDefault();
+e.stopPropagation();
+
+pending = { type: isMutation ? 'htmx' : 'link', el };
+
+openConfirmModal({
+title: el.dataset.confirmTitle || 'Confirmar',
+body:  el.dataset.confirmBody  || 'Tem certeza que deseja continuar?',
+okText: el.dataset.confirmOk   || 'Confirmar'
+});
+}, true);
+
+// Confirmação para FORM normal (submit tradicional, sem HTMX)
+document.addEventListener('submit', function (e) {
+const form = e.target;
+if (!form || form.nodeName !== 'FORM') return;
+if (form.dataset.confirm !== '1') return;
+
+// se for form HTMX, não cai aqui (vai pelo click do botão com data-confirm)
+if (form.hasAttribute('hx-post') || form.hasAttribute('hx-put') || form.hasAttribute('hx-patch') || form.hasAttribute('hx-delete')) return;
+
+if (form.dataset.confirmed === '1') {
+  form.dataset.confirmed = '0';
+  return;
+}
+
+e.preventDefault();
+pending = { type: 'form', form };
+
+openConfirmModal({
+  title: form.dataset.confirmTitle || 'Confirmar',
+  body:  form.dataset.confirmBody  || 'Confirma salvar?',
+  okText: form.dataset.confirmOk   || 'Confirmar'
 });
 
-document.addEventListener('submit', function (e) {
-  const form = e.target;
-  if (!form || form.nodeName !== 'FORM') return;
-  if (form.dataset.confirm !== '1') return;
-
-  if (form.hasAttribute('hx-post') || form.hasAttribute('hx-put') || form.hasAttribute('hx-patch') || form.hasAttribute('hx-delete')) return;
-
-  if (form.dataset.confirmed === '1') {
-    form.dataset.confirmed = '0';
-    return;
-  }
-
-  e.preventDefault();
-  pending = { type: 'form', form };
-
-  openConfirmModal({
-    title: form.dataset.confirmTitle || 'Confirmar',
-    body: form.dataset.confirmBody || 'Confirma salvar?',
-    okText: form.dataset.confirmOk || 'Confirmar'
-  });
 }, true);
 
 okBtn.addEventListener('click', function () {
-  const modal = bootstrap.Modal.getInstance(modalEl);
-  if (modal) modal.hide();
+const modal = bootstrap.Modal.getInstance(modalEl);
+if (modal) modal.hide();
 
-  if (!pending) return;
-  const current = pending;
-  pending = null;
+if (!pending) return;
+const current = pending;
+pending = null;
 
-  if (current.type === 'htmx') return current.issueRequest();
-  if (current.type === 'form') {
-    current.form.dataset.confirmed = '1';
-    return current.form.submit();
-  }
+if (current.type === 'htmx') {
+  // dispara o evento que o HTMX vai escutar (hx-trigger="confirmed")
+  current.el.dispatchEvent(new Event('confirmed', { bubbles: true }));
+  return;
+}
+
+if (current.type === 'link') {
+  window.location.href = current.el.getAttribute('href');
+  return;
+}
+
+if (current.type === 'form') {
+  current.form.dataset.confirmed = '1';
+  current.form.submit();
+  return;
+}
+
 });
 
 modalEl.addEventListener('hidden.bs.modal', function () {
-  pending = null;
+pending = null;
 });
-
 })();
 </script>
 

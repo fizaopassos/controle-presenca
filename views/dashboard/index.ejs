@@ -34,21 +34,7 @@
     </div>
   </div>
 
-  <div class="col-md-3">
-    <div class="card text-white bg-info h-100">
-      <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-people"></i> Cadastros</h5>
-        <p class="card-text">Gerenciar condomínios, empresas, postos e colaboradores.</p>
-      </div>
-      <div class="card-footer text-end">
-        <a href="/empresas" class="btn btn-light btn-sm">
-          Abrir Cadastros <i class="bi bi-arrow-right"></i>
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <% if (usuario && usuario.perfil === 'ADMIN') { %>
+    <% if (usuario && usuario.perfil === 'ADMIN') { %>
     <div class="col-md-3">
       <div class="card text-white bg-dark h-100">
         <div class="card-body">

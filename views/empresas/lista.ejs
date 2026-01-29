@@ -4,24 +4,22 @@
   <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
     <div>
       <h1 class="h3 mb-1">
-        <i class="bi bi-building-checkbi bi-building-check text-primary me-2"></i>
-        Empresas Fornecedoras
+        <i class="bi bi-building-check text-primary me-2"></i>        Empresas Fornecedoras
       </h1>
       <p class="subtitle mb-0">
         Gerencie as empresas prestadoras de serviço
       </p>
     </div>
-    <button 
-      type="button"
-      class="btn btn-primary"
-      hx-get="/empresas/novo?partial=1"
-      hx-target="#empresaModalBody"
-      hx-swap="innerHTML"
-    >
-      <a href="/empresas/novo" class="btn btn-primary"></a>
-      <i class="bi bi-plus-circle me-1"></i>
-      Nova Empresa
-    </button>
+    <button
+type="button"
+class="btn btn-primary"
+hx-get="/empresas/novo?partial=1"
+hx-target="#empresaModalBody"
+hx-swap="innerHTML">
+
+<i class="bi bi-plus-circle me-1"></i>
+Nova Empresa
+</button>
   </div>
 
   <!-- Filtro Rápido -->
@@ -71,16 +69,18 @@
                 <td colspan="6" class="text-center py-5">
                   <i class="bi bi-inbox display-6 text-muted d-block mb-2"></i>
                   <p class="text-muted mb-3">Nenhuma empresa cadastrada ainda.</p>
-                  <button 
-                    type="button"
-                    class="btn btn-primary"
-                    hx-get="/empresas/novo?partial=1"
-                    hx-target="#empresaModalBody"
-                    hx-swap="innerHTML"
-                  >
-                    <i class="bi bi-plus-circle me-1"></i>
-                    Cadastrar Primeira Empresa
-                  </button>
+                  <button
+type="button"
+class="btn btn-primary"
+data-bs-toggle="modal"
+data-bs-target="#empresaModal"
+hx-get="/empresas/novo?partial=1"
+hx-target="#empresaModalBody"
+hx-swap="innerHTML">
+
+<i class="bi bi-plus-circle me-1"></i>
+Cadastrar Primeira Empresa
+</button>
                 </td>
               </tr>
             <% } else { %>
@@ -139,17 +139,18 @@
 
   // Fechar modal após salvar com sucesso
   document.body.addEventListener('htmx:afterRequest', function(evt) {
-    if (!evt.detail.successful) return;
+if (!evt.detail || !evt.detail.successful) return;
 
-    const url = evt.detail.pathInfo && evt.detail.pathInfo.requestPath || '';
-    if (url.includes('/empresas/novo') || url.includes('/empresas/editar')) {
-      const modalEl = document.getElementById('empresaModal');
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) {
-        modal.hide();
-      }
-    }
-  });
+const el = evt.detail.elt;
+if (!el || !el.closest) return;
+
+// se a request veio do botão/elemento dentro do form de empresa, fecha o modal
+if (el.closest('#formEmpresa')) {
+const modalEl = document.getElementById('empresaModal');
+const modal = bootstrap.Modal.getInstance(modalEl);
+if (modal) modal.hide();
+}
+});
 </script>
 
 <!-- Modal para criar/editar Empresa via HTMX -->
