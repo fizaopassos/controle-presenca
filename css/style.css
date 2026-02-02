@@ -411,3 +411,33 @@ font-size: 0.85rem;
   color: #94a3b8;
   flex: 0 0 auto;
 }
+
+.alert-custom {
+  background-color: #4a5568; /* cinza azulado */
+  color: #fff;
+  border: 1px solid #2d3748;
+  border-radius: 0.375rem;
+  padding: 1rem;
+}
+
+.alert-dashboard{
+background-color: #254086;
+border: 1px solid #254086;
+color: #ffffff;
+}
+
+.alert-dashboard a{
+color: #ffffff;
+text-decoration: underline;
+}
+
+.bg-brand{
+background-color: #7391e0 !important;
+border-color: #254086 !important;
+color: #ffffff !important;
+}
+
+.bg-brand .card-title,
+.bg-brand .card-text{
+color: #ffffff;
+}

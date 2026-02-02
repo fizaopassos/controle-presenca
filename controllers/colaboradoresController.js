@@ -162,182 +162,349 @@ exports.listarCoberturas = async (req, res) => {
 
 
 // Mostrar formulário de novo colaborador
+// Mostrar formulário de novo colaborador
 exports.formNovo = async (req, res) => {
-try {
-const [empresas] = await db.query('SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY nome');
-const [postos] = await db.query('SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome');
-const [condominios] = await db.query('SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome');
+  try {
+    const user = req.session.user;
+    const isAdmin = user.perfil === 'admin';
 
-const isPartial = req.query.partial === '1' || isHTMX(req);
+    // Empresas e postos (todos, como já era)
+    const [empresas] = await db.query(
+      'SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY nome'
+    );
+    const [postos] = await db.query(
+      'SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome'
+    );
 
-const viewData = {
-  colaborador: null,
-  acao: 'novo',
-  empresas,
-  postos,
-  condominios
+    // Condomínios: admin vê todos; gestor/lançador só os permitidos
+    let condominios = [];
+
+    if (isAdmin) {
+      const [rowsCond] = await db.query(
+        'SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome'
+      );
+      condominios = rowsCond;
+    } else {
+      const condominiosPermitidos = Array.isArray(user.condominios)
+        ? user.condominios
+            .map(c => Number(c.id))
+            .filter(n => Number.isFinite(n))
+        : [];
+
+      if (condominiosPermitidos.length === 0) {
+        return res
+          .status(403)
+          .send('Seu usuário não tem condomínios permitidos para cadastrar colaboradores.');
+      }
+
+      const [rowsCond] = await db.query(
+        'SELECT id, nome FROM condominios WHERE ativo = TRUE AND id IN (?) ORDER BY nome',
+        [condominiosPermitidos]
+      );
+      condominios = rowsCond;
+    }
+
+    const isPartial = req.query.partial === '1' || isHTMX(req);
+
+    const viewData = {
+      colaborador: null,
+      acao: 'novo',
+      empresas,
+      postos,
+      condominios
+    };
+
+    if (isPartial) {
+      return res.render('colaboradores/_form', viewData);
+    }
+
+    return res.render('layout', {
+      title: 'Novo Colaborador',
+      page: 'colaboradores/form',
+      menuAtivo: 'cadastros',
+      ...viewData
+    });
+  } catch (error) {
+    console.error('Erro ao carregar formulário:', error);
+    return res.status(500).send('Erro ao carregar formulário');
+  }
 };
 
-if (isPartial) {
-  return res.render('colaboradores/_form', viewData);
-}
-
-return res.render('layout', {
-  title: 'Novo Colaborador',
-  page: 'colaboradores/form',
-  menuAtivo: 'cadastros',
-  ...viewData
-});
-
-} catch (error) {
-console.error('Erro ao carregar formulário:', error);
-return res.status(500).send('Erro ao carregar formulário');
-}
-};
 
 // Criar novo colaborador
+// Criar novo colaborador
 exports.criar = async (req, res) => {
-const { nome, empresa_id, condominio_id, posto_id, tipo } = req.body;
+  try {
+    const user = req.session.user;
 
-if (!nome || nome.trim() === '') return res.status(400).send('Nome é obrigatório.');
-if (!empresa_id) return res.status(400).send('Empresa é obrigatória.');
+    let { nome, empresa_id, condominio_id, posto_id, tipo } = req.body;
 
-const tipoFinal = (tipo === 'cobertura') ? 'cobertura' : 'fixo';
-const condFinal = (tipoFinal === 'cobertura') ? null : (condominio_id || null);
-const postoFinal = (tipoFinal === 'cobertura') ? null : (posto_id || null);
+    if (!nome || nome.trim() === '') {
+      return res.status(400).send('Nome é obrigatório.');
+    }
+    if (!empresa_id) {
+      return res.status(400).send('Empresa é obrigatória.');
+    }
+    if (!tipo) {
+      return res.status(400).send('Tipo é obrigatório.');
+    }
 
-try {
-const sqlInsert =
-'INSERT INTO colaboradores (nome, empresa_id, condominio_id, posto_id, tipo, ativo) ' +
-'VALUES (?, ?, ?, ?, ?, TRUE)';
+    tipo = String(tipo).toLowerCase();
+    const tipoFinal = tipo === 'cobertura' ? 'cobertura' : 'fixo';
 
-const [result] = await db.query(sqlInsert, [
-  nome,
-  empresa_id,
-  condFinal,
-  postoFinal,
-  tipoFinal
-]);
+    // Normaliza IDs (string vazia -> null)
+    condominio_id = condominio_id || null;
+    posto_id = posto_id || null;
 
-if (isHTMX(req)) {
-  const insertedId = result.insertId;
+    // 1) Se for FIXO: condomínio e posto obrigatórios
+    if (tipoFinal === 'fixo') {
+      if (!condominio_id) {
+        return res
+          .status(400)
+          .send('Para colaboradores FIXOS, o condomínio é obrigatório.');
+      }
+      if (!posto_id) {
+        return res
+          .status(400)
+          .send('Para colaboradores FIXOS, o posto é obrigatório.');
+      }
+    }
 
-  const sqlSelectUm =
-    'SELECT ' +
-    '  c.*, ' +
-    '  e.nome AS empresa_nome, ' +
-    '  p.nome AS posto_nome, ' +
-    '  cond.nome AS condominio_nome ' +
-    'FROM colaboradores c ' +
-    'LEFT JOIN empresas e ON c.empresa_id = e.id ' +
-    'LEFT JOIN postos p ON c.posto_id = p.id ' +
-    'LEFT JOIN condominios cond ON c.condominio_id = cond.id ' +
-    'WHERE c.id = ?';
+    // 2) Se veio condomínio, valida se o usuário (gestor/lançador) tem acesso
+    if (condominio_id && user.perfil !== 'admin') {
+      const [rowsPerm] = await db.query(
+        `
+        SELECT 1 
+        FROM usuario_condominios 
+        WHERE usuario_id = ? 
+          AND condominio_id = ?
+        LIMIT 1
+        `,
+        [user.id, condominio_id]
+      );
 
-  const [rows] = await db.query(sqlSelectUm, [insertedId]);
-  return res.render('colaboradores/_linha', { c: rows[0] });
-}
+      if (rowsPerm.length === 0) {
+        return res
+          .status(403)
+          .send('Você não tem permissão para cadastrar colaborador neste condomínio.');
+      }
+    }
 
-return res.redirect('/colaboradores');
+    const condFinal = tipoFinal === 'cobertura' ? null : condominio_id;
+    const postoFinal = tipoFinal === 'cobertura' ? null : posto_id;
 
-} catch (error) {
-console.error('Erro ao criar colaborador:', error);
-return res.status(500).send('Erro ao criar colaborador');
-}
+    const sqlInsert =
+      'INSERT INTO colaboradores (nome, empresa_id, condominio_id, posto_id, tipo, ativo) ' +
+      'VALUES (?, ?, ?, ?, ?, TRUE)';
+
+    const [result] = await db.query(sqlInsert, [
+      nome,
+      empresa_id,
+      condFinal,
+      postoFinal,
+      tipoFinal
+    ]);
+
+    if (isHTMX(req)) {
+      const insertedId = result.insertId;
+
+      const sqlSelectUm =
+        'SELECT ' +
+        '  c.*, ' +
+        '  e.nome AS empresa_nome, ' +
+        '  p.nome AS posto_nome, ' +
+        '  cond.nome AS condominio_nome ' +
+        'FROM colaboradores c ' +
+        'LEFT JOIN empresas e ON c.empresa_id = e.id ' +
+        'LEFT JOIN postos p ON c.posto_id = p.id ' +
+        'LEFT JOIN condominios cond ON c.condominio_id = cond.id ' +
+        'WHERE c.id = ?';
+
+      const [rows] = await db.query(sqlSelectUm, [insertedId]);
+      return res.render('colaboradores/_linha', { c: rows[0] });
+    }
+
+    return res.redirect('/colaboradores');
+  } catch (error) {
+    console.error('Erro ao criar colaborador:', error);
+    return res.status(500).send('Erro ao criar colaborador');
+  }
 };
+
 
 // Mostrar formulário de edição
+// Mostrar formulário de edição
 exports.formEditar = async (req, res) => {
-const { id } = req.params;
+  const { id } = req.params;
 
-try {
-const [rows] = await db.query('SELECT * FROM colaboradores WHERE id = ?', [id]);
-if (rows.length === 0) return res.status(404).send('Colaborador não encontrado');
+  try {
+    const user = req.session.user;
+    const isAdmin = user.perfil === 'admin';
 
-const [empresas] = await db.query('SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY nome');
-const [postos] = await db.query('SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome');
-const [condominios] = await db.query('SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome');
+    const [rows] = await db.query('SELECT * FROM colaboradores WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).send('Colaborador não encontrado');
 
-const isPartial = req.query.partial === '1' || isHTMX(req);
+    const colaborador = rows[0];
 
-const viewData = {
-  colaborador: rows[0],
-  acao: 'editar',
-  empresas,
-  postos,
-  condominios
+    const [empresas] = await db.query(
+      'SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY nome'
+    );
+    const [postos] = await db.query(
+      'SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome'
+    );
+
+    let condominios = [];
+    if (isAdmin) {
+      const [rowsCond] = await db.query(
+        'SELECT id, nome FROM condominios WHERE ativo = TRUE ORDER BY nome'
+      );
+      condominios = rowsCond;
+    } else {
+      const condominiosPermitidos = Array.isArray(user.condominios)
+        ? user.condominios
+            .map(c => Number(c.id))
+            .filter(n => Number.isFinite(n))
+        : [];
+
+      if (condominiosPermitidos.length === 0) {
+        return res
+          .status(403)
+          .send('Seu usuário não tem condomínios permitidos para editar colaboradores.');
+      }
+
+      const [rowsCond] = await db.query(
+        'SELECT id, nome FROM condominios WHERE ativo = TRUE AND id IN (?) ORDER BY nome',
+        [condominiosPermitidos]
+      );
+      condominios = rowsCond;
+    }
+
+    const isPartial = req.query.partial === '1' || isHTMX(req);
+
+    const viewData = {
+      colaborador,
+      acao: 'editar',
+      empresas,
+      postos,
+      condominios
+    };
+
+    if (isPartial) {
+      return res.render('colaboradores/_form', viewData);
+    }
+
+    return res.render('layout', {
+      title: 'Editar Colaborador',
+      page: 'colaboradores/form',
+      menuAtivo: 'cadastros',
+      ...viewData
+    });
+  } catch (error) {
+    console.error('Erro ao carregar colaborador:', error);
+    return res.status(500).send('Erro ao carregar colaborador');
+  }
 };
 
-if (isPartial) {
-  return res.render('colaboradores/_form', viewData);
-}
-
-return res.render('layout', {
-  title: 'Editar Colaborador',
-  page: 'colaboradores/form',
-  menuAtivo: 'cadastros',
-  ...viewData
-});
-
-} catch (error) {
-console.error('Erro ao carregar colaborador:', error);
-return res.status(500).send('Erro ao carregar colaborador');
-}
-};
 
 // Atualizar colaborador
+// Atualizar colaborador
 exports.atualizar = async (req, res) => {
-const { id } = req.params;
-const { nome, empresa_id, condominio_id, posto_id, tipo, ativo } = req.body;
+  const { id } = req.params;
+  let { nome, empresa_id, condominio_id, posto_id, tipo, ativo } = req.body;
 
-if (!nome || nome.trim() === '') return res.status(400).send('Nome é obrigatório.');
-if (!empresa_id) return res.status(400).send('Empresa é obrigatória.');
+  try {
+    const user = req.session.user;
 
-const tipoFinal = (tipo === 'cobertura') ? 'cobertura' : 'fixo';
-const condFinal = (tipoFinal === 'cobertura') ? null : (condominio_id || null);
-const postoFinal = (tipoFinal === 'cobertura') ? null : (posto_id || null);
-const ativoBool = ativo === 'on' ? 1 : 0;
+    if (!nome || nome.trim() === '') {
+      return res.status(400).send('Nome é obrigatório.');
+    }
+    if (!empresa_id) {
+      return res.status(400).send('Empresa é obrigatória.');
+    }
 
-try {
-const sqlUpdate =
-'UPDATE colaboradores ' +
-'SET nome = ?, empresa_id = ?, condominio_id = ?, posto_id = ?, tipo = ?, ativo = ? ' +
-'WHERE id = ?';
+    tipo = (tipo || 'fixo').toLowerCase();
+    const tipoFinal = tipo === 'cobertura' ? 'cobertura' : 'fixo';
 
-await db.query(sqlUpdate, [
-  nome,
-  empresa_id,
-  condFinal,
-  postoFinal,
-  tipoFinal,
-  ativoBool,
-  id
-]);
+    condominio_id = condominio_id || null;
+    posto_id = posto_id || null;
 
-if (isHTMX(req)) {
-  const sqlSelectUm =
-    'SELECT ' +
-    '  c.*, ' +
-    '  e.nome AS empresa_nome, ' +
-    '  p.nome AS posto_nome, ' +
-    '  cond.nome AS condominio_nome ' +
-    'FROM colaboradores c ' +
-    'LEFT JOIN empresas e ON c.empresa_id = e.id ' +
-    'LEFT JOIN postos p ON c.posto_id = p.id ' +
-    'LEFT JOIN condominios cond ON c.condominio_id = cond.id ' +
-    'WHERE c.id = ?';
+    // 1) FIXO → condomínio e posto obrigatórios
+    if (tipoFinal === 'fixo') {
+      if (!condominio_id) {
+        return res
+          .status(400)
+          .send('Para colaboradores FIXOS, o condomínio é obrigatório.');
+      }
+      if (!posto_id) {
+        return res
+          .status(400)
+          .send('Para colaboradores FIXOS, o posto é obrigatório.');
+      }
+    }
 
-  const [rows] = await db.query(sqlSelectUm, [id]);
-  return res.render('colaboradores/_linha', { c: rows[0] });
-}
+    // 2) Se veio condomínio, valida permissão (gestor/lançador)
+    if (condominio_id && user.perfil !== 'admin') {
+      const [rowsPerm] = await db.query(
+        `
+        SELECT 1 
+        FROM usuario_condominios 
+        WHERE usuario_id = ? 
+          AND condominio_id = ?
+        LIMIT 1
+        `,
+        [user.id, condominio_id]
+      );
 
-return res.redirect('/colaboradores');
+      if (rowsPerm.length === 0) {
+        return res
+          .status(403)
+          .send('Você não tem permissão para alterar colaborador neste condomínio.');
+      }
+    }
 
-} catch (error) {
-console.error('Erro ao atualizar colaborador:', error);
-return res.status(500).send('Erro ao atualizar colaborador');
-}
+    const condFinal = tipoFinal === 'cobertura' ? null : condominio_id;
+    const postoFinal = tipoFinal === 'cobertura' ? null : posto_id;
+    const ativoBool = ativo === 'on' ? 1 : 0;
+
+    const sqlUpdate =
+      'UPDATE colaboradores ' +
+      'SET nome = ?, empresa_id = ?, condominio_id = ?, posto_id = ?, tipo = ?, ativo = ? ' +
+      'WHERE id = ?';
+
+    await db.query(sqlUpdate, [
+      nome,
+      empresa_id,
+      condFinal,
+      postoFinal,
+      tipoFinal,
+      ativoBool,
+      id
+    ]);
+
+    if (isHTMX(req)) {
+      const sqlSelectUm =
+        'SELECT ' +
+        '  c.*, ' +
+        '  e.nome AS empresa_nome, ' +
+        '  p.nome AS posto_nome, ' +
+        '  cond.nome AS condominio_nome ' +
+        'FROM colaboradores c ' +
+        'LEFT JOIN empresas e ON c.empresa_id = e.id ' +
+        'LEFT JOIN postos p ON c.posto_id = p.id ' +
+        'LEFT JOIN condominios cond ON c.condominio_id = cond.id ' +
+        'WHERE c.id = ?';
+
+      const [rows] = await db.query(sqlSelectUm, [id]);
+      return res.render('colaboradores/_linha', { c: rows[0] });
+    }
+
+    return res.redirect('/colaboradores');
+  } catch (error) {
+    console.error('Erro ao atualizar colaborador:', error);
+    return res.status(500).send('Erro ao atualizar colaborador');
+  }
 };
+
 
 // Ativar / Inativar colaborador (toggle)
 exports.toggleAtivo = async (req, res) => {

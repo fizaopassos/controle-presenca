@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { isAuthenticated, allowPerfis /*, checkCondominioAccess */ } = require('../middlewares/auth');
+const { isAuthenticated, allowPerfis } = require('../middlewares/auth');
 const colaboradoresController = require('../controllers/colaboradoresController');
 
 // Todas as rotas de colaboradores: usuário logado e perfil admin/gestor/lancador
@@ -16,6 +16,7 @@ router.get('/novo', colaboradoresController.formNovo);
 // Salvar novo colaborador
 router.post('/novo', colaboradoresController.criar);
 
+// Listar coberturas (se você usa isso em presenças)
 router.get('/coberturas', colaboradoresController.listarCoberturas);
 
 // Formulário de edição
@@ -26,8 +27,5 @@ router.post('/editar/:id', colaboradoresController.atualizar);
 
 // Ativar / Inativar (toggle)
 router.post('/toggle-ativo/:id', colaboradoresController.toggleAtivo);
-
-
-
 
 module.exports = router;
