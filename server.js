@@ -75,13 +75,36 @@ app.use('/postos', postosRoutes);
 app.use('/colaboradores', colaboradoresRoutes);
 app.use('/presenca', presencaRoutes);
 app.use('/usuarios', usuariosRoutes);
+app.get('/', (req, res) => {
+if (req.session && req.session.user) {
+return res.redirect('/dashboard');
+}
+return res.redirect('/auth/login');
+});
 
+app.get('/', (req, res) => {
+if (req.session && req.session.user) {
+return res.redirect('/dashboard');
+}
+return res.render('layout', {
+title: 'Controle de Presença',
+page: 'home',
+showNavbar: false,
+mainClass: 'container-fluid p-0',
+menuAtivo: ''
+});
+});
 app.get('/login', (req, res) => res.redirect('/auth/login'));
 app.post('/login', (req, res) => res.redirect(307, '/auth/login'));
 
 // ========================
 // Iniciar servidor
 // ========================
-app.listen(PORT, () => {
+/*app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
+});*/
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${PORT} e acessível na rede local`);
 });
+

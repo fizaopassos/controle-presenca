@@ -1,93 +1,146 @@
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-<div>
-<h4 class="page-title mb-1">
-<i class="bi bi-people text-primary me-2"></i>
-Colaboradores
-</h4>
-<p class="text-muted mb-0">
-Gerencie os colaboradores vinculados às empresas, condomínios e postos.
-</p>
+  <div>
+    <h4 class="page-title mb-1">
+      <i class="bi bi-people text-primary me-2"></i>
+      Colaboradores
+    </h4>
+    <p class="text-muted mb-0">
+      Gerencie os colaboradores vinculados às empresas, condomínios e postos.
+    </p>
+  </div>
+
+  <button
+    type="button"
+    class="btn btn-primary"
+    hx-get="/colaboradores/novo?partial=1"
+    hx-target="#colaboradorModalBody"
+    hx-swap="innerHTML">
+    <i class="bi bi-plus-circle me-1"></i>
+    Novo colaborador
+  </button>
 </div>
 
-<button
-type="button"
-class="btn btn-primary"
-hx-get="/colaboradores/novo?partial=1"
-hx-target="#colaboradorModalBody"
-hx-swap="innerHTML">
-<i class="bi bi-plus-circle me-1"></i>
-Novo colaborador
-</button>
+<!-- Filtro Rápido -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="input-group">
+      <span class="input-group-text">
+        <i class="bi bi-search"></i>
+      </span>
+      <input
+        type="text"
+        class="form-control"
+        id="filtroNome"
+        placeholder="Buscar colaborador por nome..."
+      >
+    </div>
+    <small class="text-muted mt-2 d-block" id="totalColaboradores"></small>
+  </div>
 </div>
+
+</div>
+
 
 <div class="card">
-<div class="card-body">
-<% if (colaboradores.length === 0) { %>
-<p class="text-muted mb-0">
-Nenhum colaborador cadastrado ainda.
-</p>
-<% } else { %>
-<div class="table-responsive">
-<table class="table align-middle">
-<thead>
-<tr>
-<th>ID</th>
-<th>Nome</th>
-<th>Empresa</th>
-<th>Condomínio</th>
-<th>Posto</th>
-<th>Tipo</th>
-<th>Status</th>
-<th class="text-end" style="width: 220px;">Ações</th>
-</tr>
-</thead>
-<tbody id="tabelaColaboradores">
-<% colaboradores.forEach(c => { %>
-<%- include('_linha', { c: c }) %>
-<% }) %>
-</tbody>
-</table>
-</div>
-<% } %>
-</div>
-</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Empresa</th>
+            <th>Condomínio</th>
+            <th>Posto</th>
+            <th>Tipo</th>
+            <th>Status</th>
+            <th class="text-end" style="width: 220px;">Ações</th>
+          </tr>
+        </thead>
 
+        <tbody id="tabelaColaboradores">
+          <% if (!colaboradores || colaboradores.length === 0) { %>
+            <tr id="colaboradores-empty-row">
+              <td colspan="7" class="text-muted py-3">
+                Nenhum colaborador cadastrado ainda.
+              </td>
+            </tr>
+          <% } else { %>
+            <% colaboradores.forEach(c => { %>
+              <%- include('_linha', { c: c }) %>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <script>
-// Abrir modal quando o conteúdo do formulário for carregado via HTMX
-document.body.addEventListener('htmx:afterSwap', function (evt) {
-if (evt.target && evt.target.id === 'colaboradorModalBody') {
-const modalEl = document.getElementById('colaboradorModal');
-const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-modal.show();
-}
-});
+  // Abrir modal quando o conteúdo do formulário for carregado via HTMX
+  document.body.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.target && evt.target.id === 'colaboradorModalBody') {
+      const modalEl = document.getElementById('colaboradorModal');
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
 
-// Fechar modal após salvar com sucesso (novo ou editar)
-document.body.addEventListener('htmx:afterRequest', function(evt) {
-  const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
-  if (!el || !evt.detail.successful) return;
+    // Remove linha vazia quando inserir o primeiro colaborador
+    if (evt.target && evt.target.id === 'tabelaColaboradores') {
+      const emptyRow = document.getElementById('colaboradores-empty-row');
+      if (emptyRow) {
+        emptyRow.remove();
+      }
+    }
+  });
 
-  // Verifica se o elemento disparador é o botão de salvar dentro do form de colaborador
-  const form = el.closest('#formColaboradorHtmx');
-  if (form) {
-    const modalEl = document.getElementById('colaboradorModal');
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
+  // Filtro de busca em tempo real
+  const filtroInput = document.getElementById('filtroNome');
+
+  if (filtroInput) {
+    filtroInput.addEventListener('input', function() {
+      const termo = this.value.toLowerCase();
+      const linhas = document.querySelectorAll('#tabelaColaboradores tr[data-nome]');
+      let visiveis = 0;
+
+      linhas.forEach(linha => {
+        const nome = (linha.dataset.nome || '').toLowerCase();
+        if (nome.includes(termo)) {
+          linha.style.display = '';
+          visiveis++;
+        } else {
+          linha.style.display = 'none';
+        }
+      });
+
+      document.getElementById('totalColaboradores').textContent = 
+        visiveis + ' colaboradores' + (visiveis !== 1 ? 's' : '');
+    });
   }
-});
 
+  // Fechar modal após salvar com sucesso (novo ou editar)
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
+    if (!el || !evt.detail.successful) return;
+
+    // Verifica se o elemento disparador é o botão de salvar dentro do form de colaborador
+    const form = el.closest('#formColaboradorHtmx');
+    if (form) {
+      const modalEl = document.getElementById('colaboradorModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
+  });
 </script>
 
 <!-- Modal para criar/editar Colaborador via HTMX -->
 <div class="modal fade" id="colaboradorModal" tabindex="-1">
-<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Colaborador</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-<div class="modal-body" id="colaboradorModalBody"></div>
-</div>
-</div>
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Colaborador</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="colaboradorModalBody"></div>
+    </div>
+  </div>
 </div>

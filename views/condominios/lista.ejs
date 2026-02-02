@@ -15,38 +15,42 @@ class="btn btn-primary"
 hx-get="/condominios/novo?partial=1"
 hx-target="#condominioModalBody"
 hx-swap="innerHTML">
-
 <i class="bi bi-plus-circle me-1"></i>
 Novo condomínio
-
 </button>
 </div>
 
 <div class="card">
 <div class="card-body">
-<% if (!condominios || condominios.length === 0) { %>
-<p class="text-muted mb-0">Nenhum condomínio cadastrado ainda.</p>
-<% } else { %>
 <div class="table-responsive">
 <table class="table align-middle">
 <thead>
 <tr>
 <th>ID</th>
 <th>Nome</th>
-<th>Código Interno</th>
 <th>Cidade/UF</th>
+<th>Código Interno</th>
 <th>Status</th>
 <th class="text-end" style="width: 240px;">Ações</th>
 </tr>
 </thead>
-<tbody id="tabelaCondominios">
-<% condominios.forEach(c => { %>
-<%- include('_linha', { c: c }) %>
-<% }) %>
-</tbody>
-</table>
+
+    <tbody id="tabelaCondominios">
+      <% if (!condominios || condominios.length === 0) { %>
+        <tr id="condominios-empty-row">
+          <td colspan="6" class="text-muted py-3">
+            Nenhum condomínio cadastrado ainda.
+          </td>
+        </tr>
+      <% } else { %>
+        <% condominios.forEach(c => { %>
+          <%- include('_linha', { c: c }) %>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
 </div>
-<% } %>
+
 </div>
 </div>
 
@@ -58,23 +62,32 @@ const modalEl = document.getElementById('condominioModal');
 const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 modal.show();
 }
+
+// Se foi um swap na tabela de condomínios, remover linha "vazia" se existir
+if (evt.target && evt.target.id === 'tabelaCondominios') {
+  const emptyRow = document.getElementById('condominios-empty-row');
+  if (emptyRow) {
+    emptyRow.remove();
+  }
+}
+
 });
 
 // Fechar modal após salvar com sucesso
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-  if (!evt.detail || !evt.detail.successful) return;
+if (!evt.detail || !evt.detail.successful) return;
 
-  const el = evt.detail.elt;
-  if (!el || !el.closest) return;
+const el = evt.detail.elt;
+if (!el || !el.closest) return;
 
-  // Se a requisição veio do botão dentro do form de condomínio, fecha o modal
-  if (el.closest('#formCondominioHtmx')) {
-    const modalEl = document.getElementById('condominioModal');
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
-  }
+// Se a requisição veio do botão dentro do form de condomínio, fecha o modal
+if (el.closest('#formCondominioHtmx')) {
+  const modalEl = document.getElementById('condominioModal');
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  if (modal) modal.hide();
+}
+
 });
-
 </script>
 
 <div class="modal fade" id="condominioModal" tabindex="-1">

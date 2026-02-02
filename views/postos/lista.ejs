@@ -1,85 +1,96 @@
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-<div>
-<h4 class="page-title mb-1">
-<i class="bi bi-geo-alt text-primary me-2"></i>
-Postos de Trabalho
-</h4>
-<p class="text-muted mb-0">
-Gerencie os postos disponíveis.
-</p>
-</div>
+  <div>
+    <h4 class="page-title mb-1">
+      <i class="bi bi-geo-alt text-primary me-2"></i>
+      Postos de Trabalho
+    </h4>
+    <p class="text-muted mb-0">
+      Gerencie os postos disponíveis.
+    </p>
+  </div>
 
-<button
-type="button"
-class="btn btn-primary"
-hx-get="/postos/novo?partial=1"
-hx-target="#postoModalBody"
-hx-swap="innerHTML">
-
-<i class="bi bi-plus-circle me-1"></i>
-Novo posto
-
-</button>
+  <button
+    type="button"
+    class="btn btn-primary"
+    hx-get="/postos/novo?partial=1"
+    hx-target="#postoModalBody"
+    hx-swap="innerHTML">
+    <i class="bi bi-plus-circle me-1"></i>
+    Novo posto
+  </button>
 </div>
 
 <div class="card">
-<div class="card-body">
-<% if (!postos || postos.length === 0) { %>
-<p class="text-muted mb-0">Nenhum posto cadastrado ainda.</p>
-<% } else { %>
-<div class="table-responsive">
-<table class="table align-middle">
-<thead>
-<tr>
-<th>ID</th>
-<th>Nome do Posto</th>
-<th>Descrição</th>
-<th>Status</th>
-<th class="text-end" style="width: 240px;">Ações</th>
-</tr>
-</thead>
-<tbody id="tabelaPostos">
-<% postos.forEach(p => { %>
-<%- include('_linha', { p: p }) %>
-<% }) %>
-</tbody>
-</table>
-</div>
-<% } %>
-</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome do Posto</th>
+            <th>Descrição</th>
+            <th>Status</th>
+            <th class="text-end" style="width: 240px;">Ações</th>
+          </tr>
+        </thead>
+
+        <tbody id="tabelaPostos">
+          <% if (!postos || postos.length === 0) { %>
+            <tr id="postos-empty-row">
+              <td colspan="5" class="text-muted py-3">
+                Nenhum posto cadastrado ainda.
+              </td>
+            </tr>
+          <% } else { %>
+            <% postos.forEach(p => { %>
+              <%- include('_linha', { p: p }) %>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
-document.body.addEventListener('htmx:afterSwap', function (evt) {
-if (evt.target && evt.target.id === 'postoModalBody') {
-const modalEl = document.getElementById('postoModal');
-const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-modal.show();
-}
-});
+  document.body.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.target && evt.target.id === 'postoModalBody') {
+      const modalEl = document.getElementById('postoModal');
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
 
-document.body.addEventListener('htmx:afterRequest', function(evt) {
-if (!evt.detail || !evt.detail.successful) return;
+    // Remove linha vazia quando inserir o primeiro posto
+    if (evt.target && evt.target.id === 'tabelaPostos') {
+      const emptyRow = document.getElementById('postos-empty-row');
+      if (emptyRow) {
+        emptyRow.remove();
+      }
+    }
+  });
 
-const el = evt.detail.elt;
-if (!el || !el.closest) return;
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (!evt.detail || !evt.detail.successful) return;
 
-if (el.closest('#formPostoHtmx')) {
-const modalEl = document.getElementById('postoModal');
-const modal = bootstrap.Modal.getInstance(modalEl);
-if (modal) modal.hide();
-}
-});
+    const el = evt.detail.elt;
+    if (!el || !el.closest) return;
+
+    if (el.closest('#formPostoHtmx')) {
+      const modalEl = document.getElementById('postoModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
+  });
 </script>
 
 <div class="modal fade" id="postoModal" tabindex="-1">
-<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Posto</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-<div class="modal-body" id="postoModalBody"></div>
-</div>
-</div>
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Posto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="postoModalBody"></div>
+    </div>
+  </div>
 </div>
