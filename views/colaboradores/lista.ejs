@@ -20,6 +20,24 @@
   </button>
 </div>
 
+<%
+  const isCoberturas = condominioSelecionado && condominioSelecionado.nome === 'Coberturas';
+%>
+
+<% if (typeof condominioSelecionado !== 'undefined' && condominioSelecionado && !isCoberturas) { %>
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <a href="/colaboradores" class="btn btn-outline-secondary btn-sm">
+        ← Trocar condomínio
+      </a>
+      <span class="text-muted">
+        Condomínio: <strong><%= condominioSelecionado.nome %></strong>
+      </span>
+    </div>
+  </div>
+<% } %>
+
+
 <!-- Filtro Rápido -->
 <div class="card mb-3">
   <div class="card-body">

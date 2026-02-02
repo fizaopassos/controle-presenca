@@ -1,38 +1,165 @@
 const db = require('../config/db');
 
 function isHTMX(req) {
-return req.get('HX-Request') === 'true';
+  return req.get('HX-Request') === 'true';
 }
 
-// Listar todos os colaboradores com empresa, posto e condomínio
 exports.listar = async (req, res) => {
-try {
-const sql =
-'SELECT ' +
-'  c.*, ' +
-'  e.nome AS empresa_nome, ' +
-'  p.nome AS posto_nome, ' +
-'  cond.nome AS condominio_nome ' +
-'FROM colaboradores c ' +
-'LEFT JOIN empresas e ON c.empresa_id = e.id ' +
-'LEFT JOIN postos p ON c.posto_id = p.id ' +
-'LEFT JOIN condominios cond ON c.condominio_id = cond.id ' +
-'ORDER BY c.nome';
+  try {
+    // AQUI: pega sempre da sessão, que é onde o auth.js salva
+    const user = req.session && req.session.user ? req.session.user : null;
+    const condominioId = req.query.condominio_id ? Number(req.query.condominio_id) : null;
 
-const [rows] = await db.query(sql);
 
-return res.render('layout', {
-  title: 'Colaboradores',
-  page: 'colaboradores/lista',
-  menuAtivo: 'cadastros',
-  colaboradores: rows
-});
+    if (!user) {
+      // Se por algum motivo chegar aqui sem usuário, volta pro login
+      return res.redirect('/auth/login');
+    }
 
-} catch (error) {
-console.error('Erro ao listar colaboradores:', error);
-return res.status(500).send('Erro ao listar colaboradores');
-}
+    // Admin (pode usar role ou perfil – no seu caso é perfil)
+    const isAdmin = user.perfil === 'admin';
+
+    // Para não-admin: lista de condomínios permitidos vem de user.condominios
+    const condominiosPermitidos = !isAdmin
+      ? (Array.isArray(user.condominios)
+          ? user.condominios
+              .map(c => Number(c.id))
+              .filter(n => Number.isFinite(n))
+          : [])
+      : [];
+
+    // Se não for admin e não tiver nenhum condomínio permitido, bloqueia
+    if (!isAdmin && condominiosPermitidos.length === 0) {
+      return res.status(403).send('Seu usuário não tem condomínios permitidos para acessar.');
+    }
+
+    // ===== CASO 1: usuário não-admin, tem só 1 condomínio e não veio condominio_id → redireciona direto
+    if (!isAdmin && condominiosPermitidos.length === 1 && !condominioId) {
+      return res.redirect(`/colaboradores?condominio_id=${condominiosPermitidos[0]}`);
+    }
+
+    // ===== CASO 2: nenhum condomínio selecionado → mostrar cards
+    if (!condominioId) {
+      let sqlConds;
+      let params = [];
+
+      if (isAdmin) {
+        // Admin vê todos os condomínios ativos
+        sqlConds = `
+          SELECT cond.id, cond.nome,
+            (SELECT COUNT(*) FROM colaboradores c 
+             WHERE c.condominio_id = cond.id AND c.ativo = 1) AS total_colaboradores
+          FROM condominios cond
+          WHERE cond.ativo = 1
+          ORDER BY cond.nome
+        `;
+      } else {
+        // Usuário comum vê só os condomínios que tem acesso
+        sqlConds = `
+          SELECT cond.id, cond.nome,
+            (SELECT COUNT(*) FROM colaboradores c 
+             WHERE c.condominio_id = cond.id AND c.ativo = 1) AS total_colaboradores
+          FROM condominios cond
+          WHERE cond.ativo = 1
+            AND cond.id IN (?)
+          ORDER BY cond.nome
+        `;
+        params = [condominiosPermitidos];
+      }
+
+      const [condominios] = await db.query(sqlConds, params);
+
+      // Card de Coberturas
+      const [[cob]] = await db.query(
+        "SELECT COUNT(*) AS total FROM colaboradores WHERE tipo = 'cobertura' AND ativo = 1"
+      );
+      const totalCoberturas = cob.total;
+
+      return res.render('layout', {
+        title: 'Colaboradores',
+        page: 'colaboradores/selecionar_condominio',
+        menuAtivo: 'cadastros',
+        condominios,
+        totalCoberturas
+      });
+    }
+
+    // ===== CASO 3: condomínio selecionado → lista filtrada
+
+    // Se não for admin, valida se o condomínio selecionado está permitido
+    if (!isAdmin && !condominiosPermitidos.includes(condominioId)) {
+      return res.status(403).send('Acesso negado a este condomínio');
+    }
+
+    const sql = `
+      SELECT 
+        c.*, 
+        e.nome AS empresa_nome, 
+        p.nome AS posto_nome, 
+        cond.nome AS condominio_nome 
+      FROM colaboradores c 
+      LEFT JOIN empresas e ON c.empresa_id = e.id 
+      LEFT JOIN postos p ON c.posto_id = p.id 
+      LEFT JOIN condominios cond ON c.condominio_id = cond.id 
+      WHERE c.condominio_id = ? 
+      ORDER BY c.nome
+    `;
+
+    const [rows] = await db.query(sql, [condominioId]);
+
+    const [[condSel]] = await db.query(
+      'SELECT id, nome FROM condominios WHERE id = ?',
+      [condominioId]
+    );
+
+    return res.render('layout', {
+      title: 'Colaboradores',
+      page: 'colaboradores/lista',
+      menuAtivo: 'cadastros',
+      colaboradores: rows,
+      condominioSelecionado: condSel || null
+    });
+
+  } catch (error) {
+    console.error('Erro ao listar colaboradores:', error);
+    return res.status(500).send('Erro ao listar colaboradores');
+  }
 };
+
+
+exports.listarCoberturas = async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        c.*, 
+        e.nome AS empresa_nome, 
+        p.nome AS posto_nome, 
+        cond.nome AS condominio_nome 
+      FROM colaboradores c 
+      LEFT JOIN empresas e ON c.empresa_id = e.id 
+      LEFT JOIN postos p ON c.posto_id = p.id 
+      LEFT JOIN condominios cond ON c.condominio_id = cond.id 
+      WHERE c.tipo = 'cobertura'
+      ORDER BY c.nome
+    `;
+
+    const [rows] = await db.query(sql);
+
+    return res.render('layout', {
+      title: 'Colaboradores - Coberturas',
+      page: 'colaboradores/lista',
+      menuAtivo: 'cadastros',
+      colaboradores: rows,
+      condominioSelecionado: { nome: 'Coberturas' }
+    });
+
+  } catch (error) {
+    console.error('Erro ao listar coberturas:', error);
+    return res.status(500).send('Erro ao listar coberturas');
+  }
+};
+
+
 
 // Mostrar formulário de novo colaborador
 exports.formNovo = async (req, res) => {

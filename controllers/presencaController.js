@@ -114,19 +114,21 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
 
     // Busca todos colaboradores do condomínio, trazendo também o posto de cada um
     var sqlColabs = `
-      SELECT 
-        c.id,
-        c.nome,
-        c.empresa_id,
-        e.nome AS empresa,
-        c.posto_id,
-        p.nome AS posto_nome
-      FROM colaboradores c
-      LEFT JOIN empresas e ON c.empresa_id = e.id
-      LEFT JOIN postos p ON c.posto_id = p.id
-      WHERE c.condominio_id = ?
-      ORDER BY c.nome
-    `;
+  SELECT 
+    c.id,
+    c.nome,
+    c.empresa_id,
+    e.nome AS empresa,
+    c.posto_id,
+    p.nome AS posto_nome
+  FROM colaboradores c
+  LEFT JOIN empresas e ON c.empresa_id = e.id
+  LEFT JOIN postos p ON c.posto_id = p.id
+  WHERE c.condominio_id = ?
+    AND c.ativo = 1
+  ORDER BY c.nome
+`;
+
 
     var resultColabs = await db.query(sqlColabs, [condominio_id]);
     var colaboradores = resultColabs[0];
@@ -223,18 +225,20 @@ exports.getFuncionarios = async (req, res) => {
     }
 
     // Busca colaboradores vinculados a este posto E a este condomínio
-    const [colaboradores] = await db.query(`
-      SELECT 
-        c.id,
-        c.nome,
-        c.cpf,
-        e.nome AS empresa
-      FROM colaboradores c
-      LEFT JOIN empresas e ON c.empresa_id = e.id
-      WHERE c.posto_id = ?
-        AND c.condominio_id = ?
-      ORDER BY c.nome
-    `, [posto_id, condominio_id]);
+   const [colaboradores] = await db.query(`
+  SELECT 
+    c.id,
+    c.nome,
+    c.cpf,
+    e.nome AS empresa
+  FROM colaboradores c
+  LEFT JOIN empresas e ON c.empresa_id = e.id
+  WHERE c.posto_id = ?
+    AND c.condominio_id = ?
+    AND c.ativo = 1
+  ORDER BY c.nome
+`, [posto_id, condominio_id]);
+
 
     console.log(
       'Colaboradores encontrados para condominio',
@@ -294,131 +298,6 @@ exports.getFuncionarios = async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar colaboradores' });
   }
 };
-
-
-
-/*// ========================================
-// POST: Salvar presenças em massa
-// ========================================
-exports.lancarPresenca = async (req, res) => {
-  const connection = await db.getConnection();
-  try {
-    const { data, condominio_id, posto_id, presencas } = req.body;
-
-    // Validações
-    if (!data || !condominio_id || !posto_id || !Array.isArray(presencas)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Dados inválidos' 
-      });
-    }
-
-    await connection.beginTransaction();
-
-
-    for (const p of presencas) {
-      const { colaborador_id, status, observacoes } = p;
-
-      // INSERT ... ON DUPLICATE KEY UPDATE
-      await connection.query(`
-        INSERT INTO presencas_diarias 
-          (data, colaborador_id, condominio_id, posto_id, status, observacoes)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-          status = VALUES(status),
-          observacoes = VALUES(observacoes),
-          atualizado_em = CURRENT_TIMESTAMP
-      `, [data, colaborador_id, condominio_id, posto_id, status, observacoes || null]);
-    }
-
-    await connection.commit();
-
-    res.json({ 
-      success: true, 
-      message: 'Presenças salvas com sucesso!' 
-    });
-
-  } catch (error) {
-    await connection.rollback();
-    console.error('Erro ao salvar presenças:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao salvar presenças' 
-    });
-  } finally {
-    connection.release();
-  }
-};*/
-
-// ========================================
-// POST: Salvar presenças em massa
-// Aceita:
-// - modelo antigo: data, condominio_id, posto_id (único) + presencas[]
-// - modelo novo:  data, condominio_id, presencas[] com posto_id por colaborador
-// ========================================
-
-
-/*exports.lancarPresenca = async (req, res) => {
-  const connection = await db.getConnection();
-  try {
-    const data = req.body.data;
-    const condominio_id = req.body.condominio_id;
-    const posto_id_body = req.body.posto_id; // pode vir ou não (modelo antigo)
-    const presencas = req.body.presencas;
-
-    if (!data || !condominio_id || !Array.isArray(presencas)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Dados inválidos'
-      });
-    }
-
-    await connection.beginTransaction();
-
-    for (const p of presencas) {
-      const colaborador_id = p.colaborador_id;
-      const status = p.status;
-      const observacoes = p.observacoes || null;
-
-      // Novo: aceita posto_id por presença; se não vier, usa o do body (modelo antigo)
-      const posto_id = p.posto_id || posto_id_body || null;
-
-      if (!colaborador_id || !status) {
-        continue;
-      }
-
-      await connection.query(
-        `
-        INSERT INTO presencas_diarias 
-          (data, colaborador_id, condominio_id, posto_id, status, observacoes)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-          status = VALUES(status),
-          observacoes = VALUES(observacoes),
-          atualizado_em = CURRENT_TIMESTAMP
-        `,
-        [data, colaborador_id, condominio_id, posto_id, status, observacoes]
-      );
-    }
-
-    await connection.commit();
-
-    res.json({
-      success: true,
-      message: 'Presenças salvas com sucesso!'
-    });
-
-  } catch (error) {
-    await connection.rollback();
-    console.error('Erro ao salvar presenças:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao salvar presenças'
-    });
-  } finally {
-    connection.release();
-  }
-};*/
 
 exports.lancarPresenca = async (req, res) => {
 const connection = await db.getConnection();
@@ -514,7 +393,7 @@ connection.release();
 };
 
 
-          exports.getCoberturasPorEmpresa = async (req, res) => {
+exports.getCoberturasPorEmpresa = async (req, res) => {
       try {
       const empresa_id = req.params.empresa_id;
       if (!empresa_id) {
@@ -617,15 +496,16 @@ exports.buscarColaboradores = async (req, res) => {
     const { termo } = req.query;
     
     let query = `
-      SELECT 
-        c.id,
-        c.nome,
-        c.cpf,
-        e.nome as empresa
-      FROM colaboradores c
-      LEFT JOIN empresas e ON c.empresa_id = e.id
-      WHERE 1=1
-    `;
+  SELECT 
+    c.id,
+    c.nome,
+    c.cpf,
+    e.nome as empresa
+  FROM colaboradores c
+  LEFT JOIN empresas e ON c.empresa_id = e.id
+  WHERE c.ativo = 1
+`;
+
     
     const params = [];
     

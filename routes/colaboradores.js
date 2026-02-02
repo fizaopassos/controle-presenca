@@ -16,6 +16,8 @@ router.get('/novo', colaboradoresController.formNovo);
 // Salvar novo colaborador
 router.post('/novo', colaboradoresController.criar);
 
+router.get('/coberturas', colaboradoresController.listarCoberturas);
+
 // Formulário de edição
 router.get('/editar/:id', colaboradoresController.formEditar);
 
@@ -24,5 +26,8 @@ router.post('/editar/:id', colaboradoresController.atualizar);
 
 // Ativar / Inativar (toggle)
 router.post('/toggle-ativo/:id', colaboradoresController.toggleAtivo);
+
+
+
 
 module.exports = router;
