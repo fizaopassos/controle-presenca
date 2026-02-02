@@ -1,21 +1,69 @@
-<!-- Menu existente -->
-<li class="nav-item">
-  <a class="nav-link <%= menuAtivo === 'presenca' ? 'active' : '' %>" href="/presenca/lancar">
-    <i class="bi bi-calendar-check"></i> Presença
-  </a>
-</li>
+<% const perfil = usuario && usuario.perfil ? usuario.perfil.toLowerCase() : null; %>
 
-<li class="nav-item">
-  <a class="nav-link <%= menuAtivo === 'cadastros' ? 'active' : '' %>" href="/condominios">
-    <i class="bi bi-buildings"></i> Cadastros
+<aside class="sidebar" id="sidebar">
+  <a class="sidebar-brand" href="/dashboard">
+    <i class="bi bi-clipboard-check"></i>
+    <span class="brand-text">Controle de Presença</span>
   </a>
-</li>
 
-<!-- Novo item - só aparece para ADMIN -->
-<% if (usuario && usuario.perfil === 'ADMIN') { %>
-  <li class="nav-item">
-    <a class="nav-link <%= menuAtivo === 'admin' ? 'active' : '' %>" href="/usuarios">
-      <i class="bi bi-people"></i> Usuários
-    </a>
-  </li>
-<% } %>
+  <nav class="sidebar-nav">
+    <ul>
+      <li>
+        <a href="/dashboard" class="<%= menuAtivo === 'dashboard' ? 'active' : '' %>">
+          <i class="bi bi-speedometer2"></i>
+          <span class="sidebar-label">Dashboard</span>
+        </a>
+      </li>
+
+      <% if (perfil === 'admin') { %>
+        <li class="has-submenu">
+          <a href="#" class="<%= menuAtivo === 'cadastros' ? 'active' : '' %>">
+            <i class="bi bi-folder2"></i>
+            <span class="sidebar-label">Cadastros</span>
+            <i class="bi bi-chevron-right arrow"></i>
+          </a>
+          <ul class="submenu">
+            <li><a href="/condominios"><i class="bi bi-building"></i><span class="sidebar-label"> Condomínios</span></a></li>
+            <li><a href="/empresas"><i class="bi bi-briefcase"></i><span class="sidebar-label"> Empresas</span></a></li>
+            <li><a href="/postos"><i class="bi bi-geo-alt"></i><span class="sidebar-label"> Postos</span></a></li>
+            <li><a href="/colaboradores"><i class="bi bi-people"></i><span class="sidebar-label"> Colaboradores</span></a></li>
+          </ul>
+        </li>
+      <% } %>
+
+      <% if (perfil === 'gestor' || perfil === 'lancador') { %>
+        <li>
+          <a href="/colaboradores" class="<%= (menuAtivo === 'cadastros' || menuAtivo === 'colaboradores') ? 'active' : '' %>">
+            <i class="bi bi-people"></i>
+            <span class="sidebar-label">Colaboradores</span>
+          </a>
+        </li>
+      <% } %>
+
+      <li class="has-submenu">
+        <a href="#" class="<%= menuAtivo === 'presenca' ? 'active' : '' %>">
+          <i class="bi bi-calendar-check"></i>
+          <span class="sidebar-label">Presenças</span>
+          <i class="bi bi-chevron-right arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="/presenca/lancar"><i class="bi bi-plus-circle"></i><span class="sidebar-label"> Lançar Presença</span></a></li>
+          <li><a href="/presenca/consultar"><i class="bi bi-clipboard-data"></i><span class="sidebar-label"> Consultar Presenças</span></a></li>
+        </ul>
+      </li>
+
+      <% if (perfil === 'admin') { %>
+        <li class="has-submenu">
+          <a href="#" class="<%= menuAtivo === 'admin' ? 'active' : '' %>">
+            <i class="bi bi-shield-lock"></i>
+            <span class="sidebar-label">Administração</span>
+            <i class="bi bi-chevron-right arrow"></i>
+          </a>
+          <ul class="submenu">
+            <li><a href="/usuarios"><i class="bi bi-person-gear"></i><span class="sidebar-label"> Usuários</span></a></li>
+          </ul>
+        </li>
+      <% } %>
+    </ul>
+  </nav>
+</aside>

@@ -1,96 +1,94 @@
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-  <div>
-    <h4 class="page-title mb-1">
-      <i class="bi bi-people text-primary me-2"></i>
-      Colaboradores
-    </h4>
-    <p class="text-muted mb-0">
-      Gerencie os colaboradores vinculados às empresas, condomínios e postos.
-    </p>
-  </div>
+<div>
+<h4 class="page-title mb-1">
+<i class="bi bi-people text-primary me-2"></i>
+Colaboradores
+</h4>
+<p class="text-muted mb-0">
+Gerencie os colaboradores vinculados às empresas, condomínios e postos.
+</p>
+</div>
 
-  <button
-    type="button"
-    class="btn btn-primary"
-    hx-get="/colaboradores/novo?partial=1"
-    hx-target="#colaboradorModalBody"
-    hx-swap="innerHTML">
-    <i class="bi bi-plus-circle me-1"></i>
-    Novo colaborador
-  </button>
+<button
+type="button"
+class="btn btn-primary"
+hx-get="/colaboradores/novo?partial=1"
+hx-target="#colaboradorModalBody"
+hx-swap="innerHTML">
+<i class="bi bi-plus-circle me-1"></i>
+Novo colaborador
+</button>
 </div>
 
 <%
-  const isCoberturas = condominioSelecionado && condominioSelecionado.nome === 'Coberturas';
+const isCoberturas = condominioSelecionado && condominioSelecionado.nome === 'Coberturas';
 %>
 
 <% if (typeof condominioSelecionado !== 'undefined' && condominioSelecionado && !isCoberturas) { %>
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-    <div class="d-flex align-items-center gap-2">
-      <a href="/colaboradores" class="btn btn-outline-secondary btn-sm">
-        ← Trocar condomínio
-      </a>
-      <span class="text-muted">
-        Condomínio: <strong><%= condominioSelecionado.nome %></strong>
-      </span>
-    </div>
-  </div>
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+<div class="d-flex align-items-center gap-2">
+<a href="/colaboradores" class="btn btn-outline-secondary btn-sm">
+← Trocar condomínio
+</a>
+<span class="text-muted">
+Condomínio: <strong><%= condominioSelecionado.nome %></strong>
+</span>
+</div>
+</div>
 <% } %>
-
 
 <!-- Filtro Rápido -->
 <div class="card mb-3">
-  <div class="card-body">
-    <div class="input-group">
-      <span class="input-group-text">
-        <i class="bi bi-search"></i>
-      </span>
-      <input
-        type="text"
-        class="form-control"
-        id="filtroNome"
-        placeholder="Buscar colaborador por nome..."
-      >
-    </div>
-    <small class="text-muted mt-2 d-block" id="totalColaboradores"></small>
-  </div>
+<div class="card-body">
+<div class="input-group">
+<span class="input-group-text">
+<i class="bi bi-search"></i>
+</span>
+<input
+type="text"
+class="form-control"
+id="filtroNome"
+placeholder="Buscar colaborador por nome..."
+>
+</div>
+<small class="text-muted mt-2 d-block" id="totalColaboradores"></small>
+</div>
 </div>
 
-</div>
-
-
+<!-- A PARTIR DAQUI JÁ VEM A TABELA -->
 <div class="card">
-  <div class="card-body">
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Empresa</th>
-            <th>Condomínio</th>
-            <th>Posto</th>
-            <th>Tipo</th>
-            <th>Status</th>
-            <th class="text-end" style="width: 220px;">Ações</th>
-          </tr>
-        </thead>
+<div class="card-body">
+<div class="table-responsive">
+<table class="table align-middle" style="min-width: 900px;">
+<thead>
+<tr>
+<th>Nome</th>
+<th>Empresa</th>
+<th>Condomínio</th>
+<th>Posto</th>
+<th>Tipo</th>
+<th>Status</th>
+<th class="text-end" style="width: 220px;">Ações</th>
+</tr>
+</thead>
 
-        <tbody id="tabelaColaboradores">
-          <% if (!colaboradores || colaboradores.length === 0) { %>
-            <tr id="colaboradores-empty-row">
-              <td colspan="7" class="text-muted py-3">
-                Nenhum colaborador cadastrado ainda.
-              </td>
-            </tr>
-          <% } else { %>
-            <% colaboradores.forEach(c => { %>
-              <%- include('_linha', { c: c }) %>
-            <% }) %>
-          <% } %>
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <tbody id="tabelaColaboradores">
+      <% if (!colaboradores || colaboradores.length === 0) { %>
+        <tr id="colaboradores-empty-row">
+          <td colspan="7" class="text-muted py-3">
+            Nenhum colaborador cadastrado ainda.
+          </td>
+        </tr>
+      <% } else { %>
+        <% colaboradores.forEach(c => { %>
+          <%- include('_linha', { c: c }) %>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+</div>
 </div>
 
 <script>

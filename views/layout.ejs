@@ -12,24 +12,50 @@
 
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/theme.css">
+<link rel="stylesheet" href="/css/sidebar.css">
 </head>
 <body>
 
 <% const _showNavbar = (typeof showNavbar === 'undefined') ? true : showNavbar; %>
-<% const _mainClass  = (typeof mainClass  === 'undefined') ? 'container-fluid mt-4' : mainClass; %>
+<% const _mainClass  = (typeof mainClass  === 'undefined') ? '' : mainClass; %>
 
 <% if (_showNavbar) { %>
-<%- include('partials/navbar', { menuAtivo: menuAtivo || '' }) %>
-<% } %>
+<div class="app-shell">
+<!-- Sidebar esquerda -->
+<%- include('partials/sidebar', { menuAtivo: menuAtivo || '', usuario: usuario }) %>
 
-<main class="<%= _mainClass %>">
+<!-- Área principal (topbar + conteúdo) -->
+<div class="app-main">
+  <header class="app-topbar">
+    <div class="app-topbar-left">
+      <span class="app-topbar-title"><%= title || '' %></span>
+    </div>
+    <div class="app-topbar-right">
+      <% if (usuario) { %>
+        <span class="text-muted me-3">
+          Olá, <%= usuario.nome %> (<%= usuario.perfil %>)
+        </span>
+        <a href="/auth/logout" class="btn btn-outline-secondary btn-sm">Sair</a>
+      <% } %>
+    </div>
+  </header>
+
+  <main class="app-content <%= _mainClass %>">
+    <%- include(page) %>
+  </main>
+</div>
+
+</div>
+<% } else { %>
+<!-- Telas sem barra lateral (ex.: login) -->
+<main class="<%= _mainClass || 'container-fluid mt-4' %>">
 <%- include(page) %>
 </main>
+<% } %>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-
-
+<!-- MODAL DE CONFIRMAÇÃO (mantido) -->
 <div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-hidden="true">
 <div class="modal-dialog modal-dialog-centered">
 <div class="modal-content">
@@ -66,12 +92,7 @@ modal.show();
 
 }
 
-// CONFIRMAÇÃO PADRÃO (SEM hx-confirm):
-// Qualquer elemento com data-confirm="1" será interceptado.
-// - Se for HTMX: precisa ter hx-trigger="confirmed" no próprio elemento.
-// - Se for link normal: redireciona após confirmar.
 document.addEventListener('click', function (e) {
-// Só intercepta BOTÕES/LINKS com data-confirm="1"
 const el = (e.target && e.target.closest)
 ? e.target.closest('button[data-confirm="1"], a[data-confirm="1"], [role="button"][data-confirm="1"]')
 : null;
@@ -79,10 +100,10 @@ const el = (e.target && e.target.closest)
 if (!el) return;
 
 const isMutation =
-el.hasAttribute('hx-post') ||
-el.hasAttribute('hx-put') ||
-el.hasAttribute('hx-patch') ||
-el.hasAttribute('hx-delete');
+  el.hasAttribute('hx-post') ||
+  el.hasAttribute('hx-put') ||
+  el.hasAttribute('hx-patch') ||
+  el.hasAttribute('hx-delete');
 
 const isLink = el.tagName === 'A' && el.getAttribute('href');
 
@@ -94,19 +115,18 @@ e.stopPropagation();
 pending = { type: isMutation ? 'htmx' : 'link', el };
 
 openConfirmModal({
-title: el.dataset.confirmTitle || 'Confirmar',
-body:  el.dataset.confirmBody  || 'Tem certeza que deseja continuar?',
-okText: el.dataset.confirmOk   || 'Confirmar'
+  title: el.dataset.confirmTitle || 'Confirmar',
+  body:  el.dataset.confirmBody  || 'Tem certeza que deseja continuar?',
+  okText: el.dataset.confirmOk   || 'Confirmar'
 });
+
 }, true);
 
-// Confirmação para FORM normal (submit tradicional, sem HTMX)
 document.addEventListener('submit', function (e) {
 const form = e.target;
 if (!form || form.nodeName !== 'FORM') return;
 if (form.dataset.confirm !== '1') return;
 
-// se for form HTMX, não cai aqui (vai pelo click do botão com data-confirm)
 if (form.hasAttribute('hx-post') || form.hasAttribute('hx-put') || form.hasAttribute('hx-patch') || form.hasAttribute('hx-delete')) return;
 
 if (form.dataset.confirmed === '1') {
@@ -134,7 +154,6 @@ const current = pending;
 pending = null;
 
 if (current.type === 'htmx') {
-  // dispara o evento que o HTMX vai escutar (hx-trigger="confirmed")
   current.el.dispatchEvent(new Event('confirmed', { bubbles: true }));
   return;
 }

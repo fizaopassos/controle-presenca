@@ -1,0 +1,347 @@
+/* ===== Estrutura geral ===== */
+.app-shell {
+display: flex;
+min-height: 100vh;
+background-color: #f5f6fa;
+}
+
+/* ===== Tokens de cor ===== */
+:root {
+--app-bg: #f5f6fa;
+
+--brand: #254086;
+--brand-dark: #172a5a;
+--brand-light: #3b66d6;
+
+--sidebar-w-closed: 72px;
+--sidebar-w-open: 260px;
+}
+
+/* ===== Sidebar (invisível no fundo do app) ===== */
+.sidebar {
+width: var(--sidebar-w-closed);
+position: fixed;
+top: 0;
+left: 0;
+bottom: 0;
+z-index: 1000;
+display: flex;
+flex-direction: column;
+
+/* mesmo fundo do sistema */
+background: var(--app-bg);
+
+border-right: 1px solid rgba(226, 232, 240, 0.95);
+border-radius: 0 20px 20px 0;
+
+/* sombra bem leve quando fechada (quase imperceptível) */
+box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+
+overflow: hidden;
+transition:
+width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+box-shadow 260ms ease,
+border-color 260ms ease;
+
+isolation: isolate;
+}
+
+/* Faixa vertical com gradiente (marca) */
+.sidebar::before {
+content: "";
+position: absolute;
+left: 0;
+top: 0;
+bottom: 0;
+width: 5px;
+background: linear-gradient(
+180deg,
+var(--brand-dark) 0%,
+var(--brand) 40%,
+var(--brand-light) 75%,
+var(--brand) 100%
+);
+opacity: 0.92;
+z-index: 0;
+}
+
+/* Sem brilho/vidro (clean) */
+.sidebar::after {
+display: none;
+}
+
+/* Hover: abre e dá foco com sombra, mas fundo continua igual ao app */
+.sidebar:hover {
+width: var(--sidebar-w-open);
+box-shadow:
+0 24px 60px rgba(15, 23, 42, 0.16),
+0 10px 26px rgba(15, 23, 42, 0.10);
+border-right-color: rgba(203, 213, 225, 0.95);
+}
+
+/* ===== Conteúdo principal ===== */
+.app-main {
+flex: 1;
+display: flex;
+flex-direction: column;
+margin-left: var(--sidebar-w-closed);
+}
+
+/* ===== Brand (agora pode ser <a>) ===== */
+.sidebar-brand {
+position: relative;
+z-index: 1;
+
+padding: 0.85rem 1rem;   /* menor /
+padding-left: 1.2rem;    / espaço da faixa */
+
+display: flex;
+align-items: center;
+gap: 0.55rem;            /* menor */
+
+border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+
+color: #111827;
+font-weight: 650;
+font-size: 1rem;
+white-space: nowrap;
+
+text-decoration: none;   /* se for <a> */
+}
+
+.sidebar-brand:hover {
+color: #111827;
+}
+
+.sidebar-brand i {
+font-size: 1.4rem;       /* levemente menor */
+color: var(--brand);
+min-width: 24px;
+}
+
+/* Texto do logo (Controle de Presença) */
+.sidebar .brand-text {
+  display: inline-block;
+}
+
+/* Sidebar fechada: esconde só o texto do logo, ícone continua */
+.sidebar:not(:hover) .sidebar .brand-text,
+.sidebar:not(:hover) .brand-text {
+  display: none;
+}
+
+/* Sidebar aberta (hover): mostra o texto do logo */
+.sidebar:hover .brand-text {
+  display: inline-block;
+}
+
+
+
+.sidebar:not(:hover) .sidebar-brand {
+justify-content: center;
+padding-left: 1rem;
+}
+
+/* ===== Navegação ===== */
+.sidebar-nav {
+position: relative;
+z-index: 1;
+
+flex: 1;
+padding: 0.2rem 0.35rem 0.7rem; /* menor /
+padding-left: 0.6rem;          / espaço da faixa */
+overflow-y: auto;
+overflow-x: hidden;
+}
+
+.sidebar-nav ul {
+list-style: none;
+margin: 0;
+padding: 0;
+}
+
+
+.sidebar-nav > ul > li > a {
+display: flex;
+align-items: center;
+gap: 0.55rem;                  
+
+margin: 0.12rem 0.2rem;        
+padding: 0.42rem 0.6rem;       
+
+border-radius: 999px;
+color: #4b5563;
+text-decoration: none;
+font-size: 0.94rem;
+font-weight: 550;
+white-space: nowrap;
+
+transition:
+background-color 180ms ease,
+color 180ms ease,
+transform 120ms ease,
+box-shadow 180ms ease;
+}
+
+.sidebar-nav > ul > li > a i:first-child {
+font-size: 1.18rem;            /* levemente menor */
+min-width: 24px;
+text-align: center;
+}
+
+/* Quando fechada: deixa itens mais “dock” (ícone central, sem gap) */
+.sidebar:not(:hover) .sidebar-nav > ul > li > a {
+justify-content: center;
+gap: 0;
+padding-left: 0.35rem;
+padding-right: 0.35rem;
+}
+
+/* hover e ativo */
+.sidebar-nav > ul > li > a:hover {
+background-color: rgba(37, 64, 134, 0.10);
+color: var(--brand);
+transform: translateX(2px);
+box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.sidebar-nav > ul > li > a.active {
+background-color: rgba(37, 64, 134, 0.14);
+color: var(--brand);
+}
+
+/* Estado padrão: labels visíveis */
+.sidebar-nav .sidebar-label {
+display: inline-block;
+}
+
+/* Sidebar fechada: esconde APENAS texto e setas, ícones continuam */
+.sidebar:not(:hover) .sidebar-nav .sidebar-label,
+.sidebar:not(:hover) .sidebar-nav .arrow {
+display: none;
+}
+
+/* Sidebar aberta (hover): garante que texto e setas apareçam */
+.sidebar:hover .sidebar-nav .sidebar-label,
+.sidebar:hover .sidebar-nav .arrow {
+display: inline-block;
+}
+
+
+.sidebar-nav > ul > li > a {
+display: flex;
+align-items: center;
+}
+
+.sidebar:not(:hover) .sidebar-nav > ul > li > a {
+justify-content: center;
+gap: 0;
+}
+
+.sidebar-nav .arrow {
+margin-left: auto;
+font-size: 0.8rem;
+color: #9ca3af;
+transition: transform 220ms ease, color 180ms ease;
+}
+
+.sidebar-nav .has-submenu:hover > a .arrow {
+transform: rotate(90deg);
+color: #4b5563;
+}
+
+/* ===== Submenu (clean, sem “cartão branco”) ===== */
+.sidebar-nav .has-submenu {
+position: relative;
+}
+
+.sidebar-nav .submenu {
+max-height: 0;
+opacity: 0;
+transform: translateY(-4px);
+overflow: hidden;
+pointer-events: none;
+
+margin-left: 0.7rem;
+margin-right: 0.2rem;
+margin-bottom: 0.25rem;
+padding: 0.3rem 0.35rem;
+
+background: var(--app-bg);
+border-radius: 14px;
+border: 1px solid rgba(229, 231, 235, 0.90);
+box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+
+transition: max-height 240ms ease, opacity 200ms ease, transform 200ms ease;
+}
+
+.sidebar:hover .sidebar-nav .has-submenu:hover .submenu {
+max-height: 260px;
+opacity: 1;
+transform: translateY(0);
+pointer-events: auto;
+}
+
+.sidebar-nav .submenu li a {
+display: flex;
+align-items: center;
+gap: 0.45rem;
+
+padding: 0.4rem 0.5rem;
+border-radius: 999px;
+color: #6b7280;
+text-decoration: none;
+font-size: 0.9rem;
+white-space: nowrap;
+
+transition: background-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+
+.sidebar-nav .submenu li a i {
+font-size: 0.98rem;
+min-width: 20px;
+text-align: center;
+}
+
+.sidebar-nav .submenu li a:hover {
+background-color: rgba(37, 64, 134, 0.10);
+color: #111827;
+transform: translateX(2px);
+}
+
+/* ===== Topbar ===== */
+.app-topbar {
+position: sticky;
+top: 0;
+z-index: 500;
+background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+border-bottom: 1px solid #e5e7eb;
+padding: 0.75rem 1.5rem;
+
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+
+.app-topbar-title {
+font-size: 1.05rem;
+font-weight: 650;
+color: #111827;
+}
+
+/* ===== Conteúdo ===== */
+.app-content {
+padding: 1.5rem;
+min-height: calc(100vh - 56px);
+}
+
+/* ===== Responsivo ===== */
+@media (max-width: 768px) {
+:root {
+--sidebar-w-closed: 60px;
+--sidebar-w-open: 220px;
+}
+.app-main {
+margin-left: var(--sidebar-w-closed);
+}
+}

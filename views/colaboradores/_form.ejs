@@ -55,7 +55,6 @@ const tipoAtual = colaborador && colaborador.tipo ? colaborador.tipo : 'fixo';
 </select>
 </div>
 
-<!-- Grupo de CONDOMÍNIO: vamos esconder quando tipo = cobertura -->
 <div class="col-12 col-lg-6" id="grupoCondominio">
 <label class="form-label" id="labelCondominio" for="condominio_id">Condomínio</label>
 <select class="form-select" id="condominio_id" name="condominio_id">
@@ -138,39 +137,35 @@ const helpPosto = document.getElementById('helpPosto');
 if (!tipo || !cond || !posto) return;
 
 function aplicarRegra() {
-  const tipoVal = (tipo.value || '').toLowerCase();
-  const ehFixo = tipoVal === 'fixo';
+const tipoVal = (tipo.value || '').toLowerCase();
+const ehFixo = tipoVal === 'fixo';
 
-  // Regras de obrigatoriedade
-  cond.required = ehFixo;
-  posto.required = ehFixo;
+cond.required = ehFixo;
+posto.required = ehFixo;
 
-  // Mostrar/ocultar grupo de condomínio
-  if (grupoCondominio) {
-    if (ehFixo) {
-      grupoCondominio.style.display = '';
-    } else {
-      // cobertura: esconde e limpa valor de condomínio
-      grupoCondominio.style.display = 'none';
-      cond.value = '';
-    }
+if (grupoCondominio) {
+  if (ehFixo) {
+    grupoCondominio.style.display = '';
+  } else {
+    grupoCondominio.style.display = 'none';
+    cond.value = '';
   }
+}
 
-  // Textos
-  if (labelCond) labelCond.textContent = ehFixo ? 'Condomínio *' : 'Condomínio';
-  if (labelPosto) labelPosto.textContent = ehFixo ? 'Posto *' : 'Posto';
+if (labelCond) labelCond.textContent = ehFixo ? 'Condomínio *' : 'Condomínio';
+if (labelPosto) labelPosto.textContent = ehFixo ? 'Posto *' : 'Posto';
 
-  if (helpCond) helpCond.textContent = ehFixo
-    ? 'Para colaboradores FIXOS, este campo é obrigatório.'
-    : 'Para colaboradores de Cobertura, este campo pode ficar em branco.';
+if (helpCond) helpCond.textContent = ehFixo
+  ? 'Para colaboradores FIXOS, este campo é obrigatório.'
+  : 'Para colaboradores de Cobertura, este campo pode ficar em branco.';
 
-  if (helpPosto) helpPosto.textContent = ehFixo
-    ? 'Para colaboradores FIXOS, este campo é obrigatório.'
-    : 'Para colaboradores de Cobertura, este campo pode ficar em branco.';
+if (helpPosto) helpPosto.textContent = ehFixo
+  ? 'Para colaboradores FIXOS, este campo é obrigatório.'
+  : 'Para colaboradores de Cobertura, este campo pode ficar em branco.';
+
 }
 
 tipo.addEventListener('change', aplicarRegra);
 aplicarRegra();
-
 })();
 </script>
