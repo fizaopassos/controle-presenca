@@ -71,7 +71,8 @@ exports.getConsultarPresenca = async (req, res) => {
       menuAtivo: 'presenca',
       page: 'presenca/consultar',
       condominios,
-      empresas
+      empresas,
+      perfilUsuario: usuario.perfil  // ← passa para a view
     });
   } catch (error) {
     console.error('Erro ao carregar consulta:', error);
@@ -79,11 +80,8 @@ exports.getConsultarPresenca = async (req, res) => {
   }
 };
 
-
-
 // ========================================
-// API: Buscar postos (opção 2: retorna todos, ignora condomínio)
-// mantém a mesma rota /presenca/api/postos/:condominio_id
+// API: Buscar postos
 // ========================================
 exports.getPostos = async (req, res) => {
   try {
@@ -101,7 +99,7 @@ exports.getPostos = async (req, res) => {
 };
 
 // ========================================
-// API: Buscar colaboradores por condomínio (ignora filtro de posto)
+// API: Buscar colaboradores por condomínio
 // ========================================
 exports.getFuncionariosPorCondominio = async (req, res) => {
   try {
@@ -112,29 +110,26 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       return res.status(400).json({ error: 'condominio_id é obrigatório' });
     }
 
-    // Busca todos colaboradores do condomínio, trazendo também o posto de cada um
     var sqlColabs = `
-  SELECT 
-    c.id,
-    c.nome,
-    c.empresa_id,
-    e.nome AS empresa,
-    c.posto_id,
-    p.nome AS posto_nome
-  FROM colaboradores c
-  LEFT JOIN empresas e ON c.empresa_id = e.id
-  LEFT JOIN postos p ON c.posto_id = p.id
-  WHERE c.condominio_id = ?
-    AND c.ativo = 1
-  ORDER BY c.nome
-`;
-
+      SELECT 
+        c.id,
+        c.nome,
+        c.empresa_id,
+        e.nome AS empresa,
+        c.posto_id,
+        p.nome AS posto_nome
+      FROM colaboradores c
+      LEFT JOIN empresas e ON c.empresa_id = e.id
+      LEFT JOIN postos p ON c.posto_id = p.id
+      WHERE c.condominio_id = ?
+        AND c.ativo = 1
+      ORDER BY c.nome
+    `;
 
     var resultColabs = await db.query(sqlColabs, [condominio_id]);
     var colaboradores = resultColabs[0];
 
     if (!data || colaboradores.length === 0) {
-      // Sem data ou sem colaboradores: não carrega presenças
       colaboradores.forEach(function(c) {
         c.status = null;
         c.observacoes = '';
@@ -143,10 +138,8 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       return res.json(colaboradores);
     }
 
-    // Com data: busca presenças desse dia para esses colaboradores
     var ids = colaboradores.map(function(c) { return c.id; });
 
-    // Se não tiver ids (por algum motivo), retorna logo
     if (!ids || ids.length === 0) {
       colaboradores.forEach(function(c) {
         c.status = null;
@@ -157,47 +150,44 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
     }
 
     var sqlPres = `
-  SELECT 
-    colaborador_id,
-    status,
-    observacoes,
-    cobertura_id,
-    id AS presenca_id
-  FROM presencas_diarias
-  WHERE data = ?
-    AND condominio_id = ?
-    AND colaborador_id IN (?)
-`;
-
+      SELECT 
+        colaborador_id,
+        status,
+        observacoes,
+        cobertura_id,
+        id AS presenca_id
+      FROM presencas_diarias
+      WHERE data = ?
+        AND condominio_id = ?
+        AND colaborador_id IN (?)
+    `;
 
     var resultPres = await db.query(sqlPres, [data, condominio_id, ids]);
     var presencas = resultPres[0];
 
     var mapaPresencas = {};
-presencas.forEach(function(p) {
-  mapaPresencas[p.colaborador_id] = {
-    presenca_id: p.presenca_id,
-    status: p.status,
-    observacoes: p.observacoes,
-    cobertura_id: p.cobertura_id
-  };
-});
-
+    presencas.forEach(function(p) {
+      mapaPresencas[p.colaborador_id] = {
+        presenca_id: p.presenca_id,
+        status: p.status,
+        observacoes: p.observacoes,
+        cobertura_id: p.cobertura_id
+      };
+    });
 
     colaboradores.forEach(function(c) {
-  if (mapaPresencas[c.id]) {
-    c.presenca_id = mapaPresencas[c.id].presenca_id;
-    c.status = mapaPresencas[c.id].status;
-    c.observacoes = mapaPresencas[c.id].observacoes;
-    c.cobertura_id = mapaPresencas[c.id].cobertura_id || null;
-  } else {
-    c.presenca_id = null;
-    c.status = null;       // significa "não lançado"
-    c.observacoes = '';
-    c.cobertura_id = null;
-  }
-});
-
+      if (mapaPresencas[c.id]) {
+        c.presenca_id = mapaPresencas[c.id].presenca_id;
+        c.status = mapaPresencas[c.id].status;
+        c.observacoes = mapaPresencas[c.id].observacoes;
+        c.cobertura_id = mapaPresencas[c.id].cobertura_id || null;
+      } else {
+        c.presenca_id = null;
+        c.status = null;
+        c.observacoes = '';
+        c.cobertura_id = null;
+      }
+    });
 
     res.json(colaboradores);
   } catch (error) {
@@ -206,14 +196,8 @@ presencas.forEach(function(p) {
   }
 };
 
-
-
-
 // ========================================
-// API: Buscar colaboradores de um posto+condomínio (via alocação)
-// ========================================
-// ========================================
-// API: Buscar colaboradores de um posto + condomínio (sem tabela de alocação)
+// API: Buscar colaboradores de um posto + condomínio
 // ========================================
 exports.getFuncionarios = async (req, res) => {
   try {
@@ -224,21 +208,19 @@ exports.getFuncionarios = async (req, res) => {
       return res.status(400).json({ error: 'posto_id e condominio_id são obrigatórios' });
     }
 
-    // Busca colaboradores vinculados a este posto E a este condomínio
-   const [colaboradores] = await db.query(`
-  SELECT 
-    c.id,
-    c.nome,
-    c.cpf,
-    e.nome AS empresa
-  FROM colaboradores c
-  LEFT JOIN empresas e ON c.empresa_id = e.id
-  WHERE c.posto_id = ?
-    AND c.condominio_id = ?
-    AND c.ativo = 1
-  ORDER BY c.nome
-`, [posto_id, condominio_id]);
-
+    const [colaboradores] = await db.query(`
+      SELECT 
+        c.id,
+        c.nome,
+        c.cpf,
+        e.nome AS empresa
+      FROM colaboradores c
+      LEFT JOIN empresas e ON c.empresa_id = e.id
+      WHERE c.posto_id = ?
+        AND c.condominio_id = ?
+        AND c.ativo = 1
+      ORDER BY c.nome
+    `, [posto_id, condominio_id]);
 
     console.log(
       'Colaboradores encontrados para condominio',
@@ -249,7 +231,6 @@ exports.getFuncionarios = async (req, res) => {
       colaboradores.length
     );
 
-    // Se foi passada uma data, busca se já existe presença registrada
     if (data && colaboradores.length > 0) {
       const ids = colaboradores.map(c => c.id);
       const [presencas] = await db.query(`
@@ -280,12 +261,11 @@ exports.getFuncionarios = async (req, res) => {
           c.status = mapaPresencas[c.id].status;
           c.observacoes = mapaPresencas[c.id].observacoes;
         } else {
-          c.status = 'presente'; // default
+          c.status = 'presente';
           c.observacoes = '';
         }
       });
     } else {
-      // Sem data, todos começam como "presente"
       colaboradores.forEach(c => {
         c.status = 'presente';
         c.observacoes = '';
@@ -299,130 +279,158 @@ exports.getFuncionarios = async (req, res) => {
   }
 };
 
+// ========================================
+// API: Lançar presença (com trava de edição para lançador)
+// ========================================
 exports.lancarPresenca = async (req, res) => {
-const connection = await db.getConnection();
-try {
-const data = req.body.data;
-const condominio_id = req.body.condominio_id;
-const presencas = req.body.presencas;
+  const connection = await db.getConnection();
+  try {
+    const data = req.body.data;
+    const condominio_id = req.body.condominio_id;
+    const presencas = req.body.presencas;
+    const usuario = req.session.user;  // ← pega usuário da sessão
 
-if (!data || !condominio_id || !Array.isArray(presencas)) {
-  return res.status(400).json({
-    success: false,
-    message: 'Dados inválidos'
-  });
-}
+    if (!data || !condominio_id || !Array.isArray(presencas)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dados inválidos'
+      });
+    }
 
-await connection.beginTransaction();
+    await connection.beginTransaction();
 
-for (const p of presencas) {
-  const colaborador_id = p.colaborador_id;
-  const status = p.status;
-  const observacoes = p.observacoes || null;
-  const posto_id = p.posto_id || null;       // vindo do colaborador fixo
-  const cobertura_id = p.cobertura_id || null;
+    for (const p of presencas) {
+      const colaborador_id = p.colaborador_id;
+      const status = p.status;
+      const observacoes = p.observacoes || null;
+      const posto_id = p.posto_id || null;
+      const cobertura_id = p.cobertura_id || null;
 
-  if (!colaborador_id || !status) {
-    continue;
-  }
-
-  // 1) UPSERT da presença do TITULAR
-  await connection.query(
-    `
-    INSERT INTO presencas_diarias 
-      (data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      status = VALUES(status),
-      observacoes = VALUES(observacoes),
-      cobertura_id = VALUES(cobertura_id),
-      atualizado_em = CURRENT_TIMESTAMP
-    `,
-    [data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id]
-  );
-
-  const ehAusencia = ['falta', 'folga', 'atestado', 'ferias'].includes(status);
-
-  // 2) Presença do COLABORADOR DE COBERTURA (agora também em presencas_diarias)
-  if (ehAusencia && cobertura_id && posto_id) {
-    // Cria/atualiza presença do colaborador de cobertura como "presente"
-    await connection.query(
-      `
-      INSERT INTO presencas_diarias
-        (data, colaborador_id, condominio_id, posto_id, status, observacoes)
-      VALUES (?, ?, ?, ?, 'presente', ?)
-      ON DUPLICATE KEY UPDATE
-        status = VALUES(status),
-        observacoes = VALUES(observacoes),
-        atualizado_em = CURRENT_TIMESTAMP
-      `,
-      [data, cobertura_id, condominio_id, posto_id, observacoes]
-    );
-  } else if (cobertura_id && posto_id) {
-    // Se não é ausência mas veio cobertura (caso de correção), remove presença da cobertura
-    await connection.query(
-      `
-      DELETE FROM presencas_diarias
-      WHERE data = ?
-        AND colaborador_id = ?
-        AND condominio_id = ?
-        AND posto_id = ?
-      `,
-      [data, cobertura_id, condominio_id, posto_id]
-    );
-  }
-}
-
-await connection.commit();
-
-res.json({
-  success: true,
-  message: 'Presenças salvas com sucesso!'
-});
-
-} catch (error) {
-await connection.rollback();
-console.error('Erro ao salvar presenças:', error);
-res.status(500).json({
-success: false,
-message: 'Erro ao salvar presenças'
-});
-} finally {
-connection.release();
-}
-};
-
-
-exports.getCoberturasPorEmpresa = async (req, res) => {
-      try {
-      const empresa_id = req.params.empresa_id;
-      if (!empresa_id) {
-      return res.status(400).json({ error: 'empresa_id é obrigatório' });
+      if (!colaborador_id || !status) {
+        continue;
       }
 
-      const sql =
-  'SELECT id, nome ' +
-  'FROM colaboradores ' +
-  "WHERE empresa_id = ? " +
-  "  AND tipo = 'cobertura' " +
-  '  AND ativo = 1 ' +
-  'ORDER BY nome';
+      // ✅ VALIDAÇÃO: verifica se já existe presença (UNIQUE: data, colaborador_id, posto_id)
+      const [[jaExiste]] = await connection.query(
+        `
+        SELECT id
+        FROM presencas_diarias
+        WHERE data = ?
+          AND colaborador_id = ?
+          AND (posto_id <=> ?)
+        LIMIT 1
+        `,
+        [data, colaborador_id, posto_id]
+      );
 
-const [rows] = await db.query(sql, [empresa_id]);
-res.json(rows);
+      // Se já existe e o usuário é lançador, bloqueia
+      if (jaExiste && usuario.perfil === 'lancador') {
+        await connection.rollback();
+        return res.status(403).json({
+          success: false,
+          message: 'Você não tem permissão para editar presenças já lançadas. Apenas administradores e gestores podem fazer isso.'
+        });
+      }
 
-} catch (error) {
-console.error('Erro ao buscar coberturas:', error);
-res.status(500).json({ error: 'Erro ao buscar coberturas' });
-}
+      // 1) UPSERT da presença do TITULAR
+      await connection.query(
+        `
+        INSERT INTO presencas_diarias 
+          (data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          status = VALUES(status),
+          observacoes = VALUES(observacoes),
+          cobertura_id = VALUES(cobertura_id),
+          atualizado_em = CURRENT_TIMESTAMP
+        `,
+        [data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id]
+      );
+
+      const ehAusencia = ['falta', 'folga', 'atestado', 'ferias'].includes(status);
+
+      // 2) Presença do COLABORADOR DE COBERTURA
+      if (ehAusencia && cobertura_id && posto_id) {
+        await connection.query(
+          `
+          INSERT INTO presencas_diarias
+            (data, colaborador_id, condominio_id, posto_id, status, observacoes)
+          VALUES (?, ?, ?, ?, 'presente', ?)
+          ON DUPLICATE KEY UPDATE
+            status = VALUES(status),
+            observacoes = VALUES(observacoes),
+            atualizado_em = CURRENT_TIMESTAMP
+          `,
+          [data, cobertura_id, condominio_id, posto_id, observacoes]
+        );
+      } else if (cobertura_id && posto_id) {
+        await connection.query(
+          `
+          DELETE FROM presencas_diarias
+          WHERE data = ?
+            AND colaborador_id = ?
+            AND condominio_id = ?
+            AND posto_id = ?
+          `,
+          [data, cobertura_id, condominio_id, posto_id]
+        );
+      }
+    }
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message: 'Presenças salvas com sucesso!'
+    });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error('Erro ao salvar presenças:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao salvar presenças'
+    });
+  } finally {
+    connection.release();
+  }
 };
 
+// ========================================
+// API: Coberturas por empresa
+// ========================================
+exports.getCoberturasPorEmpresa = async (req, res) => {
+  try {
+    const empresa_id = req.params.empresa_id;
+    if (!empresa_id) {
+      return res.status(400).json({ error: 'empresa_id é obrigatório' });
+    }
+
+    const sql = `
+      SELECT id, nome 
+      FROM colaboradores 
+      WHERE empresa_id = ? 
+        AND tipo = 'cobertura' 
+        AND ativo = 1 
+      ORDER BY nome
+    `;
+
+    const [rows] = await db.query(sql, [empresa_id]);
+    res.json(rows);
+
+  } catch (error) {
+    console.error('Erro ao buscar coberturas:', error);
+    res.status(500).json({ error: 'Erro ao buscar coberturas' });
+  }
+};
 
 // ========================================
-// API: Buscar presenças (filtros)
+// API: Buscar presenças (filtros) - Gestor vê só seus condomínios
 // ========================================
 exports.consultarPresencas = async (req, res) => {
   try {
+    const usuario = req.session.user;  // ← pega usuário
+
     const { 
       data_inicio, 
       data_fim, 
@@ -451,6 +459,18 @@ exports.consultarPresencas = async (req, res) => {
     `;
 
     const params = [];
+
+    // ✅ Gestor e lançador: só veem os condomínios deles
+    if (usuario.perfil !== 'admin') {
+      query += `
+        AND pd.condominio_id IN (
+          SELECT condominio_id
+          FROM usuario_condominios
+          WHERE usuario_id = ?
+        )
+      `;
+      params.push(usuario.id);
+    }
 
     if (data_inicio) {
       query += ' AND pd.data >= ?';
@@ -496,16 +516,15 @@ exports.buscarColaboradores = async (req, res) => {
     const { termo } = req.query;
     
     let query = `
-  SELECT 
-    c.id,
-    c.nome,
-    c.cpf,
-    e.nome as empresa
-  FROM colaboradores c
-  LEFT JOIN empresas e ON c.empresa_id = e.id
-  WHERE c.ativo = 1
-`;
-
+      SELECT 
+        c.id,
+        c.nome,
+        c.cpf,
+        e.nome as empresa
+      FROM colaboradores c
+      LEFT JOIN empresas e ON c.empresa_id = e.id
+      WHERE c.ativo = 1
+    `;
     
     const params = [];
     
@@ -524,16 +543,34 @@ exports.buscarColaboradores = async (req, res) => {
   }
 };
 
-
 // ========================================
-// POST: Salvar presença individual (HTMX)
+// POST: Salvar presença individual (HTMX) - com trava de edição
 // ========================================
 exports.salvarPresencaIndividual = async (req, res) => {
   try {
     const { data, condominio_id, posto_id, colaborador_id, status, observacoes } = req.body;
+    const usuario = req.session.user;  // ← pega usuário
 
     if (!data || !condominio_id || !posto_id || !colaborador_id || !status) {
       return res.status(400).send('Dados obrigatórios faltando');
+    }
+
+    // ✅ VALIDAÇÃO: verifica se já existe presença
+    const [[jaExiste]] = await db.query(
+      `
+      SELECT id
+      FROM presencas_diarias
+      WHERE data = ?
+        AND colaborador_id = ?
+        AND (posto_id <=> ?)
+      LIMIT 1
+      `,
+      [data, colaborador_id, posto_id]
+    );
+
+    // Se já existe e o usuário é lançador, bloqueia
+    if (jaExiste && usuario.perfil === 'lancador') {
+      return res.status(403).send('Você não tem permissão para editar presenças já lançadas.');
     }
 
     // INSERT ... ON DUPLICATE KEY UPDATE
@@ -547,7 +584,7 @@ exports.salvarPresencaIndividual = async (req, res) => {
         atualizado_em = CURRENT_TIMESTAMP
     `, [data, colaborador_id, condominio_id, posto_id, status, observacoes || null]);
 
-    // Busca o colaborador atualizado (para retornar o card)
+    // Busca o colaborador atualizado
     const [colaborador] = await db.query(`
       SELECT 
         c.id,

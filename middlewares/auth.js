@@ -45,11 +45,10 @@ async function checkCondominioAccess(req, res, next) {
   try {
     const usuario = req.session && req.session.user;
 
-   if (!usuario) {
-return redirectToLogin(req, res);
-}
+    if (!usuario) {
+      return redirectToLogin(req, res);
+    }
 
-    // Garante que nunca vamos ler de undefined
     const params = req.params || {};
     const body = req.body || {};
     const query = req.query || {};
@@ -61,17 +60,16 @@ return redirectToLogin(req, res);
       query.condominio_id;
 
     // Se não tiver condominio_id na rota, não bloqueia
-    // (por exemplo, primeira abertura de /presenca/lancar)
     if (!condominioId) {
       return next();
     }
 
-    // Admin e gestor têm acesso a todos os condomínios
-    if (usuario.perfil === 'admin' || usuario.perfil === 'gestor') {
+    // MUDANÇA: Admin tem acesso total, gestor e lançador verificam lista
+    if (usuario.perfil === 'admin') {
       return next();
     }
 
-    // Lançador: confere se condomínio está na lista da sessão
+    // Gestor e lançador: confere se condomínio está na lista da sessão
     const lista = Array.isArray(usuario.condominios) ? usuario.condominios : [];
     const idNum = parseInt(condominioId, 10);
 
@@ -97,9 +95,20 @@ return redirectToLogin(req, res);
   }
 }
 
+// Permitir apenas admin e gestor
+function isAdminOrGestor(req, res, next) {
+  if (req.session && req.session.user && ['admin', 'gestor'].includes(req.session.user.perfil)) {
+    return next();
+  }
+  return res.status(403).send('Acesso negado. Apenas administradores e gestores podem realizar esta ação.');
+}
+
+
 module.exports = {
   isAuthenticated,
   isAdmin,
+  isAdminOrGestor,
   checkCondominioAccess,
   allowPerfis
 };
+

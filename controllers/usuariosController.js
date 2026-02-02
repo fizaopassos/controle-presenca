@@ -1,4 +1,4 @@
-const db = require('../config/db'); // mysql2/promise
+const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 
 // Form de novo usuário
@@ -25,16 +25,12 @@ exports.novoSalvar = async (req, res) => {
   try {
     let { nome, email, senha, perfil, condominios } = req.body;
 
-    // Validações básicas
     if (!nome || !email || !senha || !perfil) {
       return res.status(400).send('Todos os campos obrigatórios devem ser preenchidos');
     }
 
-    // Normaliza perfil para os valores do ENUM do banco
-    // Na tela vamos mandar: admin, gestor, lancador
     perfil = perfil.toLowerCase();
 
-    // Verifica se e-mail já existe
     const [existente] = await db.query(
       'SELECT id FROM usuarios WHERE email = ?',
       [email]
@@ -44,10 +40,8 @@ exports.novoSalvar = async (req, res) => {
       return res.status(400).send('Este e-mail já está cadastrado');
     }
 
-    // Hash da senha
     const senhaHash = await bcrypt.hash(senha, 10);
 
-    // Insere usuário (campo correto é senha_hash)
     const [result] = await db.query(
       'INSERT INTO usuarios (nome, email, senha_hash, perfil) VALUES (?, ?, ?, ?)',
       [nome, email, senhaHash, perfil]
@@ -55,18 +49,17 @@ exports.novoSalvar = async (req, res) => {
 
     const usuarioId = result.insertId;
 
-    // Se for lançador, vincula condomínios selecionados
-if (perfil === 'lancador' && condominios) {
-  const condoArray = Array.isArray(condominios) ? condominios : [condominios];
+    // ✅ CORRIGIDO: gestor e lançador vinculam condomínios (admin não precisa)
+    if (perfil !== 'admin' && condominios) {
+      const condoArray = Array.isArray(condominios) ? condominios : [condominios];
 
-  for (const condId of condoArray) {
-    await db.query(
-      'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
-      [usuarioId, condId]
-    );
-  }
-}
-
+      for (const condId of condoArray) {
+        await db.query(
+          'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
+          [usuarioId, condId]
+        );
+      }
+    }
 
     res.redirect('/usuarios');
   } catch (error) {
@@ -96,7 +89,7 @@ exports.listar = async (req, res) => {
   }
 };
 
-// Form de edição (perfil + condomínios)
+// Form de edição
 exports.editarForm = async (req, res) => {
   try {
     const { id } = req.params;
@@ -141,34 +134,30 @@ exports.editarSalvar = async (req, res) => {
     const { id } = req.params;
     let { nome, email, perfil, condominios } = req.body;
 
-    // Normaliza perfil
     perfil = perfil.toLowerCase();
 
-    // Atualiza dados básicos
     await db.query(
       'UPDATE usuarios SET nome = ?, email = ?, perfil = ? WHERE id = ?',
       [nome, email, perfil, id]
     );
 
-    // Atualiza permissões de condomínios
+    // Remove vínculos antigos
     await db.query(
       'DELETE FROM usuario_condominios WHERE usuario_id = ?',
       [id]
     );
 
-    // Se não for admin, insere as seleções
-    // 2) Se for lançador, insere as seleções (admin/gestor veem todos, não precisam vincular)
-if (perfil === 'lancador' && condominios) {
-  const condoArray = Array.isArray(condominios) ? condominios : [condominios];
+    // ✅ CORRIGIDO: gestor e lançador vinculam condomínios (admin não precisa)
+    if (perfil !== 'admin' && condominios) {
+      const condoArray = Array.isArray(condominios) ? condominios : [condominios];
 
-  for (const condId of condoArray) {
-    await db.query(
-      'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
-      [id, condId]
-    );
-  }
-}
-
+      for (const condId of condoArray) {
+        await db.query(
+          'INSERT INTO usuario_condominios (usuario_id, condominio_id) VALUES (?, ?)',
+          [id, condId]
+        );
+      }
+    }
 
     res.redirect('/usuarios');
   } catch (error) {
@@ -182,15 +171,11 @@ exports.excluir = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Não permite excluir o próprio usuário logado
     if (parseInt(id, 10) === req.session.user.id) {
       return res.status(400).json({ erro: 'Você não pode excluir seu próprio usuário' });
     }
 
-    // Remove vínculos de condomínios
     await db.query('DELETE FROM usuario_condominios WHERE usuario_id = ?', [id]);
-
-    // Remove usuário
     await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
 
     res.json({ sucesso: true });
@@ -199,4 +184,3 @@ exports.excluir = async (req, res) => {
     res.status(500).json({ erro: 'Erro ao excluir usuário' });
   }
 };
-

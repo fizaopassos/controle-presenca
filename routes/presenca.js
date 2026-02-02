@@ -47,6 +47,7 @@ router.post(
   presencaController.lancarPresenca
 );
 
+
 // Consultar presenças (condominio_id normalmente vem na query)
 router.get(
   '/api/consultar',

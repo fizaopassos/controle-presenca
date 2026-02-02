@@ -96,17 +96,18 @@
 
   // Mostra/oculta card de condomínios conforme perfil
   function atualizarCardCondominios() {
-// admin e gestor: não escolhem condomínios
-if (selectPerfil.value === 'admin' || selectPerfil.value === 'gestor' || selectPerfil.value === '') {
-cardCondominios.style.display = 'none';
-} else {
-// lancador
-cardCondominios.style.display = 'block';
-}
-}
+    // Só admin não escolhe condomínios (tem acesso total)
+    // Gestor e lançador escolhem os condomínios que vão enxergar
+    if (selectPerfil.value === 'admin' || selectPerfil.value === '') {
+      cardCondominios.style.display = 'none';
+    } else {
+      // gestor ou lancador
+      cardCondominios.style.display = 'block';
+    }
+  }
 
-selectPerfil.addEventListener('change', atualizarCardCondominios);
-atualizarCardCondominios(); // chama uma vez ao carregar
+  selectPerfil.addEventListener('change', atualizarCardCondominios);
+  atualizarCardCondominios(); // chama uma vez ao carregar
 
   // Validação de senhas
   function validarSenhas() {
@@ -131,3 +132,4 @@ atualizarCardCondominios(); // chama uma vez ao carregar
     }
   });
 </script>
+
