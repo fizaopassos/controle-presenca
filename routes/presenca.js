@@ -62,4 +62,11 @@ router.get(
   presencaController.buscarColaboradores
 );
 
+router.get(
+  '/api/dias-lancados',
+  checkCondominioAccess,
+  presencaController.getDiasLancados
+);
+
+
 module.exports = router;

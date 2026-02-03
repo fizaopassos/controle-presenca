@@ -4,11 +4,6 @@
   <div class="card mb-3">
     <div class="card-body">
       <form id="formFiltro" class="row g-3">
-        <div class="col-md-3">
-          <label class="form-label">Data *</label>
-          <input type="date" class="form-control" id="inputData" name="data" required>
-        </div>
-
         <div class="col-md-7">
           <label class="form-label">Condomínio *</label>
           <select class="form-select" id="inputCondominio" name="condominio_id" required>
@@ -17,6 +12,11 @@
               <option value="<%= cond.id %>"><%= cond.nome %></option>
             <% }) %>
           </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Data *</label>
+          <input type="text" class="form-control" id="inputData" name="data" required>
         </div>
 
         <div class="col-md-2 d-flex align-items-end">
@@ -42,7 +42,7 @@
 
   <div id="areaColaboradores">
     <div class="alert alert-info">
-      Selecione data e condomínio para carregar os colaboradores.
+      Selecione o condomínio e a data para carregar os colaboradores.
     </div>
   </div>
 </div>
@@ -69,7 +69,56 @@
   </div>
 </div>
 
+<style>
+  .flatpickr-day.dia-vermelho {
+    position: relative;
+  }
+  .flatpickr-day.dia-vermelho::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #dc3545;
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .flatpickr-day.dia-amarelo {
+    position: relative;
+  }
+  .flatpickr-day.dia-amarelo::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffc107;
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .flatpickr-day.dia-verde {
+    position: relative;
+  }
+  .flatpickr-day.dia-verde::after {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #198754;
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+</style>
+
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+
   var STATUSES = [
     { key: 'presente', label: 'Presente', btn: 'btn-outline-success', btnActive: 'btn-success' },
     { key: 'falta',    label: 'Falta',    btn: 'btn-outline-danger',  btnActive: 'btn-danger' },
@@ -84,12 +133,10 @@
   var payloadLancamento = null;
   var modalConfirmLanc = null;
 
-  document.addEventListener('DOMContentLoaded', function() {
-    var modalEl = document.getElementById('confirmLancamentoModal');
-    if (modalEl && window.bootstrap) {
-      modalConfirmLanc = new bootstrap.Modal(modalEl);
-    }
-  });
+  var modalEl = document.getElementById('confirmLancamentoModal');
+  if (modalEl && window.bootstrap) {
+    modalConfirmLanc = new bootstrap.Modal(modalEl);
+  }
 
   var inputData = document.getElementById('inputData');
   var inputCondominio = document.getElementById('inputCondominio');
@@ -100,14 +147,12 @@
   var resumo = document.getElementById('resumo');
   var alerta = document.getElementById('alerta');
 
-  // Estado local (não salva até confirmar)
   var estado = {};
   var listaIds = [];
   window.__colaboradoresRaw = {};
 
-  // Cache de coberturas por empresa
-  window.__coberturasPorEmpresa = {};   // empresa_id -> [{id,nome}]
-  window.__coberturasLoading = {};      // empresa_id -> true/false
+  window.__coberturasPorEmpresa = {};
+  window.__coberturasLoading = {};
 
   function hojeISO() {
     var d = new Date();
@@ -136,13 +181,13 @@
   }
 
   function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, '');
-}
+    return String(str || '')
+      .replace(/&/g, '&')
+      .replace(/</g, '<')
+      .replace(/>/g, '>')
+      .replace(/"/g, '"')
+      .replace(/'/g, '');
+  }
 
   function needsCobertura(status) {
     return STATUS_COM_COBERTURA.indexOf(status) !== -1;
@@ -160,7 +205,6 @@
     return mudouStatus || mudouObs || mudouCob || naoSalvoAinda;
   }
 
-  // Deve ou não enviar este colaborador no "Confirmar lançamentos"
   function shouldEnviar(id) {
     var s = estado[String(id)];
     if (!s) return false;
@@ -168,12 +212,10 @@
     var temStatusAtual = s.status && s.status !== '';
     var tinhaStatusOriginal = s.originalStatus && s.originalStatus !== '';
 
-    // Novo lançamento: não tinha status, agora tem
     if (!tinhaStatusOriginal && temStatusAtual) {
       return true;
     }
 
-    // Edição: já tinha presença, mas algo mudou
     var mudouStatus = (s.status !== s.originalStatus);
     var mudouObs = ((s.observacoes || '') !== (s.originalObs || ''));
     var mudouCob = ((s.cobertura_id || null) !== (s.originalCobertura_id || null));
@@ -220,15 +262,12 @@
       return;
     }
 
-    // já em cache
     if (window.__coberturasPorEmpresa[key]) {
       if (typeof onDone === 'function') onDone(window.__coberturasPorEmpresa[key]);
       return;
     }
 
-    // já carregando
     if (window.__coberturasLoading[key]) {
-      // espera um pouco e tenta de novo
       setTimeout(function() { carregarCoberturasEmpresa(empresaId, onDone); }, 150);
       return;
     }
@@ -287,7 +326,7 @@
 
     return ''
       + '<div class="mt-2 ' + wrapClass + '" id="cob-wrap-' + escapeHtml(c.id) + '">'
-      + '  <label class="form-label mb-1">Cobertura</label>'
+      + '  <label class="form-label mb-1">Cobertura (opcional)</label>'
       + '  <select class="form-select form-select-sm" data-action="set-cobertura" data-id="' + escapeHtml(c.id) + '" data-empresa-id="' + escapeHtml(empresaId) + '"' + disAttr + '>'
       +      options
       + '  </select>'
@@ -391,7 +430,6 @@
     var empresaId = raw.empresa_id;
     if (!empresaId) return;
 
-    // Se ainda não carregou, carrega e rerenderiza esse card quando terminar
     if (getCoberturasCached(String(empresaId)) === null) {
       carregarCoberturasEmpresa(String(empresaId), function() {
         rerenderCardById(id);
@@ -469,18 +507,97 @@
       });
   }
 
-  // Eventos
+  // ========================================
+  // FLATPICKR: calendário com indicadores coloridos
+  // ========================================
+  var statusDiasPorData = {};
+  var fpData = null;
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function mesAtualPicker() {
+    if (!fpData) return null;
+    var y = fpData.currentYear;
+    var m = fpData.currentMonth + 1;
+    return y + '-' + pad2(m);
+  }
+
+  function carregarDiasLancadosDoMes() {
+    var condId = inputCondominio.value;
+    if (!condId || !fpData) {
+      statusDiasPorData = {};
+      if (fpData) fpData.redraw();
+      return;
+    }
+
+    var mes = mesAtualPicker();
+    fetch('/presenca/api/dias-lancados?condominio_id=' + encodeURIComponent(condId) + '&mes=' + encodeURIComponent(mes))
+      .then(function(r) { return r.json(); })
+      .then(function(obj) {
+        if (typeof obj !== 'object' || obj === null) obj = {};
+        statusDiasPorData = obj;
+        fpData.redraw();
+      })
+      .catch(function(e) {
+        console.error(e);
+        statusDiasPorData = {};
+        fpData.redraw();
+      });
+  }
+
+  // Sempre preenche o input com hoje (fallback)
   inputData.value = hojeISO();
+
+  // Inicializa o flatpickr (se existir)
+  if (typeof window.flatpickr === 'function') {
+    fpData = flatpickr(inputData, {
+      dateFormat: 'Y-m-d',
+      defaultDate: inputData.value,
+      disableMobile: true,
+      locale: flatpickr.l10ns.pt,
+
+      onReady: function() {
+        carregarDiasLancadosDoMes();
+      },
+      onMonthChange: function() {
+        carregarDiasLancadosDoMes();
+      },
+      onYearChange: function() {
+        carregarDiasLancadosDoMes();
+      },
+
+      onDayCreate: function(dObj, dStr, instance, dayElem) {
+        try {
+          var d = dayElem.dateObj;
+          var iso = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+          var status = statusDiasPorData[iso];
+
+          if (status === 'verde') {
+            dayElem.classList.add('dia-verde');
+            dayElem.setAttribute('title', 'Dia completo: todos confirmados');
+          } else if (status === 'amarelo') {
+            dayElem.classList.add('dia-amarelo');
+            dayElem.setAttribute('title', 'Dia parcial: faltam colaboradores');
+          } else if (status === 'vermelho') {
+            dayElem.classList.add('dia-vermelho');
+            dayElem.setAttribute('title', 'Dia sem lançamentos');
+          }
+        } catch (e) {}
+      }
+    });
+  } else {
+    console.warn('flatpickr não carregou. Verifique o script no layout.ejs');
+  }
 
   inputCondominio.addEventListener('change', function() {
     btnBuscar.disabled = !this.value;
+    carregarDiasLancadosDoMes();
   });
 
   btnBuscar.addEventListener('click', buscarColaboradores);
 
   // Clique/ações dentro dos cards
   areaColaboradores.addEventListener('click', function(evt) {
-    // Toggle detalhes
     var tg = evt.target.closest('[data-action="toggle-details"]');
     if (tg) {
       var idT = String(tg.getAttribute('data-id'));
@@ -491,13 +608,11 @@
         rerenderCardById(idT);
         atualizarResumo();
 
-        // Se abriu e precisa de cobertura, garante que carregou a lista
         if (st.expanded) ensureCoberturaLoadedIfNeededForCard(idT);
       }
       return;
     }
 
-    // Set status
     var btn = evt.target.closest('button[data-action="set-status"]');
     if (!btn) return;
 
@@ -509,19 +624,14 @@
 
     s.status = novoStatus;
 
-    // Se status não exige obs, limpa
     if (STATUS_COM_OBS.indexOf(novoStatus) === -1) {
       s.observacoes = '';
     }
 
-    // Se status não exige cobertura, limpa cobertura
     if (!needsCobertura(novoStatus)) {
       s.cobertura_id = null;
     }
 
-    // Auto-close:
-    // - Se for "presente": fecha
-    // - Se for ausência: mantém aberto até escolher cobertura (opcional)
     if (novoStatus === 'presente') {
       s.expanded = false;
     } else if (needsCobertura(novoStatus)) {
@@ -534,13 +644,11 @@
     rerenderCardById(id);
     atualizarResumo();
 
-    // Se virou ausência, carrega coberturas da empresa (opcional)
     if (needsCobertura(novoStatus)) {
       ensureCoberturaLoadedIfNeededForCard(id);
     }
   });
 
-  // Observação
   areaColaboradores.addEventListener('input', function(evt) {
     var inp = evt.target.closest('input[data-action="set-obs"]');
     if (!inp) return;
@@ -555,7 +663,6 @@
     atualizarResumo();
   });
 
-  // Cobertura (select)
   areaColaboradores.addEventListener('change', function(evt) {
     var sel = evt.target.closest('select[data-action="set-cobertura"]');
     if (!sel) return;
@@ -567,7 +674,6 @@
     var val = sel.value ? Number(sel.value) : null;
     s.cobertura_id = val;
 
-    // Se já escolheu cobertura e o status é ausência, fecha o card automaticamente
     var status = (s.status != null && s.status !== '') ? s.status : '';
     if (needsCobertura(status) && s.cobertura_id) {
       s.expanded = false;
@@ -578,7 +684,6 @@
     atualizarResumo();
   });
 
-  // Selecionar todos Presente
   btnSelecionarTodosPresente.addEventListener('click', function() {
     listaIds.forEach(function(id) {
       var s = estado[String(id)];
@@ -595,7 +700,6 @@
     atualizarResumo();
   });
 
-  // Confirmar lançamentos (abre modal Bootstrap)
   btnConfirmarTudo.addEventListener('click', function() {
     var data = inputData.value;
     var condId = inputCondominio.value;
@@ -617,12 +721,8 @@
       return;
     }
 
-    // IMPORTANTE: A PARTIR DAQUI COBERTURA É OPCIONAL.
-    // NÃO há mais bloqueio por ausência sem cobertura.
-
     var condominioTexto = inputCondominio.options[inputCondominio.selectedIndex].text;
 
-    // Monta o texto de confirmação em HTML
     var msgHtml =
       'Confirma salvar os lançamentos?<br><br>' +
       'Data: <strong>' + escapeHtml(data) + '</strong><br>' +
@@ -630,7 +730,6 @@
       'Total de colaboradores: <strong>' + idsParaProcessar.length + '</strong><br><br>' +
       'Isso vai gravar/atualizar as presenças no sistema.';
 
-    // Prepara o payload que será enviado após o usuário confirmar no modal
     var presencas = idsParaProcessar.map(function(id) {
       var s = estado[String(id)];
       var raw = window.__colaboradoresRaw[String(id)];
@@ -652,7 +751,6 @@
       presencas: presencas
     };
 
-    // Coloca o texto no modal e abre
     var bodyEl = document.getElementById('confirmLancamentoBody');
     if (bodyEl) {
       bodyEl.innerHTML = msgHtml;
@@ -661,7 +759,6 @@
     if (modalConfirmLanc) {
       modalConfirmLanc.show();
     } else {
-      // fallback: se por algum motivo o modal não existir, cai pro confirm nativo
       if (confirm(msgHtml.replace(/<br>/g, '\n').replace(/<[^>]+>/g, ''))) {
         enviarLancamentos();
       }
@@ -696,7 +793,10 @@
 
       showAlert('success', 'Presenças confirmadas com sucesso!');
       payloadLancamento = null;
+      
+      // Recarrega colaboradores e atualiza indicadores do calendário
       buscarColaboradores();
+      carregarDiasLancadosDoMes();
     })
     .catch(function(e) {
       console.error(e);
@@ -705,7 +805,6 @@
     });
   }
 
-  // Clique no botão "Confirmar" do modal de lançamentos
   document.getElementById('btnConfirmarLancamentoModal')
     .addEventListener('click', function() {
       if (modalConfirmLanc) {
@@ -713,4 +812,6 @@
       }
       enviarLancamentos();
     });
+
+}); // FIM DOMContentLoaded
 </script>

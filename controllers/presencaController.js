@@ -328,7 +328,7 @@ exports.lancarPresenca = async (req, res) => {
         await connection.rollback();
         return res.status(403).json({
           success: false,
-          message: 'Você não tem permissão para editar presenças já lançadas. Apenas administradores e gestores podem fazer isso.'
+          message: 'Para editar lançamentos confirmados, consulte o seu gestor'
         });
       }
 
@@ -423,6 +423,106 @@ exports.getCoberturasPorEmpresa = async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar coberturas' });
   }
 };
+
+exports.getDiasLancados = async (req, res) => {
+  try {
+    const condominio_id = req.query.condominio_id;
+    const mes = req.query.mes; // 'YYYY-MM'
+
+    if (!condominio_id || !mes || !/^\d{4}-\d{2}$/.test(mes)) {
+      return res.status(400).json({ error: 'condominio_id e mes (YYYY-MM) são obrigatórios' });
+    }
+
+    const [anoStr, mesStr] = mes.split('-');
+    const ano = Number(anoStr);
+    const mesNum = Number(mesStr); // 1..12
+
+    // calcula primeiro e último dia do mês
+    const inicio = `${anoStr}-${mesStr}-01`;
+    const ultimoDia = new Date(ano, mesNum, 0).getDate(); // OK: mesNum aqui é 1..12
+    const fim = `${anoStr}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`;
+
+    // 1) total de colaboradores ativos
+    const [[tot]] = await db.query(
+      `
+      SELECT COUNT(*) AS totalColaboradores
+      FROM colaboradores
+      WHERE condominio_id = ?
+        AND ativo = 1
+      `,
+      [condominio_id]
+    );
+    const totalColaboradores = Number(tot?.totalColaboradores || 0);
+
+    // 2) quantos colaboradores lançados por dia
+    const [rows] = await db.query(
+      `
+      SELECT data, COUNT(DISTINCT colaborador_id) AS totalLancados
+      FROM presencas_diarias
+      WHERE condominio_id = ?
+        AND data BETWEEN ? AND ?
+      GROUP BY data
+      ORDER BY data
+      `,
+      [condominio_id, inicio, fim]
+    );
+
+    const statusPorDia = {};
+
+    // marca vermelho para dias passados sem registros
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    for (let dia = 1; dia <= ultimoDia; dia++) {
+      const dd = String(dia).padStart(2, '0');
+      const iso = `${anoStr}-${mesStr}-${dd}`;
+      const diaDate = new Date(ano, mesNum - 1, dia); // JS month 0..11
+
+      if (diaDate < hoje) {
+        statusPorDia[iso] = 'vermelho';
+      }
+    }
+
+    // sobrescreve com amarelo/verde para os dias que têm registro
+    rows.forEach(r => {
+      let iso;
+      const d = r.data;
+
+      if (d instanceof Date) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        iso = `${yyyy}-${mm}-${dd}`;
+      } else {
+        iso = String(d).slice(0, 10);
+      }
+
+      const lancados = Number(r.totalLancados || 0);
+
+      if (lancados <= 0) {
+        // se existir “dia” no rows com 0 (raro), fica vermelho
+        statusPorDia[iso] = 'vermelho';
+        return;
+      }
+
+      // se não tem colaboradores ativos, qualquer registro vira “verde”
+      if (totalColaboradores <= 0) {
+        statusPorDia[iso] = 'verde';
+        return;
+      }
+
+      if (lancados < totalColaboradores) statusPorDia[iso] = 'amarelo';
+      else statusPorDia[iso] = 'verde';
+    });
+
+    return res.json(statusPorDia);
+  } catch (error) {
+    console.error('Erro ao buscar dias lançados:', error);
+    return res.status(500).json({ error: 'Erro ao buscar dias lançados' });
+  }
+};
+
+
 
 // ========================================
 // API: Buscar presenças (filtros) - Gestor vê só seus condomínios
@@ -570,7 +670,7 @@ exports.salvarPresencaIndividual = async (req, res) => {
 
     // Se já existe e o usuário é lançador, bloqueia
     if (jaExiste && usuario.perfil === 'lancador') {
-      return res.status(403).send('Você não tem permissão para editar presenças já lançadas.');
+      return res.status(403).send('Para editar lançamentos confirmados, consulte o seu gestor');
     }
 
     // INSERT ... ON DUPLICATE KEY UPDATE

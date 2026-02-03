@@ -441,3 +441,61 @@ color: #ffffff !important;
 .bg-brand .card-text{
 color: #ffffff;
 }
+
+.flatpickr-day.dia-vermelho {
+    background-color: #dc3545 !important;
+    color: white !important;
+  }
+
+.flatpickr-day.dia-amarelo {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+  }
+
+ .flatpickr-day.dia-verde {
+    background-color: #198754 !important;
+    color: white !important;
+  }
+
+  /* Ajuste para dias selecionados (para não perder a cor) */
+  .flatpickr-day.dia-vermelho.selected,
+  .flatpickr-day.dia-amarelo.selected,
+  .flatpickr-day.dia-verde.selected {
+    border: 2px solid #7096d1;
+  }
+
+ 
+  /* Reduz o tamanho dos dias do calendário */
+  .flatpickr-day {
+    height: 38px !important;
+    line-height: 38px !important;
+    max-width: 38px !important;
+  }
+
+  .flatpickr-day.dia-vermelho {
+    background-color: #dc3545 !important;
+    color: white !important;
+  }
+
+  .flatpickr-day.dia-amarelo {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+  }
+
+  .flatpickr-day.dia-verde {
+    background-color: #198754 !important;
+    color: white !important;
+  }
+
+  .flatpickr-day.dia-vermelho.selected,
+  .flatpickr-day.dia-amarelo.selected,
+  .flatpickr-day.dia-verde.selected {
+    border: 2px solid #0d6efd;
+  }
+
+
+
+
+
+
+
