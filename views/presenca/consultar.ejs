@@ -62,27 +62,74 @@
       </div>
     </div>
 
-    <div class="row g-3 mt-2">
-      <div class="col-md-4">
-        <label class="form-label">Colaborador (nome)</label>
-        <input type="text" class="form-control" id="colaboradorBusca" placeholder="Digite para buscar...">
-        <input type="hidden" id="colaboradorId">
-        <div id="colaboradorSugestoes" class="list-group mt-1"
-             style="position: absolute; z-index: 1000; display: none; max-width: 350px;"></div>
-      </div>
-      <div class="col-md-4 d-flex align-items-end">
-        <button type="button" class="btn btn-secondary w-100" id="btnLimpar">
-          <i class="bi bi-x-circle"></i> Limpar Filtros
-        </button>
-      </div>
-      <div class="col-md-4 d-flex align-items-end">
-        <button type="button" class="btn btn-outline-success w-100" id="btnExportar" disabled>
-          <i class="bi bi-file-earmark-excel"></i> Exportar Excel (CSV)
-        </button>
+        <div class="row g-3 mt-2 align-items-end">
+
+  <!-- Campo colaborador -->
+  <div class="col-md-5">
+    <label class="form-label">Colaborador (nome)</label>
+    <div class="position-relative">
+      <input type="text"
+             class="form-control"
+             id="colaboradorBusca"
+             placeholder="Digite para buscar..."
+             autocomplete="off">
+      <input type="hidden" id="colaboradorId">
+
+      <div id="colaboradorSugestoes"
+           class="list-group position-absolute w-100 shadow-sm"
+           style="top: 100%; left: 0; z-index: 2000; display: none; max-height: 240px; overflow-y: auto;">
       </div>
     </div>
   </div>
+
+  <!-- Toolbar de ações -->
+  <div class="col-md-7 ps-md-2">
+    <div class="d-flex flex-wrap gap-2">
+
+      <!-- Limpar filtros -->
+      <button type="button"
+              class="btn btn-outline-secondary btn-sm"
+              id="btnLimpar">
+        <i class="bi bi-x-circle"></i>
+        <span class="d-none d-md-inline ms-1">Limpar Filtros</span>
+        <span class="d-inline d-md-none ms-1">Limpar</span>
+      </button>
+
+      <!-- Excel -->
+      <button type="button"
+              class="btn btn-outline-success btn-sm"
+              id="btnExportar"
+              disabled>
+        <i class="bi bi-file-earmark-excel"></i>
+        <span class="d-none d-md-inline ms-1">Excel</span>
+      </button>
+
+      <!-- PDF Mensal -->
+      <button type="button"
+              class="btn btn-outline-danger btn-sm"
+              id="btnExportarPdfMensal">
+        <i class="bi bi-file-pdf"></i>
+        <span class="d-none d-md-inline ms-1">PDF Mensal</span>
+        <span class="d-inline d-md-none ms-1">Mensal</span>
+      </button>
+
+      <!-- PDF Detalhado -->
+      <button type="button"
+              class="btn btn-outline-danger btn-sm d-none"
+              id="btnExportarPdfDetalhado">
+        <i class="bi bi-file-pdf"></i>
+        <span class="d-none d-md-inline ms-1">PDF Detalhado</span>
+        <span class="d-inline d-md-none ms-1">Detalhado</span>
+      </button>
+
+    </div>
+  </div>
+
 </div>
+
+
+</div>
+
 
 <!-- Totalizadores -->
 <div id="areaTotalizadores" style="display: none;">
@@ -90,7 +137,7 @@
     <div class="col-md-3">
       <div class="card text-white bg-success">
         <div class="card-body text-center">
-          <h3 id="totalPresente">0</h3>
+          <h5 id="totalPresente">0</h5>
           <p class="mb-0">Presenças</p>
         </div>
       </div>
@@ -98,7 +145,7 @@
     <div class="col-md-3">
       <div class="card text-white bg-danger">
         <div class="card-body text-center">
-          <h3 id="totalFalta">0</h3>
+          <h5 id="totalFalta">0</h5>
           <p class="mb-0">Faltas</p>
         </div>
       </div>
@@ -106,7 +153,7 @@
     <div class="col-md-3">
       <div class="card text-white bg-secondary">
         <div class="card-body text-center">
-          <h3 id="totalFolga">0</h3>
+          <h5 id="totalFolga">0</h5>
           <p class="mb-0">Folgas</p>
         </div>
       </div>
@@ -114,7 +161,7 @@
     <div class="col-md-3">
       <div class="card text-dark bg-warning">
         <div class="card-body text-center">
-          <h3 id="totalAtestado">0</h3>
+          <h5 id="totalAtestado">0</h5>
           <p class="mb-0">Atestados</p>
         </div>
       </div>
@@ -131,6 +178,7 @@
   <div class="card-body">
     <div id="areaResultados">
       <div class="text-center text-muted py-5">
+        <div class="card-body" style="overflow: visible;"></div>
         <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
         <p class="mt-3">
           Selecione os filtros e clique em <strong>Buscar</strong> para visualizar o relatório.
@@ -144,16 +192,18 @@
 </div>
 
 <script>
-// Período padrão: últimos 7 dias
+// Período padrão: início do mês até hoje
 (function definirPeriodoPadrao() {
-const hoje = new Date();
-const seteDiasAtras = new Date();
-seteDiasAtras.setDate(hoje.getDate() - 7);
+  const hoje = new Date();
 
-document.getElementById('dataInicio').valueAsDate = seteDiasAtras;
-document.getElementById('dataFim').valueAsDate = hoje;
+  // Primeiro dia do mês atual
+  const inicioDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
 
+  document.getElementById('dataInicio').valueAsDate = inicioDoMes;
+  document.getElementById('dataFim').valueAsDate = hoje;
 })();
+
+
 
 let presencasGlobal = [];
 let timeoutBusca;
@@ -201,19 +251,23 @@ timeoutBusca = setTimeout(async function () {
       return;
     }
 
-    colaboradores.forEach(function (c) {
-      const item = document.createElement('a');
-      item.href = '#';
-      item.className = 'list-group-item list-group-item-action';
-      item.textContent = c.nome;
-      item.onclick = function (e) {
-        e.preventDefault();
-        document.getElementById('colaboradorBusca').value = c.nome;
-        document.getElementById('colaboradorId').value = c.id;
-        divSug.style.display = 'none';
-      };
-      divSug.appendChild(item);
-    });
+   colaboradores.forEach(function (c) {
+  const item = document.createElement('a');
+  item.href = '#';
+  item.className = 'list-group-item list-group-item-action';
+  item.textContent = c.nome;
+  item.onclick = function (e) {
+    e.preventDefault();
+    document.getElementById('colaboradorBusca').value = c.nome;
+    document.getElementById('colaboradorId').value = c.id;
+    divSug.style.display = 'none';
+
+    // mostra botão PDF detalhado
+    document.getElementById('btnExportarPdfDetalhado').classList.remove('d-none');
+  };
+  divSug.appendChild(item);
+});
+
 
     divSug.style.display = 'block';
   } catch (error) {
@@ -352,6 +406,8 @@ document.getElementById('colaboradorBusca').value = '';
 document.getElementById('colaboradorId').value = '';
 document.getElementById('status').value = '';
 
+document.getElementById('btnExportarPdfDetalhado').classList.add('d-none');
+
 document.getElementById('areaResultados').innerHTML =
   '<div class="text-center text-muted py-5"><i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i><p class="mt-3">Selecione os filtros e clique em <strong>Buscar</strong> para visualizar o relatório.</p></div>';
 document.getElementById('areaTotalizadores').style.display = 'none';
@@ -394,4 +450,38 @@ link.click();
 document.body.removeChild(link);
 
 }
+
+// Botão PDF Consolidado Mensal
+document.getElementById('btnExportarPdfMensal').addEventListener('click', function() {
+  const condId = document.getElementById('condominio').value;
+  const dataInicio = document.getElementById('dataInicio').value;
+
+  if (!condId || !dataInicio) {
+    alert('Selecione condomínio e data de início (mês).');
+    return;
+  }
+
+  const mes = dataInicio.slice(0, 7); // '2026-02-15' -> '2026-02'
+
+  const url = `/presenca/relatorios/mensal/pdf?condominio_id=${condId}&mes=${encodeURIComponent(mes)}`;
+  window.open(url, '_blank');
+});
+
+// Botão PDF Detalhado
+document.getElementById('btnExportarPdfDetalhado').addEventListener('click', function() {
+  const condId = document.getElementById('condominio').value;
+  const dataInicio = document.getElementById('dataInicio').value;
+  const colaboradorId = document.getElementById('colaboradorId').value;
+
+  if (!condId || !dataInicio || !colaboradorId) {
+    alert('Selecione condomínio, data de início e um colaborador.');
+    return;
+  }
+
+  const mes = dataInicio.slice(0, 7);
+  const url = `/presenca/relatorios/colaborador/pdf?condominio_id=${condId}&colaborador_id=${colaboradorId}&mes=${encodeURIComponent(mes)}`;
+  window.open(url, '_blank');
+});
+
+
 </script>

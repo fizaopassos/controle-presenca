@@ -68,5 +68,18 @@ router.get(
   presencaController.getDiasLancados
 );
 
+// Relatório consolidado mensal (PDF)
+router.get(
+  '/relatorios/mensal/pdf',
+  checkCondominioAccess,
+  presencaController.relatorioMensalPdf
+);
+
+// Relatório detalhado por colaborador (PDF)
+router.get(
+  '/relatorios/colaborador/pdf',
+  checkCondominioAccess,
+  presencaController.relatorioColaboradorPdf
+);
 
 module.exports = router;

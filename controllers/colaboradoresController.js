@@ -6,20 +6,15 @@ function isHTMX(req) {
 
 exports.listar = async (req, res) => {
   try {
-    // AQUI: pega sempre da sessão, que é onde o auth.js salva
     const user = req.session && req.session.user ? req.session.user : null;
     const condominioId = req.query.condominio_id ? Number(req.query.condominio_id) : null;
 
-
     if (!user) {
-      // Se por algum motivo chegar aqui sem usuário, volta pro login
       return res.redirect('/auth/login');
     }
 
-    // Admin (pode usar role ou perfil – no seu caso é perfil)
     const isAdmin = user.perfil === 'admin';
 
-    // Para não-admin: lista de condomínios permitidos vem de user.condominios
     const condominiosPermitidos = !isAdmin
       ? (Array.isArray(user.condominios)
           ? user.condominios
@@ -28,23 +23,19 @@ exports.listar = async (req, res) => {
           : [])
       : [];
 
-    // Se não for admin e não tiver nenhum condomínio permitido, bloqueia
     if (!isAdmin && condominiosPermitidos.length === 0) {
       return res.status(403).send('Seu usuário não tem condomínios permitidos para acessar.');
     }
 
-    // ===== CASO 1: usuário não-admin, tem só 1 condomínio e não veio condominio_id → redireciona direto
     if (!isAdmin && condominiosPermitidos.length === 1 && !condominioId) {
       return res.redirect(`/colaboradores?condominio_id=${condominiosPermitidos[0]}`);
     }
 
-    // ===== CASO 2: nenhum condomínio selecionado → mostrar cards
     if (!condominioId) {
       let sqlConds;
       let params = [];
 
       if (isAdmin) {
-        // Admin vê todos os condomínios ativos
         sqlConds = `
           SELECT cond.id, cond.nome,
             (SELECT COUNT(*) FROM colaboradores c 
@@ -54,7 +45,6 @@ exports.listar = async (req, res) => {
           ORDER BY cond.nome
         `;
       } else {
-        // Usuário comum vê só os condomínios que tem acesso
         sqlConds = `
           SELECT cond.id, cond.nome,
             (SELECT COUNT(*) FROM colaboradores c 
@@ -69,7 +59,6 @@ exports.listar = async (req, res) => {
 
       const [condominios] = await db.query(sqlConds, params);
 
-      // Card de Coberturas
       const [[cob]] = await db.query(
         "SELECT COUNT(*) AS total FROM colaboradores WHERE tipo = 'cobertura' AND ativo = 1"
       );
@@ -84,9 +73,6 @@ exports.listar = async (req, res) => {
       });
     }
 
-    // ===== CASO 3: condomínio selecionado → lista filtrada
-
-    // Se não for admin, valida se o condomínio selecionado está permitido
     if (!isAdmin && !condominiosPermitidos.includes(condominioId)) {
       return res.status(403).send('Acesso negado a este condomínio');
     }
@@ -126,7 +112,6 @@ exports.listar = async (req, res) => {
   }
 };
 
-
 exports.listarCoberturas = async (req, res) => {
   try {
     const sql = `
@@ -159,16 +144,11 @@ exports.listarCoberturas = async (req, res) => {
   }
 };
 
-
-
-// Mostrar formulário de novo colaborador
-// Mostrar formulário de novo colaborador
 exports.formNovo = async (req, res) => {
   try {
     const user = req.session.user;
     const isAdmin = user.perfil === 'admin';
 
-    // Empresas e postos (todos, como já era)
     const [empresas] = await db.query(
       'SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY nome'
     );
@@ -176,7 +156,6 @@ exports.formNovo = async (req, res) => {
       'SELECT id, nome FROM postos WHERE ativo = TRUE ORDER BY nome'
     );
 
-    // Condomínios: admin vê todos; gestor/lançador só os permitidos
     let condominios = [];
 
     if (isAdmin) {
@@ -230,9 +209,6 @@ exports.formNovo = async (req, res) => {
   }
 };
 
-
-// Criar novo colaborador
-// Criar novo colaborador
 exports.criar = async (req, res) => {
   try {
     const user = req.session.user;
@@ -249,14 +225,14 @@ exports.criar = async (req, res) => {
       return res.status(400).send('Tipo é obrigatório.');
     }
 
+    const nomeNormalizado = nome.trim();
+
     tipo = String(tipo).toLowerCase();
     const tipoFinal = tipo === 'cobertura' ? 'cobertura' : 'fixo';
 
-    // Normaliza IDs (string vazia -> null)
     condominio_id = condominio_id || null;
     posto_id = posto_id || null;
 
-    // 1) Se for FIXO: condomínio e posto obrigatórios
     if (tipoFinal === 'fixo') {
       if (!condominio_id) {
         return res
@@ -270,16 +246,12 @@ exports.criar = async (req, res) => {
       }
     }
 
-    // 2) Se veio condomínio, valida se o usuário (gestor/lançador) tem acesso
     if (condominio_id && user.perfil !== 'admin') {
       const [rowsPerm] = await db.query(
-        `
-        SELECT 1 
-        FROM usuario_condominios 
-        WHERE usuario_id = ? 
-          AND condominio_id = ?
-        LIMIT 1
-        `,
+        `SELECT 1 
+         FROM usuario_condominios 
+         WHERE usuario_id = ? AND condominio_id = ?
+         LIMIT 1`,
         [user.id, condominio_id]
       );
 
@@ -290,6 +262,18 @@ exports.criar = async (req, res) => {
       }
     }
 
+    // ✅ CHECK: verifica se já existe colaborador com mesmo nome na mesma empresa
+    const [[existe]] = await db.query(
+      `SELECT id FROM colaboradores
+       WHERE nome = ? AND empresa_id = ?
+       LIMIT 1`,
+      [nomeNormalizado, empresa_id]
+    );
+
+    if (existe) {
+      return res.status(400).send('Já existe um colaborador com esse nome nesta empresa.');
+    }
+
     const condFinal = tipoFinal === 'cobertura' ? null : condominio_id;
     const postoFinal = tipoFinal === 'cobertura' ? null : posto_id;
 
@@ -298,7 +282,7 @@ exports.criar = async (req, res) => {
       'VALUES (?, ?, ?, ?, ?, TRUE)';
 
     const [result] = await db.query(sqlInsert, [
-      nome,
+      nomeNormalizado,
       empresa_id,
       condFinal,
       postoFinal,
@@ -325,15 +309,19 @@ exports.criar = async (req, res) => {
     }
 
     return res.redirect('/colaboradores');
+
   } catch (error) {
     console.error('Erro ao criar colaborador:', error);
+
+    // ✅ Trata erro de UNIQUE (caso race condition)
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).send('Já existe um colaborador com esse nome nesta empresa (duplicado detectado).');
+    }
+
     return res.status(500).send('Erro ao criar colaborador');
   }
 };
 
-
-// Mostrar formulário de edição
-// Mostrar formulário de edição
 exports.formEditar = async (req, res) => {
   const { id } = req.params;
 
@@ -405,9 +393,6 @@ exports.formEditar = async (req, res) => {
   }
 };
 
-
-// Atualizar colaborador
-// Atualizar colaborador
 exports.atualizar = async (req, res) => {
   const { id } = req.params;
   let { nome, empresa_id, condominio_id, posto_id, tipo, ativo } = req.body;
@@ -422,13 +407,14 @@ exports.atualizar = async (req, res) => {
       return res.status(400).send('Empresa é obrigatória.');
     }
 
+    const nomeNormalizado = nome.trim();
+
     tipo = (tipo || 'fixo').toLowerCase();
     const tipoFinal = tipo === 'cobertura' ? 'cobertura' : 'fixo';
 
     condominio_id = condominio_id || null;
     posto_id = posto_id || null;
 
-    // 1) FIXO → condomínio e posto obrigatórios
     if (tipoFinal === 'fixo') {
       if (!condominio_id) {
         return res
@@ -442,16 +428,12 @@ exports.atualizar = async (req, res) => {
       }
     }
 
-    // 2) Se veio condomínio, valida permissão (gestor/lançador)
     if (condominio_id && user.perfil !== 'admin') {
       const [rowsPerm] = await db.query(
-        `
-        SELECT 1 
-        FROM usuario_condominios 
-        WHERE usuario_id = ? 
-          AND condominio_id = ?
-        LIMIT 1
-        `,
+        `SELECT 1 
+         FROM usuario_condominios 
+         WHERE usuario_id = ? AND condominio_id = ?
+         LIMIT 1`,
         [user.id, condominio_id]
       );
 
@@ -460,6 +442,20 @@ exports.atualizar = async (req, res) => {
           .status(403)
           .send('Você não tem permissão para alterar colaborador neste condomínio.');
       }
+    }
+
+    // ✅ CHECK: verifica se já existe outro colaborador (id diferente) com mesmo nome na mesma empresa
+    const [[existe]] = await db.query(
+      `SELECT id FROM colaboradores
+       WHERE nome = ?
+         AND empresa_id = ?
+         AND id != ?
+       LIMIT 1`,
+      [nomeNormalizado, empresa_id, id]
+    );
+
+    if (existe) {
+      return res.status(400).send('Já existe outro colaborador com esse nome nesta empresa.');
     }
 
     const condFinal = tipoFinal === 'cobertura' ? null : condominio_id;
@@ -472,7 +468,7 @@ exports.atualizar = async (req, res) => {
       'WHERE id = ?';
 
     await db.query(sqlUpdate, [
-      nome,
+      nomeNormalizado,
       empresa_id,
       condFinal,
       postoFinal,
@@ -499,29 +495,34 @@ exports.atualizar = async (req, res) => {
     }
 
     return res.redirect('/colaboradores');
+
   } catch (error) {
     console.error('Erro ao atualizar colaborador:', error);
+
+    // ✅ Trata erro de UNIQUE (caso race condition)
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).send('Já existe outro colaborador com esse nome nesta empresa (duplicado detectado).');
+    }
+
     return res.status(500).send('Erro ao atualizar colaborador');
   }
 };
 
-
-// Ativar / Inativar colaborador (toggle)
 exports.toggleAtivo = async (req, res) => {
-const { id } = req.params;
+  const { id } = req.params;
 
-try {
-const [rows] = await db.query('SELECT ativo FROM colaboradores WHERE id = ?', [id]);
-if (rows.length === 0) return res.status(404).send('Colaborador não encontrado');
+  try {
+    const [rows] = await db.query('SELECT ativo FROM colaboradores WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).send('Colaborador não encontrado');
 
-const ativoAtual = rows[0].ativo;
-const novoAtivo = !ativoAtual;
+    const ativoAtual = rows[0].ativo;
+    const novoAtivo = !ativoAtual;
 
-await db.query('UPDATE colaboradores SET ativo = ? WHERE id = ?', [novoAtivo, id]);
-return res.redirect('/colaboradores');
+    await db.query('UPDATE colaboradores SET ativo = ? WHERE id = ?', [novoAtivo, id]);
+    return res.redirect('/colaboradores');
 
-} catch (error) {
-console.error('Erro ao alterar status do colaborador:', error);
-return res.status(500).send('Erro ao alterar status do colaborador');
-}
+  } catch (error) {
+    console.error('Erro ao alterar status do colaborador:', error);
+    return res.status(500).send('Erro ao alterar status do colaborador');
+  }
 };

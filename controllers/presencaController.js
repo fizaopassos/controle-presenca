@@ -1,4 +1,7 @@
 const db = require('../config/db');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
 
 // ========================================
 // TELA: Lançar presença
@@ -619,7 +622,6 @@ exports.buscarColaboradores = async (req, res) => {
       SELECT 
         c.id,
         c.nome,
-        c.cpf,
         e.nome as empresa
       FROM colaboradores c
       LEFT JOIN empresas e ON c.empresa_id = e.id
@@ -642,6 +644,40 @@ exports.buscarColaboradores = async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar colaboradores' });
   }
 };
+// ========================================
+// API: Buscar colaboradores (autocomplete)
+// ========================================
+exports.buscarColaboradores = async (req, res) => {
+try {
+const { termo } = req.query;
+
+let query = `
+  SELECT 
+    c.id,
+    c.nome,
+    e.nome AS empresa
+  FROM colaboradores c
+  LEFT JOIN empresas e ON c.empresa_id = e.id
+  WHERE c.ativo = 1
+`;
+
+const params = [];
+
+if (termo) {
+  query += ' AND c.nome LIKE ?';
+  params.push(`%${termo}%`);
+}
+
+query += ' ORDER BY c.nome LIMIT 20';
+
+const [colaboradores] = await db.query(query, params);
+res.json(colaboradores);
+
+} catch (error) {
+console.error('Erro ao buscar colaboradores:', error);
+res.status(500).json({ error: 'Erro ao buscar colaboradores' });
+}
+};
 
 // ========================================
 // POST: Salvar presença individual (HTMX) - com trava de edição
@@ -649,13 +685,13 @@ exports.buscarColaboradores = async (req, res) => {
 exports.salvarPresencaIndividual = async (req, res) => {
   try {
     const { data, condominio_id, posto_id, colaborador_id, status, observacoes } = req.body;
-    const usuario = req.session.user;  // ← pega usuário
+    const usuario = req.session.user;
 
     if (!data || !condominio_id || !posto_id || !colaborador_id || !status) {
       return res.status(400).send('Dados obrigatórios faltando');
     }
 
-    // ✅ VALIDAÇÃO: verifica se já existe presença
+    // Verifica se já existe presença
     const [[jaExiste]] = await db.query(
       `
       SELECT id
@@ -673,7 +709,6 @@ exports.salvarPresencaIndividual = async (req, res) => {
       return res.status(403).send('Para editar lançamentos confirmados, consulte o seu gestor');
     }
 
-    // INSERT ... ON DUPLICATE KEY UPDATE
     await db.query(`
       INSERT INTO presencas_diarias 
         (data, colaborador_id, condominio_id, posto_id, status, observacoes)
@@ -684,7 +719,6 @@ exports.salvarPresencaIndividual = async (req, res) => {
         atualizado_em = CURRENT_TIMESTAMP
     `, [data, colaborador_id, condominio_id, posto_id, status, observacoes || null]);
 
-    // Busca o colaborador atualizado
     const [colaborador] = await db.query(`
       SELECT 
         c.id,
@@ -700,7 +734,6 @@ exports.salvarPresencaIndividual = async (req, res) => {
       return res.status(404).send('Colaborador não encontrado');
     }
 
-    // Busca a presença recém-salva
     const [presenca] = await db.query(`
       SELECT id, status, observacoes
       FROM presencas_diarias
@@ -715,7 +748,6 @@ exports.salvarPresencaIndividual = async (req, res) => {
     c.observacoes = presenca[0]?.observacoes || '';
     c.presenca_id = presenca[0]?.id || null;
 
-    // Renderiza o partial do card atualizado
     res.render('presenca/_card_colaborador', { 
       c, 
       data, 
@@ -728,3 +760,363 @@ exports.salvarPresencaIndividual = async (req, res) => {
     res.status(500).send('Erro ao salvar presença');
   }
 };
+
+// ========================================
+// Relatório Consolidado Mensal (por dia)
+// ========================================
+exports.relatorioMensalPdf = async (req, res) => {
+  try {
+    const { condominio_id, mes } = req.query;
+
+    if (!condominio_id || !mes || !/^\d{4}-\d{2}$/.test(mes)) {
+      return res.status(400).send('Parâmetros obrigatórios: condominio_id, mes (YYYY-MM)');
+    }
+
+    const usuario = req.session.user || {};
+
+    const [[condominio]] = await db.query(
+      'SELECT nome FROM condominios WHERE id = ?',
+      [condominio_id]
+    );
+
+    if (!condominio) {
+      return res.status(404).send('Condomínio não encontrado');
+    }
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        c.id AS colaborador_id,
+        c.nome AS colaborador,
+        e.nome AS empresa,
+        COUNT(DISTINCT p.data) AS total_dias,
+        SUM(CASE WHEN p.status = 'presente' THEN 1 ELSE 0 END) AS presentes,
+        SUM(CASE WHEN p.status = 'falta'    THEN 1 ELSE 0 END) AS faltas,
+        SUM(CASE WHEN p.status = 'folga'    THEN 1 ELSE 0 END) AS folgas,
+        SUM(CASE WHEN p.status = 'atestado' THEN 1 ELSE 0 END) AS atestados,
+        SUM(CASE WHEN p.status = 'ferias'   THEN 1 ELSE 0 END) AS ferias
+      FROM presencas_diarias p
+      INNER JOIN colaboradores c ON c.id = p.colaborador_id
+      LEFT JOIN empresas e ON e.id = c.empresa_id
+      WHERE p.condominio_id = ?
+        AND DATE_FORMAT(p.data, '%Y-%m') = ?
+      GROUP BY c.id, c.nome, e.nome
+      ORDER BY c.nome
+      `,
+      [condominio_id, mes]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).send('Nenhum registro encontrado para este período.');
+    }
+
+    let totalDias = 0, totalPresentes = 0, totalFaltas = 0, totalFolgas = 0, totalAtestados = 0, totalFerias = 0;
+    rows.forEach(r => {
+      totalDias       += Number(r.total_dias);
+      totalPresentes  += Number(r.presentes);
+      totalFaltas     += Number(r.faltas);
+      totalFolgas     += Number(r.folgas);
+      totalAtestados  += Number(r.atestados);
+      totalFerias     += Number(r.ferias);
+    });
+
+    const PDFDocument = require('pdfkit');
+    const path = require('path');
+    const fs = require('fs');
+
+    const doc = new PDFDocument({ size: 'A4', margin: 40, layout: 'landscape' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="relatorio-mensal-${condominio_id}-${mes}.pdf"`
+    );
+
+    doc.pipe(res);
+
+    const logoPath = path.join(__dirname, '..', 'public', 'img', 'logo.png');
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 40, 30, { width: 50 });
+    }
+
+    doc.fontSize(16).text('Relatório Consolidado Mensal', 100, 40);
+    doc.fontSize(10)
+       .text(`Condomínio: ${condominio.nome}`, 100, 60)
+       .text(`Período: ${mes}`, 100, 75)
+       .text(
+         `Gerado em: ${new Date().toLocaleString('pt-BR')} por ${usuario.nome || 'Sistema'}`,
+         100,
+         90
+       );
+
+    doc.moveDown(2);
+
+    const rowHeight = 18;
+    let currentY = doc.y;
+
+   // Cabeçalho da tabela (MENSAL)
+doc.save();
+
+// fundo do cabeçalho
+doc.rect(40, currentY, 750, rowHeight).fill('#007bff');
+
+// texto do cabeçalho em branco
+doc.fillColor('#ffffff').fontSize(8);
+doc.text('Colaborador', 45, currentY + 5, { width: 120 });
+doc.text('Empresa',    165, currentY + 5, { width: 90 });
+doc.text('Presenças',  255, currentY + 5, { width: 60, align: 'center' });
+doc.text('Faltas',     315, currentY + 5, { width: 50, align: 'center' });
+doc.text('Folgas',     365, currentY + 5, { width: 50, align: 'center' });
+doc.text('Atestados',  415, currentY + 5, { width: 60, align: 'center' });
+doc.text('Férias',     475, currentY + 5, { width: 50, align: 'center' });
+doc.text('Total',      525, currentY + 5, { width: 50, align: 'center' });
+doc.text('%',          575, currentY + 5, { width: 40, align: 'center' });
+
+doc.restore();
+
+// IMPORTANTÍSSIMO: volta texto padrão para preto pro resto do documento
+doc.fillColor('#000000');
+
+currentY += rowHeight;
+
+
+    doc.fillColor('#000');
+    rows.forEach((r, index) => {
+      if (currentY > 520) {
+        doc.addPage({ layout: 'landscape' });
+        currentY = 40;
+
+        doc.fontSize(8).fillColor('#fff');
+        doc.rect(40, currentY, 750, rowHeight).fillAndStroke('#ff6a00', '#ff5500');
+        doc.text('Colaborador', 45, currentY + 5, { width: 120 });
+        doc.text('Empresa',    165, currentY + 5, { width: 90 });
+        doc.text('Presenças',  255, currentY + 5, { width: 60, align: 'center' });
+        doc.text('Faltas',     315, currentY + 5, { width: 50, align: 'center' });
+        doc.text('Folgas',     365, currentY + 5, { width: 50, align: 'center' });
+        doc.text('Atestados',  415, currentY + 5, { width: 60, align: 'center' });
+        doc.text('Férias',     475, currentY + 5, { width: 50, align: 'center' });
+        doc.text('Total',      525, currentY + 5, { width: 50, align: 'center' });
+        doc.text('%',          575, currentY + 5, { width: 40, align: 'center' });
+
+        currentY += rowHeight;
+        doc.fillColor('#000');
+      }
+
+      const bgColor = (index % 2 === 0) ? '#f8f9fa' : '#ffffff';
+      doc.rect(40, currentY, 750, rowHeight).fillAndStroke(bgColor, bgColor);
+
+      const totalDiasColab = Number(r.total_dias);
+      const presentes      = Number(r.presentes);
+      const percentual     = totalDiasColab > 0
+        ? ((presentes / totalDiasColab) * 100).toFixed(1)
+        : '0.0';
+
+      doc.fillColor('#000').fontSize(7);
+      doc.text(r.colaborador,      45, currentY + 5, { width: 120, ellipsis: true });
+      doc.text(r.empresa || '-',  165, currentY + 5, { width: 90,  ellipsis: true });
+      doc.text(String(presentes), 255, currentY + 5, { width: 60, align: 'center' });
+      doc.text(String(r.faltas),  315, currentY + 5, { width: 50, align: 'center' });
+      doc.text(String(r.folgas),  365, currentY + 5, { width: 50, align: 'center' });
+      doc.text(String(r.atestados),415, currentY + 5,{ width: 60, align: 'center' });
+      doc.text(String(r.ferias),  475, currentY + 5, { width: 50, align: 'center' });
+      doc.text(String(totalDiasColab), 525, currentY + 5, { width: 50, align: 'center' });
+      doc.text(`${percentual}%`,  575, currentY + 5, { width: 40, align: 'center' });
+
+      currentY += rowHeight;
+    });
+
+    doc.rect(40, currentY, 750, rowHeight).fillAndStroke('#e9ecef', '#e9ecef');
+    doc.fontSize(8).fillColor('#000');
+    doc.text('TOTAL GERAL',         45, currentY + 5, { width: 210, align: 'left' });
+    doc.text(String(totalPresentes),255, currentY + 5, { width: 60, align: 'center' });
+    doc.text(String(totalFaltas),   315, currentY + 5, { width: 50, align: 'center' });
+    doc.text(String(totalFolgas),   365, currentY + 5, { width: 50, align: 'center' });
+    doc.text(String(totalAtestados),415, currentY + 5, { width: 60, align: 'center' });
+    doc.text(String(totalFerias),   475, currentY + 5, { width: 50, align: 'center' });
+    doc.text(String(totalDias),     525, currentY + 5, { width: 50, align: 'center' });
+
+    doc.fontSize(7).fillColor('#999');
+    doc.text('Sistema de Controle de Presença', 40, 560, { align: 'center', width: 750 });
+
+    doc.end();
+
+  } catch (error) {
+    console.error('Erro ao gerar relatório mensal PDF:', error);
+    res.status(500).send('Erro ao gerar relatório mensal PDF');
+  }
+};
+
+// ========================================
+// Relatório Detalhado por Colaborador
+// ========================================
+exports.relatorioColaboradorPdf = async (req, res) => {
+  try {
+    const { condominio_id, colaborador_id, mes } = req.query;
+
+    if (!condominio_id || !colaborador_id || !mes || !/^\d{4}-\d{2}$/.test(mes)) {
+      return res.status(400).send('Parâmetros obrigatórios: condominio_id, colaborador_id, mes (YYYY-MM)');
+    }
+
+    const usuario = req.session.user || {};
+
+    const [[colaborador]] = await db.query(
+      `
+      SELECT c.nome AS colaborador, e.nome AS empresa
+      FROM colaboradores c
+      LEFT JOIN empresas e ON e.id = c.empresa_id
+      WHERE c.id = ?
+      `,
+      [colaborador_id]
+    );
+
+    const [[condominio]] = await db.query(
+      'SELECT nome FROM condominios WHERE id = ?',
+      [condominio_id]
+    );
+
+    if (!colaborador || !condominio) {
+      return res.status(404).send('Colaborador ou condomínio não encontrado');
+    }
+
+    const [presencas] = await db.query(
+      `
+      SELECT
+        p.data,
+        p.status,
+        po.nome AS posto,
+        cb.nome AS cobertura,
+        p.observacoes
+      FROM presencas_diarias p
+      LEFT JOIN postos po ON po.id = p.posto_id
+      LEFT JOIN colaboradores cb ON cb.id = p.cobertura_id
+      WHERE p.condominio_id = ?
+        AND p.colaborador_id = ?
+        AND DATE_FORMAT(p.data, '%Y-%m') = ?
+      ORDER BY p.data ASC
+      `,
+      [condominio_id, colaborador_id, mes]
+    );
+
+    if (presencas.length === 0) {
+      return res.status(404).send('Nenhum registro encontrado para este colaborador no período.');
+    }
+
+    const totalPresentes = presencas.filter(p => p.status === 'presente').length;
+    const totalFaltas    = presencas.filter(p => p.status === 'falta').length;
+    const totalFolgas    = presencas.filter(p => p.status === 'folga').length;
+    const totalAtestados = presencas.filter(p => p.status === 'atestado').length;
+    const totalFerias    = presencas.filter(p => p.status === 'ferias').length;
+    const totalGeral     = presencas.length;
+
+    const PDFDocument = require('pdfkit');
+    const path = require('path');
+    const fs = require('fs');
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="relatorio-colaborador-${colaborador_id}-${mes}.pdf"`
+    );
+
+    doc.pipe(res);
+
+    const logoPath = path.join(__dirname, '..', 'public', 'img', 'logo.png');
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 50, 40, { width: 50 });
+    }
+
+    doc.fontSize(16).text('Relatório Detalhado - Colaborador', 110, 50);
+    doc.fontSize(10)
+       .text(`Colaborador: ${colaborador.colaborador}`, 110, 70)
+       .text(`Empresa: ${colaborador.empresa || '-'}`, 110, 85)
+       .text(`Condomínio: ${condominio.nome}`, 110, 100)
+       .text(`Período: ${mes}`, 110, 115)
+       .text(
+         `Gerado em: ${new Date().toLocaleString('pt-BR')} por ${usuario.nome || 'Sistema'}`,
+         110,
+         130
+       );
+
+    doc.moveDown(2);
+
+    const rowHeight = 18;
+    let currentY = doc.y;
+
+  // Cabeçalho da tabela (DETALHADO)
+doc.save();
+doc.rect(50, currentY, 495, rowHeight).fill('#256ac4');
+
+doc.fillColor('#ffffff').fontSize(8);
+doc.text('Data',        55, currentY + 5, { width: 70 });
+doc.text('Status',     125, currentY + 5, { width: 70 });
+doc.text('Posto',      195, currentY + 5, { width: 90 });
+doc.text('Cobertura',  285, currentY + 5, { width: 80 });
+doc.text('Observações',365, currentY + 5, { width: 180 });
+
+doc.restore();
+doc.fillColor('#000000');
+
+currentY += rowHeight;
+
+
+    doc.fillColor('#000');
+    presencas.forEach(p => {
+      if (currentY > 720) {
+        doc.addPage();
+        currentY = 50;
+
+        doc.fontSize(8).fillColor('#fff');
+        doc.rect(50, currentY, 495, rowHeight).fillAndStroke('#28a745', '#28a745');
+        doc.text('Data',        55, currentY + 5, { width: 70 });
+        doc.text('Status',     125, currentY + 5, { width: 70 });
+        doc.text('Posto',      195, currentY + 5, { width: 90 });
+        doc.text('Cobertura',  285, currentY + 5, { width: 80 });
+        doc.text('Observações',365, currentY + 5, { width: 180 });
+
+        currentY += rowHeight;
+        doc.fillColor('#000');
+      }
+
+      let bgColor = '#ffffff';
+      if (p.status === 'presente')   bgColor = '#d4edda';
+      else if (p.status === 'falta') bgColor = '#f8d7da';
+      else if (p.status === 'atestado') bgColor = '#fff3cd';
+      else if (p.status === 'folga')     bgColor = '#e2e3e5';
+      else if (p.status === 'ferias')    bgColor = '#cfe2ff';
+
+      doc.rect(50, currentY, 495, rowHeight).fillAndStroke(bgColor, bgColor);
+
+      doc.fillColor('#000').fontSize(7);
+      doc.text(new Date(p.data).toLocaleDateString('pt-BR'), 55, currentY + 5, { width: 70 });
+      doc.text(p.status || '-',        125, currentY + 5, { width: 70 });
+      doc.text(p.posto || '-',         195, currentY + 5, { width: 90, ellipsis: true });
+      doc.text(p.cobertura || '-',     285, currentY + 5, { width: 80, ellipsis: true });
+      doc.text(p.observacoes || '',    365, currentY + 5, { width: 180, ellipsis: true });
+
+      currentY += rowHeight;
+    });
+
+    currentY += 10;
+    doc.fontSize(9).fillColor('#333');
+    doc.text(`Total de registros: ${totalGeral}`, 50, currentY);
+    doc.text(
+      `Presenças: ${totalPresentes}  |  Faltas: ${totalFaltas}  |  Folgas: ${totalFolgas}  |  Atestados: ${totalAtestados}  |  Férias: ${totalFerias}`,
+      50,
+      currentY + 15
+    );
+
+    doc.fontSize(7).fillColor('#999');
+    doc.text('Sistema de Controle de Presença', 50, 780, { align: 'center', width: 495 });
+
+    doc.end();
+
+  } catch (error) {
+    console.error('Erro ao gerar relatório detalhado PDF:', error);
+    res.status(500).send('Erro ao gerar relatório detalhado PDF');
+  }
+};
+
+
+

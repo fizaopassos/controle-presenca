@@ -467,9 +467,9 @@ color: #ffffff;
  
   /* Reduz o tamanho dos dias do calendário */
   .flatpickr-day {
-    height: 38px !important;
-    line-height: 38px !important;
-    max-width: 38px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    max-width: 40px !important;
   }
 
   .flatpickr-day.dia-vermelho {
