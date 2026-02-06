@@ -1,0 +1,330 @@
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2><i class="bi bi-file-earmark-pdf"></i> Relatórios de Presença</h2>
+      <div>
+        <a href="/presenca/consultar" class="btn btn-outline-primary me-2">
+          <i class="bi bi-search"></i> Consultar Presenças
+        </a>
+        <a href="/dashboard" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+      </div>
+    </div>
+
+    <!-- Card: Relatório Mensal Consolidado -->
+    <div class="card mb-4">
+      <div class="card-header bg-danger text-white">
+        <i class="bi bi-calendar-month"></i> Relatório Mensal Consolidado
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle"></i> 
+          Gera um PDF com todos os colaboradores e seus status de presença em formato de calendário mensal.
+        </p>
+        
+        <div class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label">Condomínio *</label>
+            <select class="form-select" id="condominioMensal" required>
+              <option value="">Selecione...</option>
+              <% condominios.forEach(c => { %>
+                <option value="<%= c.id %>"><%= c.nome %></option>
+              <% }) %>
+            </select>
+          </div>
+          
+          <div class="col-md-3">
+            <label class="form-label">Mês/Ano *</label>
+            <input type="month" class="form-control" id="mesMensal" required>
+          </div>
+          
+          <div class="col-md-4 d-flex align-items-end">
+            <button type="button" class="btn btn-danger w-100" id="btnGerarPdfMensal">
+              <i class="bi bi-file-earmark-pdf"></i> Gerar PDF Mensal
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Relatório Detalhado por Colaborador -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <i class="bi bi-person-badge"></i> Relatório Detalhado por Colaborador
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle"></i> 
+          Gera um PDF com informações detalhadas de presença de um colaborador específico no período selecionado.
+        </p>
+        
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Condomínio *</label>
+            <select class="form-select" id="condominioDetalhado" required>
+              <option value="">Selecione...</option>
+              <% condominios.forEach(c => { %>
+                <option value="<%= c.id %>"><%= c.nome %></option>
+              <% }) %>
+            </select>
+          </div>
+          
+          <div class="col-md-4">
+            <label class="form-label">Colaborador *</label>
+            <div class="position-relative">
+              <input type="text" 
+                     class="form-control" 
+                     id="colaboradorBusca" 
+                     placeholder="Primeiro selecione o condomínio..."
+                     autocomplete="off"
+                     disabled
+                     required>
+              <input type="hidden" id="colaboradorId">
+              
+              <div id="colaboradorSugestoes" 
+                   class="list-group position-absolute w-100 shadow-sm"
+                   style="top: 100%; left: 0; z-index: 2000; display: none; max-height: 240px; overflow-y: auto;">
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-2">
+            <label class="form-label">Mês/Ano *</label>
+            <input type="month" class="form-control" id="mesDetalhado" required>
+          </div>
+          
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="button" class="btn btn-primary w-100" id="btnGerarPdfDetalhado">
+              <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Histórico de Relatórios (Opcional - pode implementar depois) -->
+    <div class="card">
+      <div class="card-header bg-secondary text-white">
+        <i class="bi bi-clock-history"></i> Dicas e Informações
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6><i class="bi bi-lightbulb text-warning"></i> Relatório Mensal</h6>
+            <ul class="small text-muted">
+              <li>Visualização em formato de calendário</li>
+              <li>Todos os colaboradores do condomínio</li>
+              <li>Ideal para visão geral mensal</li>
+              <li>Legenda com cores por status</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6><i class="bi bi-lightbulb text-warning"></i> Relatório Detalhado</h6>
+            <ul class="small text-muted">
+              <li>Foco em um colaborador específico</li>
+              <li>Informações detalhadas de cada dia</li>
+              <li>Inclui observações e justificativas</li>
+              <li>Ideal para controle individual</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Definir mês atual como padrão
+(function definirMesPadrao() {
+  const hoje = new Date();
+  const mesAtual = hoje.toISOString().slice(0, 7); // '2026-02'
+  
+  document.getElementById('mesMensal').value = mesAtual;
+  document.getElementById('mesDetalhado').value = mesAtual;
+})();
+
+// ========================================
+// Habilitar campo colaborador ao selecionar condomínio
+// ========================================
+document.getElementById('condominioDetalhado').addEventListener('change', function() {
+  const condId = this.value;
+  const inputColab = document.getElementById('colaboradorBusca');
+  const hiddenId = document.getElementById('colaboradorId');
+  
+  if (condId) {
+    inputColab.disabled = false;
+    inputColab.placeholder = 'Digite o nome do colaborador...';
+    inputColab.value = '';
+    hiddenId.value = '';
+  } else {
+    inputColab.disabled = true;
+    inputColab.placeholder = 'Primeiro selecione o condomínio...';
+    inputColab.value = '';
+    hiddenId.value = '';
+    document.getElementById('colaboradorSugestoes').style.display = 'none';
+  }
+});
+
+// ========================================
+// Autocomplete de colaborador (FILTRA POR CONDOMÍNIO)
+// ========================================
+let timeoutBusca;
+
+document.getElementById('colaboradorBusca').addEventListener('input', function() {
+  const termo = this.value;
+  const condominioId = document.getElementById('condominioDetalhado').value;
+  
+  clearTimeout(timeoutBusca);
+
+  if (!condominioId) {
+    alert('Selecione um condomínio primeiro');
+    this.value = '';
+    return;
+  }
+
+  if (termo.length < 2) {
+    document.getElementById('colaboradorSugestoes').style.display = 'none';
+    document.getElementById('colaboradorId').value = '';
+    return;
+  }
+
+  timeoutBusca = setTimeout(async function() {
+    try {
+      // ✅ BUSCA APENAS COLABORADORES DO CONDOMÍNIO SELECIONADO
+      const res = await fetch(`/presenca/api/colaboradores/condominio/${condominioId}?termo=${encodeURIComponent(termo)}`);
+      
+      if (!res.ok) {
+        throw new Error('Erro ao buscar colaboradores');
+      }
+      
+      const colaboradores = await res.json();
+
+      const divSug = document.getElementById('colaboradorSugestoes');
+      divSug.innerHTML = '';
+
+      if (!colaboradores || colaboradores.length === 0) {
+        const item = document.createElement('div');
+        item.className = 'list-group-item text-muted';
+        item.textContent = 'Nenhum colaborador encontrado';
+        divSug.appendChild(item);
+        divSug.style.display = 'block';
+        return;
+      }
+
+      colaboradores.forEach(function(c) {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action';
+        
+        // Mostra nome e empresa
+        const strong = document.createElement('strong');
+        strong.textContent = c.nome;
+        item.appendChild(strong);
+        
+        if (c.empresa) {
+          const small = document.createElement('small');
+          small.className = 'text-muted d-block';
+          small.textContent = c.empresa;
+          item.appendChild(small);
+        }
+        
+        item.onclick = function(e) {
+          e.preventDefault();
+          document.getElementById('colaboradorBusca').value = c.nome;
+          document.getElementById('colaboradorId').value = c.id;
+          divSug.style.display = 'none';
+        };
+        divSug.appendChild(item);
+      });
+
+      divSug.style.display = 'block';
+    } catch (error) {
+      console.error('Erro ao buscar colaboradores:', error);
+      alert('Erro ao buscar colaboradores. Tente novamente.');
+    }
+  }, 300);
+});
+
+// Fechar sugestões ao clicar fora
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#colaboradorBusca') && !e.target.closest('#colaboradorSugestoes')) {
+    document.getElementById('colaboradorSugestoes').style.display = 'none';
+  }
+});
+
+// ========================================
+// Gerar PDF Mensal
+// ========================================
+document.getElementById('btnGerarPdfMensal').addEventListener('click', function() {
+  const condId = document.getElementById('condominioMensal').value;
+  const mes = document.getElementById('mesMensal').value;
+
+  if (!condId) {
+    alert('Selecione um condomínio.');
+    return;
+  }
+
+  if (!mes) {
+    alert('Selecione o mês/ano.');
+    return;
+  }
+
+  // Mostrar feedback visual
+  const btnOriginal = this.innerHTML;
+  this.innerHTML = '<i class="bi bi-hourglass-split"></i> Gerando...';
+  this.disabled = true;
+
+  const url = `/presenca/relatorios/mensal/pdf?condominio_id=${condId}&mes=${encodeURIComponent(mes)}`;
+  
+  // Abrir em nova aba
+  window.open(url, '_blank');
+
+  // Restaurar botão após 2 segundos
+  setTimeout(() => {
+    this.innerHTML = btnOriginal;
+    this.disabled = false;
+  }, 2000);
+});
+
+// ========================================
+// Gerar PDF Detalhado
+// ========================================
+document.getElementById('btnGerarPdfDetalhado').addEventListener('click', function() {
+  const condId = document.getElementById('condominioDetalhado').value;
+  const colaboradorId = document.getElementById('colaboradorId').value;
+  const mes = document.getElementById('mesDetalhado').value;
+
+  if (!condId) {
+    alert('Selecione um condomínio.');
+    return;
+  }
+
+  if (!colaboradorId) {
+    alert('Selecione um colaborador.');
+    return;
+  }
+
+  if (!mes) {
+    alert('Selecione o mês/ano.');
+    return;
+  }
+
+  // Mostrar feedback visual
+  const btnOriginal = this.innerHTML;
+  this.innerHTML = '<i class="bi bi-hourglass-split"></i> Gerando...';
+  this.disabled = true;
+
+  const url = `/presenca/relatorios/colaborador/pdf?condominio_id=${condId}&colaborador_id=${colaboradorId}&mes=${encodeURIComponent(mes)}`;
+  
+  // Abrir em nova aba
+  window.open(url, '_blank');
+
+  // Restaurar botão após 2 segundos
+  setTimeout(() => {
+    this.innerHTML = btnOriginal;
+    this.disabled = false;
+  }, 2000);
+});
+</script>

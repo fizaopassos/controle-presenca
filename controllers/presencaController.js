@@ -1046,7 +1046,7 @@ exports.relatorioColaboradorPdf = async (req, res) => {
 
   // Cabeçalho da tabela (DETALHADO)
 doc.save();
-doc.rect(50, currentY, 495, rowHeight).fill('#256ac4');
+doc.rect(50, currentY, 495, rowHeight).fill('#6081ae');
 
 doc.fillColor('#ffffff').fontSize(8);
 doc.text('Data',        55, currentY + 5, { width: 70 });
