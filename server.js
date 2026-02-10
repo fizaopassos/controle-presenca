@@ -1,11 +1,27 @@
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
 
 const app = express();
 
-// Definir a porta
+// ========================
+// Validações de produção
+// ========================
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET não definido no .env');
+  }
+}
+
+// ========================
+// Configurações básicas
+// ========================
 const PORT = process.env.PORT || 3000;
+
+// Necessário para cookies secure atrás do Nginx
+app.set('trust proxy', 1);
 
 // ========================
 // View engine (EJS)
@@ -29,12 +45,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Sessão
 // ========================
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'seu-secret-super-seguro-aqui',
+  name: 'retha.sid',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // true com HTTPS
     httpOnly: true,
+    sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 // 1 dia
   }
 }));
@@ -43,68 +61,52 @@ app.use(session({
 // Usuário disponível nas views
 // ========================
 app.use((req, res, next) => {
-  const sess = req.session || {};
-  res.locals.usuario = sess.user || null;
+  res.locals.usuario = req.session?.user || null;
   next();
 });
-
 
 // ========================
 // Rotas
 // ========================
-const authRoutes = require('./routes/auth');
-const dashboardRoutes = require('./routes/dashboard');
-const condominiosRoutes = require('./routes/condominios');
-const empresasRoutes = require('./routes/empresas');
-const postosRoutes = require('./routes/postos');
-const colaboradoresRoutes = require('./routes/colaboradores');
-const presencaRoutes = require('./routes/presenca');
-const usuariosRoutes = require('./routes/usuarios');
+app.use('/auth', require('./routes/auth'));
+app.use('/dashboard', require('./routes/dashboard'));
+app.use('/condominios', require('./routes/condominios'));
+app.use('/empresas', require('./routes/empresas'));
+app.use('/postos', require('./routes/postos'));
+app.use('/colaboradores', require('./routes/colaboradores'));
+app.use('/presenca', require('./routes/presenca'));
+app.use('/usuarios', require('./routes/usuarios'));
 
-// Se não precisar mais dos logs de debug, pode apagar:
-console.log('authRoutes typeof:', typeof authRoutes);
-console.log('authRoutes keys:', authRoutes && Object.keys(authRoutes));
-console.log('authRoutes value:', authRoutes);
-
-// Montagem das rotas
-app.use('/auth', authRoutes);
-app.use('/dashboard', dashboardRoutes);
-app.use('/condominios', condominiosRoutes);
-app.use('/empresas', empresasRoutes);
-app.use('/postos', postosRoutes);
-app.use('/colaboradores', colaboradoresRoutes);
-app.use('/presenca', presencaRoutes);
-app.use('/usuarios', usuariosRoutes);
+// ========================
+// Rota raiz
+// ========================
 app.get('/', (req, res) => {
-if (req.session && req.session.user) {
-return res.redirect('/dashboard');
-}
-return res.redirect('/auth/login');
+  if (req.session?.user) {
+    return res.redirect('/dashboard');
+  }
+  return res.redirect('/auth/login');
 });
 
-app.get('/', (req, res) => {
-if (req.session && req.session.user) {
-return res.redirect('/dashboard');
-}
-return res.render('layout', {
-title: 'Controle de Presença',
-page: 'home',
-showNavbar: false,
-mainClass: 'container-fluid p-0',
-menuAtivo: ''
-});
-});
+// Compatibilidade
 app.get('/login', (req, res) => res.redirect('/auth/login'));
 app.post('/login', (req, res) => res.redirect(307, '/auth/login'));
 
 // ========================
-// Iniciar servidor
+// Fallback 404
 // ========================
-/*app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-});*/
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando na porta ${PORT} e acessível na rede local`);
+app.use((req, res) => {
+  res.status(404).render('layout', {
+    title: 'Página não encontrada',
+    page: 'errors/404',
+    showNavbar: false,
+    mainClass: 'container',
+    menuAtivo: ''
+  });
 });
 
+// ========================
+// Inicialização
+// ========================
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor rodando em produção na porta ${PORT}`);
+});

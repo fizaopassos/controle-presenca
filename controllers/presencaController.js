@@ -427,6 +427,7 @@ exports.getCoberturasPorEmpresa = async (req, res) => {
   }
 };
 
+
 exports.getDiasLancados = async (req, res) => {
   try {
     const condominio_id = req.query.condominio_id;
