@@ -5,33 +5,39 @@
 </div>
 
 <div class="row g-3">
+
   <div class="col-md-3">
-    <div class="card text-white bg-brand h-100">
-      <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-calendar-check"></i> Lançar Presença</h5>
-        <p class="card-text">Registrar a presença de hoje ou de dias anteriores.</p>
+    <a href="/presenca/lancar" class="text-decoration-none">
+      <div class="card text-white bg-danger h-100 shadow-sm card-hover">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i class="bi bi-calendar-check"></i> Lançar Presença
+          </h5>
+          <p class="card-text">
+            Registrar a presença de hoje ou de dias anteriores.
+          </p>
+        </div>
       </div>
-      <div class="card-footer text-end">
-        <a href="/presenca/lancar" class="btn btn-light btn-sm">
-          Ir para Lançamento <i class="bi bi-arrow-right"></i>
-        </a>
-      </div>
-    </div>
+    </a>
   </div>
 
   <div class="col-md-3">
-    <div class="card text-white bg-brand h-100">
-      <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-clipboard-data"></i> Consultar Presenças</h5>
-        <p class="card-text">Ver o histórico de presenças, faltas e atestados.</p>
+    <a href="/presenca/consultar" class="text-decoration-none">
+      <div class="card text-white bg-success h-100 shadow-sm card-hover">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i class="bi bi-clipboard-data"></i> Consultar Presenças
+          </h5>
+          <p class="card-text">
+            Ver o histórico de presenças, faltas e atestados e emitir relatórios.
+          </p>
+        </div>
       </div>
-      <div class="card-footer text-end">
-        <a href="/presenca/consultar" class="btn btn-light btn-sm">
-          Ver Relatório <i class="bi bi-arrow-right"></i>
-        </a>
-      </div>
-    </div>
+    </a>
   </div>
+
+</div>
+
 
     <% if (usuario && usuario.perfil === 'ADMIN') { %>
     <div class="col-md-3">

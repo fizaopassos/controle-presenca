@@ -619,19 +619,31 @@ exports.consultarPresencas = async (req, res) => {
 // Se enviar empresa_id, filtra pela empresa
 // Aceita query string "termo" ou "q"
 // ========================================
+// ========================================
+// API: Buscar colaboradores (autocomplete geral + por empresa/condomínio)
+// Usado na CONSULTA e no Lançar (campo "Colaborador" e "Cobertura")
+// Parâmetros opcionais:
+//  - termo / q       → parte do nome do colaborador ou da empresa
+//  - empresa_id      → filtra pela empresa
+//  - condominio_id   → filtra pelo condomínio
+// ========================================
 exports.buscarColaboradores = async (req, res) => {
   try {
-    const termoRaw = req.query.termo || req.query.q || '';
-    const termo = termoRaw.trim();
-    const empresaId = req.query.empresa_id ? Number(req.query.empresa_id) : null;
+    const termoRaw    = req.query.termo || req.query.q || '';
+    const termo       = termoRaw.trim();
+    const empresaId   = req.query.empresa_id    ? Number(req.query.empresa_id)    : null;
+    const condominioId = req.query.condominio_id ? Number(req.query.condominio_id) : null;
 
     let query = `
       SELECT
         c.id,
         c.nome,
-        e.nome AS empresa
+        e.nome   AS empresa,
+        c.condominio_id,
+        cond.nome AS condominio
       FROM colaboradores c
-      LEFT JOIN empresas e ON c.empresa_id = e.id
+      LEFT JOIN empresas e    ON c.empresa_id   = e.id
+      LEFT JOIN condominios cond ON cond.id    = c.condominio_id
       WHERE c.ativo = 1
     `;
 
@@ -642,8 +654,13 @@ exports.buscarColaboradores = async (req, res) => {
       params.push(empresaId);
     }
 
+    if (condominioId) {
+      query += ' AND c.condominio_id = ?';
+      params.push(condominioId);
+    }
+
     if (termo) {
-      query += ' AND (c.nome LIKE ?)';
+      query += ' AND (c.nome LIKE ? OR e.nome LIKE ?)';
       params.push(`%${termo}%`, `%${termo}%`);
     }
 

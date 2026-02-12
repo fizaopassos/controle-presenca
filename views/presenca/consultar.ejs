@@ -229,51 +229,80 @@ return valor;
 
 // Autocomplete colaborador
 document.getElementById('colaboradorBusca').addEventListener('input', function () {
-const termo = this.value;
-clearTimeout(timeoutBusca);
+  const termo = this.value;
+  clearTimeout(timeoutBusca);
 
-if (termo.length < 2) {
-  document.getElementById('colaboradorSugestoes').style.display = 'none';
-  document.getElementById('colaboradorId').value = '';
-  return;
-}
-
-timeoutBusca = setTimeout(async function () {
-  try {
-    const res = await fetch('/presenca/api/colaboradores?termo=' + encodeURIComponent(termo));
-    const colaboradores = await res.json();
-
-    const divSug = document.getElementById('colaboradorSugestoes');
-    divSug.innerHTML = '';
-
-    if (!colaboradores || colaboradores.length === 0) {
-      divSug.style.display = 'none';
-      return;
-    }
-
-   colaboradores.forEach(function (c) {
-  const item = document.createElement('a');
-  item.href = '#';
-  item.className = 'list-group-item list-group-item-action';
-  item.textContent = c.nome;
-  item.onclick = function (e) {
-    e.preventDefault();
-    document.getElementById('colaboradorBusca').value = c.nome;
-    document.getElementById('colaboradorId').value = c.id;
-    divSug.style.display = 'none';
-
-    // mostra botão PDF detalhado
-    document.getElementById('btnExportarPdfDetalhado').classList.remove('d-none');
-  };
-  divSug.appendChild(item);
-});
-
-
-    divSug.style.display = 'block';
-  } catch (error) {
-    console.error('Erro ao buscar colaboradores:', error);
+  if (termo.length < 2) {
+    document.getElementById('colaboradorSugestoes').style.display = 'none';
+    document.getElementById('colaboradorId').value = '';
+    return;
   }
-}, 300);
+
+  timeoutBusca = setTimeout(async function () {
+    try {
+      const condominioId = document.getElementById('condominio').value;
+      const empresaId    = document.getElementById('empresa').value;
+
+      let url = '/presenca/api/colaboradores?termo=' + encodeURIComponent(termo);
+
+      if (condominioId) {
+        url += '&condominio_id=' + encodeURIComponent(condominioId);
+      }
+      if (empresaId) {
+        url += '&empresa_id=' + encodeURIComponent(empresaId);
+      }
+
+      const res = await fetch(url);
+      const colaboradores = await res.json();
+
+      const divSug = document.getElementById('colaboradorSugestoes');
+      divSug.innerHTML = '';
+
+      if (!colaboradores || colaboradores.length === 0) {
+        divSug.style.display = 'none';
+        return;
+      }
+
+      colaboradores.forEach(function (c) {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action';
+
+        // Exibe "Nome - Empresa (Condomínio)" para ajudar a escolher certo
+        let texto = c.nome;
+        if (c.empresa) {
+          texto += ' - ' + c.empresa;
+        }
+        if (c.condominio) {
+          texto += ' (' + c.condominio + ')';
+        }
+        item.textContent = texto;
+
+        item.onclick = function (e) {
+          e.preventDefault();
+          document.getElementById('colaboradorBusca').value = c.nome;
+          document.getElementById('colaboradorId').value = c.id;
+          divSug.style.display = 'none';
+
+          // Ajusta automaticamente o condomínio do filtro
+          if (c.condominio_id) {
+            const selectCond = document.getElementById('condominio');
+            if (selectCond) {
+              selectCond.value = String(c.condominio_id);
+            }
+          }
+
+          // mostra botão PDF detalhado
+          document.getElementById('btnExportarPdfDetalhado').classList.remove('d-none');
+        };
+        divSug.appendChild(item);
+      });
+
+      divSug.style.display = 'block';
+    } catch (error) {
+      console.error('Erro ao buscar colaboradores:', error);
+    }
+  }, 300);
 
 });
 
