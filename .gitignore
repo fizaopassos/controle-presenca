@@ -1,0 +1,22 @@
+# Node
+node_modules/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# PM2
+pids/
+*.pid
+
+# OS
+.DS_Store
+
+# Build
+dist/
+build/
