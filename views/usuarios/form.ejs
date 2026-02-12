@@ -28,8 +28,41 @@
             <select name="perfil" id="perfil" class="form-select" required>
               <option value="admin" <%= usuario.perfil === 'admin' ? 'selected' : '' %>>ADMIN</option>
               <option value="gestor" <%= usuario.perfil === 'gestor' ? 'selected' : '' %>>GESTOR</option>
-              <option value="lancador" <%= usuario.perfil === 'lancador' ? 'selected' : '' %>>OPERADOR</option>
+              <option value="operador" <%= usuario.perfil === 'operador' ? 'selected' : '' %>>OPERADOR</option>
             </select>
+
+                  <div class="card mb-4">
+        <div class="card-header bg-light">
+          Alterar senha
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Nova senha</label>
+            <input 
+              type="password" 
+              name="senha" 
+              id="senhaNova" 
+              class="form-control" 
+              minlength="6"
+            >
+            <div class="form-text">
+              Deixe em branco para manter a senha atual.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Confirmar nova senha</label>
+            <input 
+              type="password" 
+              name="senhaConfirm" 
+              id="senhaNovaConfirm" 
+              class="form-control" 
+              minlength="6"
+            >
+          </div>
+        </div>
+      </div>
+
           </div>
         </div>
       </div>
@@ -91,4 +124,52 @@
 
   selectPerfil.addEventListener('change', atualizarVisibilidadeCondominios);
   atualizarVisibilidadeCondominios(); // executa ao carregar
+
+    const senhaNova = document.getElementById('senhaNova');
+  const senhaNovaConfirm = document.getElementById('senhaNovaConfirm');
+
+  function validarSenhaNova() {
+    if (!senhaNova || !senhaNovaConfirm) return true;
+
+    const s1 = senhaNova.value;
+    const s2 = senhaNovaConfirm.value;
+
+    // Se os dois estiverem vazios, não valida nada (não vai trocar senha)
+    if (!s1 && !s2) {
+      senhaNova.classList.remove('is-invalid');
+      senhaNovaConfirm.classList.remove('is-invalid');
+      return true;
+    }
+
+    if (s1.length < 6) {
+      senhaNova.classList.add('is-invalid');
+      return false;
+    } else {
+      senhaNova.classList.remove('is-invalid');
+    }
+
+    if (s1 !== s2) {
+      senhaNovaConfirm.classList.add('is-invalid');
+      return false;
+    } else {
+      senhaNovaConfirm.classList.remove('is-invalid');
+    }
+
+    return true;
+  }
+
+  if (senhaNova && senhaNovaConfirm) {
+    senhaNova.addEventListener('input', validarSenhaNova);
+    senhaNovaConfirm.addEventListener('input', validarSenhaNova);
+
+    const form = document.querySelector('form[action^="/usuarios/editar/"]');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        if (!validarSenhaNova()) {
+          e.preventDefault();
+        }
+      });
+    }
+  }
+
 </script>

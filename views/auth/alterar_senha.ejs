@@ -1,0 +1,82 @@
+<div class="row">
+  <div class="col-12 col-lg-6">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2><i class="bi bi-shield-lock"></i> Alterar minha senha</h2>
+      <a href="/" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+      </a>
+    </div>
+
+    <% if (query && query.ok === '1') { %>
+      <div class="alert alert-success">
+        Senha alterada com sucesso.
+      </div>
+    <% } %>
+
+    <form method="post" action="/perfil/alterar-senha" id="formAlterarSenha">
+      <div class="card">
+        <div class="card-header bg-light">Dados</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Senha atual *</label>
+            <input type="password" name="senhaAtual" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Nova senha *</label>
+            <input type="password" name="novaSenha" id="novaSenha" class="form-control"
+                   required minlength="6">
+            <div class="form-text">Mínimo 6 caracteres</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Confirmar nova senha *</label>
+            <input type="password" name="novaSenhaConfirm" id="novaSenhaConfirm" class="form-control"
+                   required minlength="6">
+            <div class="invalid-feedback" id="senhaErro" style="display:none;">
+              As senhas não coincidem
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle"></i> Alterar senha
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const s1 = document.getElementById('novaSenha');
+  const s2 = document.getElementById('novaSenhaConfirm');
+  const erro = document.getElementById('senhaErro');
+  const form = document.getElementById('formAlterarSenha');
+
+  function validar() {
+    if (!s1 || !s2) return true;
+
+    if (s1.value !== s2.value) {
+      s2.classList.add('is-invalid');
+      if (erro) erro.style.display = 'block';
+      return false;
+    } else {
+      s2.classList.remove('is-invalid');
+      if (erro) erro.style.display = 'none';
+      return true;
+    }
+  }
+
+  if (s1 && s2) {
+    s1.addEventListener('input', validar);
+    s2.addEventListener('input', validar);
+  }
+
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (!validar()) e.preventDefault();
+    });
+  }
+})();
+</script>

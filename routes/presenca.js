@@ -57,10 +57,18 @@ router.get(
 
 // Buscar colaboradores (autocomplete)
 // Se um dia você passar condominio_id aqui, dá pra adicionar o checkCondominioAccess também
+// Buscar colaboradores (autocomplete) - CONSULTA
 router.get(
   '/api/colaboradores',
   presencaController.buscarColaboradores
 );
+
+// Buscar colaboradores (autocomplete) - LANÇAR (com ?empresa_id=&q=)
+router.get(
+  '/api/colaboradores/buscar',
+  presencaController.buscarColaboradores
+);
+
 
 router.get(
   '/api/dias-lancados',

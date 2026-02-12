@@ -290,48 +290,56 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  function buildCoberturaSelectHtml(c, s) {
-    var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
-    var mostrar = needsCobertura(statusAtual);
+  var buscaCoberturaTimeout = null;
 
-    var wrapClass = mostrar ? '' : 'd-none';
-    var empresaId = c.empresa_id ? String(c.empresa_id) : '';
-    var cobIdAtual = s.cobertura_id ? String(s.cobertura_id) : '';
-
-    var lista = getCoberturasCached(empresaId);
-    var loading = !!window.__coberturasLoading[empresaId];
-    var disabled = false;
-
-    var options = '';
-    if (!empresaId) {
-      options = '<option value="">Sem empresa</option>';
-      disabled = true;
-    } else if (lista === null) {
-      options = '<option value="">Carregando...</option>';
-      disabled = true;
-    } else if (Array.isArray(lista) && lista.length === 0) {
-      options = '<option value="">Nenhuma cobertura cadastrada</option>';
-      disabled = true;
-    } else {
-      options = '<option value="">Selecione...</option>';
-      lista.forEach(function(cb) {
-        var cbId = String(cb.id);
-        var selected = (cbId === cobIdAtual) ? ' selected' : '';
-        options += '<option value="' + escapeHtml(cbId) + '"' + selected + '>' + escapeHtml(cb.nome) + '</option>';
-      });
-      disabled = false;
-    }
-
-    var disAttr = (disabled || loading) ? ' disabled' : '';
-
-    return ''
-      + '<div class="mt-2 ' + wrapClass + '" id="cob-wrap-' + escapeHtml(c.id) + '">'
-      + '  <label class="form-label mb-1">Cobertura (opcional)</label>'
-      + '  <select class="form-select form-select-sm" data-action="set-cobertura" data-id="' + escapeHtml(c.id) + '" data-empresa-id="' + escapeHtml(empresaId) + '"' + disAttr + '>'
-      +      options
-      + '  </select>'
-      + '</div>';
+function buscarCoberturasPorNome(empresaId, termo, callback) {
+  if (!empresaId || !termo || termo.length < 2) {
+    if (typeof callback === 'function') callback([]);
+    return;
   }
+
+  var url = '/presenca/api/colaboradores/buscar?empresa_id='
+    + encodeURIComponent(empresaId)
+    + '&q=' + encodeURIComponent(termo);
+
+  fetch(url)
+    .then(function(resp) { return resp.json(); })
+    .then(function(lista) {
+      if (!Array.isArray(lista)) lista = [];
+      if (typeof callback === 'function') callback(lista);
+    })
+    .catch(function(e) {
+      console.error('Erro ao buscar coberturas por nome:', e);
+      if (typeof callback === 'function') callback([]);
+    });
+}
+
+
+  function buildCoberturaSelectHtml(c, s) {
+  var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
+  var mostrar = needsCobertura(statusAtual); // só mostra se for falta/folga/...
+
+  var wrapClass = mostrar ? '' : 'd-none';
+  var empresaId = c.empresa_id ? String(c.empresa_id) : '';
+
+  var valorInput = s.cobertura_nome || '';
+
+  return ''
+    + '<div class="mt-2 ' + wrapClass + '" id="cob-wrap-' + escapeHtml(c.id) + '">'
+    + '  <label class="form-label mb-1">Cobertura (opcional)</label>'
+    + '  <input type="text"'
+    + '         class="form-control form-control-sm"'
+    + '         placeholder="Digite o nome do colaborador..."'
+    + '         value="' + escapeHtml(valorInput) + '"'
+    + '         data-action="cobertura-input"'
+    + '         data-id="' + escapeHtml(c.id) + '"'
+    + '         data-empresa-id="' + escapeHtml(empresaId) + '">'
+    + '  <div class="list-group position-absolute w-100 d-none"'
+    + '       id="cob-suggestions-' + escapeHtml(c.id) + '"'
+    + '       style="z-index: 1050; max-height: 200px; overflow-y: auto;"></div>'
+    + '</div>';
+}
+
 
   function renderCard(c) {
     var id = String(c.id);
@@ -479,6 +487,7 @@ document.addEventListener('DOMContentLoaded', function() {
             status: originalStatus,
             observacoes: originalObs,
             cobertura_id: originalCob,
+            cobertura_nome: c.cobertura_nome,
 
             originalStatus: originalStatus,
             originalObs: originalObs,
@@ -613,6 +622,38 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
+      // Clique em uma sugestão de cobertura
+  var sug = evt.target.closest('button[data-action="cobertura-suggestion"]');
+  if (sug) {
+    var baseId = String(sug.getAttribute('data-base-id')); // id do colaborador base
+    var colabId = String(sug.getAttribute('data-colab-id'));
+    var colabNome = sug.getAttribute('data-colab-nome') || '';
+
+    var s2 = estado[baseId];
+    if (!s2) return;
+
+    s2.cobertura_id = Number(colabId);
+    s2.cobertura_nome = colabNome;
+    estado[baseId] = s2;
+
+    // Atualiza o input de texto com o nome escolhido
+    var inp = document.querySelector('input[data-action="cobertura-input"][data-id="' + baseId + '"]');
+    if (inp) {
+      inp.value = colabNome;
+    }
+
+    // Esconde a lista de sugestões
+    var sugDiv2 = document.getElementById('cob-suggestions-' + baseId);
+    if (sugDiv2) {
+      sugDiv2.innerHTML = '';
+      sugDiv2.classList.add('d-none');
+    }
+
+    atualizarResumo();
+    return;
+  }
+
+
     var btn = evt.target.closest('button[data-action="set-status"]');
     if (!btn) return;
 
@@ -650,6 +691,58 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   areaColaboradores.addEventListener('input', function(evt) {
+      // AUTOCOMPLETE COBERTURA: digitação no campo de cobertura
+  var inpCob = evt.target.closest('input[data-action="cobertura-input"]');
+  if (inpCob) {
+    var id = String(inpCob.getAttribute('data-id'));
+    var empresaId = inpCob.getAttribute('data-empresa-id') || '';
+    var termo = inpCob.value || '';
+
+    // Atualiza apenas o nome no estado; o id só muda quando clicar na sugestão
+    var s = estado[id];
+    if (!s) return;
+    s.cobertura_nome = termo;
+    // Não zera cobertura_id aqui para não perder se o cara só corrigiu um detalhe
+
+    if (buscaCoberturaTimeout) clearTimeout(buscaCoberturaTimeout);
+    buscaCoberturaTimeout = setTimeout(function() {
+      buscarCoberturasPorNome(empresaId, termo, function(lista) {
+        var sugDiv = document.getElementById('cob-suggestions-' + id);
+        if (!sugDiv) return;
+
+        if (!termo || lista.length === 0) {
+          sugDiv.innerHTML = '';
+          sugDiv.classList.add('d-none');
+          return;
+        }
+
+        var html = '';
+        lista.forEach(function(col) {
+          var label = col.nome;
+          if (col.condominio_nome) {
+            label += ' - ' + col.condominio_nome;
+          }
+          label += ' (' + (col.tipo === 'cobertura' ? 'Cobertura' : 'Fixo') + ')';
+
+          html += ''
+            + '<button type="button"'
+            + '        class="list-group-item list-group-item-action"'
+            + '        data-action="cobertura-suggestion"'
+            + '        data-base-id="' + escapeHtml(id) + '"'
+            + '        data-colab-id="' + escapeHtml(String(col.id)) + '"'
+            + '        data-colab-nome="' + escapeHtml(col.nome) + '">'
+            +        escapeHtml(label)
+            + '</button>';
+        });
+
+        sugDiv.innerHTML = html;
+        sugDiv.classList.remove('d-none');
+      });
+    }, 250); // debounce 250ms
+
+    return;
+  }
+
     var inp = evt.target.closest('input[data-action="set-obs"]');
     if (!inp) return;
 
@@ -812,6 +905,23 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       enviarLancamentos();
     });
+
+    document.addEventListener('click', function(evt) {
+  var el = evt.target;
+
+  // Se o clique não foi em input de cobertura nem em sugestão, fecha todas
+  if (!el.closest('input[data-action="cobertura-input"]') &&
+      !el.closest('button[data-action="cobertura-suggestion"]')) {
+    listaIds.forEach(function(id) {
+      var sugDiv = document.getElementById('cob-suggestions-' + String(id));
+      if (sugDiv) {
+        sugDiv.innerHTML = '';
+        sugDiv.classList.add('d-none');
+      }
+    });
+  }
+});
+
 
 }); // FIM DOMContentLoaded
 </script>

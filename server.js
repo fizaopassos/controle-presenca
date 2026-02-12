@@ -5,6 +5,7 @@ const path = require('path');
 const session = require('express-session');
 
 const app = express();
+const perfilRoutes = require('./routes/perfil');
 
 // ========================
 // Validações de produção
@@ -76,6 +77,7 @@ app.use('/postos', require('./routes/postos'));
 app.use('/colaboradores', require('./routes/colaboradores'));
 app.use('/presenca', require('./routes/presenca'));
 app.use('/usuarios', require('./routes/usuarios'));
+app.use('/perfil', perfilRoutes);
 
 // ========================
 // Rota raiz

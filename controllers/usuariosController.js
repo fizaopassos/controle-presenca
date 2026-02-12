@@ -129,17 +129,62 @@ exports.editarForm = async (req, res) => {
 };
 
 // Salvar edição
+// Salvar edição
 exports.editarSalvar = async (req, res) => {
   try {
     const { id } = req.params;
-    let { nome, email, perfil, condominios } = req.body;
+    let { nome, email, perfil, condominios, senha, senhaConfirm } = req.body;
+
+    if (!nome || !email || !perfil) {
+      return res.status(400).send('Nome, e-mail e perfil são obrigatórios.');
+    }
 
     perfil = perfil.toLowerCase();
 
-    await db.query(
-      'UPDATE usuarios SET nome = ?, email = ?, perfil = ? WHERE id = ?',
-      [nome, email, perfil, id]
+    // Opcional: impedir e-mail duplicado em outro usuário
+    const [outroComMesmoEmail] = await db.query(
+      'SELECT id FROM usuarios WHERE email = ? AND id <> ?',
+      [email, id]
     );
+    if (outroComMesmoEmail.length > 0) {
+      return res.status(400).send('Já existe um usuário com este e-mail.');
+    }
+
+    // Monta o UPDATE, com ou sem alteração de senha
+    let query;
+    let params;
+
+    senha = (senha || '').trim();
+    senhaConfirm = (senhaConfirm || '').trim();
+
+    if (senha) {
+      // Quer trocar a senha
+      if (senha.length < 6) {
+        return res.status(400).send('A senha deve ter pelo menos 6 caracteres.');
+      }
+      if (senha !== senhaConfirm) {
+        return res.status(400).send('A confirmação de senha não confere.');
+      }
+
+      const senhaHash = await bcrypt.hash(senha, 10);
+
+      query = `
+        UPDATE usuarios
+        SET nome = ?, email = ?, perfil = ?, senha_hash = ?
+        WHERE id = ?
+      `;
+      params = [nome, email, perfil, senhaHash, id];
+    } else {
+      // Não altera a senha
+      query = `
+        UPDATE usuarios
+        SET nome = ?, email = ?, perfil = ?
+        WHERE id = ?
+      `;
+      params = [nome, email, perfil, id];
+    }
+
+    await db.query(query, params);
 
     // Remove vínculos antigos
     await db.query(
@@ -147,7 +192,7 @@ exports.editarSalvar = async (req, res) => {
       [id]
     );
 
-    // ✅ CORRIGIDO: gestor e lançador vinculam condomínios (admin não precisa)
+    // gestor / lancador vinculam condomínios (admin não precisa)
     if (perfil !== 'admin' && condominios) {
       const condoArray = Array.isArray(condominios) ? condominios : [condominios];
 
