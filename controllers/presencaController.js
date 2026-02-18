@@ -11,7 +11,7 @@ exports.getLancarPresenca = async (req, res) => {
     const usuario = req.session.user;
 
     let sql = 'SELECT id, nome FROM condominios';
-    let params = [];
+    const params = [];
 
     if (usuario.perfil !== 'admin') {
       sql += `
@@ -48,7 +48,7 @@ exports.getConsultarPresenca = async (req, res) => {
     const usuario = req.session.user;
 
     let sqlCond = 'SELECT id, nome FROM condominios';
-    let paramsCond = [];
+    const paramsCond = [];
 
     if (usuario.perfil !== 'admin') {
       sqlCond += `
@@ -84,25 +84,27 @@ exports.getConsultarPresenca = async (req, res) => {
 };
 
 // ========================================
-// API: Buscar postos
+// API: Buscar postos (opcionalmente por condomínio)
 // ========================================
 exports.getPostos = async (req, res) => {
-  try {
-    const [postos] = await db.query(
-      `SELECT id, nome
-       FROM postos
-       WHERE ativo = 1
-       ORDER BY nome`
-    );
-    res.json(postos);
-  } catch (error) {
-    console.error('Erro ao buscar postos:', error);
-    res.status(500).json({ error: 'Erro ao buscar postos' });
-  }
-};
+try {
+// Mesmo que a rota tenha :condominio_id, aqui vamos ignorar
+// porque a tabela "postos" não tem relação com condomínio.
+const [postos] = await db.query(
+'SELECT id, nome FROM postos WHERE ativo = 1 ORDER BY nome'
+);
+
+res.json(postos);
+
+} catch (error) {
+console.error('Erro ao buscar postos:', error);
+res.status(500).json({ error: 'Erro ao buscar postos' });
+}
+}
 
 // ========================================
 // API: Buscar colaboradores por condomínio (para lançar)
+// - agora também marca se já está "presente" em outro condomínio na mesma data
 // ========================================
 exports.getFuncionariosPorCondominio = async (req, res) => {
   try {
@@ -113,7 +115,6 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       return res.status(400).json({ error: 'condominio_id é obrigatório' });
     }
 
-    // Colaboradores ativos do condomínio
     const sqlColabs = `
       SELECT
         c.id,
@@ -132,7 +133,6 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
 
     const [colaboradores] = await db.query(sqlColabs, [condominio_id]);
 
-    // Se não tem data ou não tem colaboradores, devolve sem presenças
     if (!data || colaboradores.length === 0) {
       colaboradores.forEach(c => {
         c.status = null;
@@ -140,6 +140,8 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
         c.presenca_id = null;
         c.cobertura_id = null;
         c.cobertura_nome = '';
+        c.presente_outro_condominio = false;
+        c.presente_outro_condominio_nome = null;
       });
       return res.json(colaboradores);
     }
@@ -152,11 +154,13 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
         c.presenca_id = null;
         c.cobertura_id = null;
         c.cobertura_nome = '';
+        c.presente_outro_condominio = false;
+        c.presente_outro_condominio_nome = null;
       });
       return res.json(colaboradores);
     }
 
-    // Presenças já lançadas nesse dia/condomínio
+    // Presenças já lançadas nesse dia/condomínio (mesmo condomínio da tela)
     const sqlPres = `
       SELECT
         pd.colaborador_id,
@@ -185,21 +189,49 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       };
     });
 
+    // Verifica se algum desses colaboradores está "presente" em OUTRO condomínio na mesma data
+    const sqlPresOutros = `
+      SELECT
+        pd.colaborador_id,
+        pd.condominio_id,
+        cond.nome AS condominio_nome
+      FROM presencas_diarias pd
+      JOIN condominios cond ON cond.id = pd.condominio_id
+      WHERE pd.data = ?
+        AND pd.colaborador_id IN (?)
+        AND pd.condominio_id <> ?
+        AND pd.status = 'presente'
+    `;
+
+    const [presencasOutros] = await db.query(sqlPresOutros, [data, ids, condominio_id]);
+
+    const mapaPresencasOutros = {};
+    presencasOutros.forEach(r => {
+      mapaPresencasOutros[r.colaborador_id] = {
+        condominio_id: r.condominio_id,
+        condominio_nome: r.condominio_nome
+      };
+    });
+
     colaboradores.forEach(c => {
       const pres = mapaPresencas[c.id];
       if (pres) {
-        c.presenca_id = pres.presenca_id;
-        c.status = pres.status;
-        c.observacoes = pres.observacoes;
-        c.cobertura_id = pres.cobertura_id || null;
-        c.cobertura_nome = pres.cobertura_nome || '';
+        c.presenca_id   = pres.presenca_id;
+        c.status        = pres.status;
+        c.observacoes   = pres.observacoes;
+        c.cobertura_id  = pres.cobertura_id || null;
+        c.cobertura_nome= pres.cobertura_nome || '';
       } else {
-        c.presenca_id = null;
-        c.status = null;
-        c.observacoes = '';
-        c.cobertura_id = null;
-        c.cobertura_nome = '';
+        c.presenca_id   = null;
+        c.status        = null;
+        c.observacoes   = '';
+        c.cobertura_id  = null;
+        c.cobertura_nome= '';
       }
+
+      const outro = mapaPresencasOutros[c.id];
+      c.presente_outro_condominio       = !!outro;
+      c.presente_outro_condominio_nome  = outro ? outro.condominio_nome : null;
     });
 
     res.json(colaboradores);
@@ -293,6 +325,7 @@ exports.getFuncionarios = async (req, res) => {
 
 // ========================================
 // API: Lançar presença (com trava de edição para lançador)
+// Regra: não pode PRESENÇA em dois condomínios no mesmo dia
 // ========================================
 exports.lancarPresenca = async (req, res) => {
   const connection = await db.getConnection();
@@ -322,7 +355,32 @@ exports.lancarPresenca = async (req, res) => {
         continue;
       }
 
-      // Verifica se já existe presença (UNIQUE: data, colaborador_id, posto_id)
+      // 1) Regra: não pode PRESENÇA em dois condomínios no mesmo dia
+      if (status === 'presente') {
+        const [[emOutroCondom]] = await connection.query(
+          `
+          SELECT pd.id, pd.condominio_id, cond.nome AS condominio_nome
+          FROM presencas_diarias pd
+          JOIN condominios cond ON cond.id = pd.condominio_id
+          WHERE pd.data = ?
+            AND pd.colaborador_id = ?
+            AND pd.condominio_id <> ?
+            AND pd.status = 'presente'
+          LIMIT 1
+          `,
+          [data, colaborador_id, condominio_id]
+        );
+
+        if (emOutroCondom) {
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            message: `O colaborador está presente no condomínio "${emOutroCondom.condominio_nome}" nesta data. Não é permitido lançar presença em outro condomínio no mesmo dia.`
+          });
+        }
+      }
+
+      // 2) Trava de edição para lançador
       const [[jaExiste]] = await connection.query(
         `
         SELECT id
@@ -335,7 +393,6 @@ exports.lancarPresenca = async (req, res) => {
         [data, colaborador_id, posto_id]
       );
 
-      // Se já existe e o usuário é lançador, bloqueia
       if (jaExiste && usuario.perfil === 'lancador') {
         await connection.rollback();
         return res.status(403).json({
@@ -344,16 +401,16 @@ exports.lancarPresenca = async (req, res) => {
         });
       }
 
-      // 1) UPSERT da presença do TITULAR
+      // 3) UPSERT da presença
       await connection.query(
         `
         INSERT INTO presencas_diarias
           (data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
-          status       = VALUES(status),
-          observacoes  = VALUES(observacoes),
-          cobertura_id = VALUES(cobertura_id),
+          status        = VALUES(status),
+          observacoes   = VALUES(observacoes),
+          cobertura_id  = VALUES(cobertura_id),
           atualizado_em = CURRENT_TIMESTAMP
         `,
         [data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id]
@@ -361,7 +418,7 @@ exports.lancarPresenca = async (req, res) => {
 
       const ehAusencia = ['falta', 'folga', 'atestado', 'ferias'].includes(status);
 
-      // 2) Presença do COLABORADOR DE COBERTURA
+      // 4) Presença do COLABORADOR DE COBERTURA (automático)
       if (ehAusencia && cobertura_id && posto_id) {
         await connection.query(
           `
@@ -369,14 +426,14 @@ exports.lancarPresenca = async (req, res) => {
             (data, colaborador_id, condominio_id, posto_id, status, observacoes)
           VALUES (?, ?, ?, ?, 'presente', ?)
           ON DUPLICATE KEY UPDATE
-            status       = VALUES(status),
-            observacoes  = VALUES(observacoes),
+            status        = VALUES(status),
+            observacoes   = VALUES(observacoes),
             atualizado_em = CURRENT_TIMESTAMP
           `,
           [data, cobertura_id, condominio_id, posto_id, observacoes]
         );
       } else if (cobertura_id && posto_id) {
-        // se não é ausência mas havia cobertura, apaga presença do cobertura
+        // Se não é ausência mas havia cobertura preenchida, remove possível lançamento automático do cobertura
         await connection.query(
           `
           DELETE FROM presencas_diarias
@@ -396,7 +453,6 @@ exports.lancarPresenca = async (req, res) => {
       success: true,
       message: 'Presenças salvas com sucesso!'
     });
-
   } catch (error) {
     await connection.rollback();
     console.error('Erro ao salvar presenças:', error);
@@ -410,7 +466,7 @@ exports.lancarPresenca = async (req, res) => {
 };
 
 // ========================================
-// API: Coberturas por empresa (ainda pode ser usada em outros lugares)
+// API: Coberturas por empresa
 // ========================================
 exports.getCoberturasPorEmpresa = async (req, res) => {
   try {
@@ -430,7 +486,6 @@ exports.getCoberturasPorEmpresa = async (req, res) => {
 
     const [rows] = await db.query(sql, [empresa_id]);
     res.json(rows);
-
   } catch (error) {
     console.error('Erro ao buscar coberturas:', error);
     res.status(500).json({ error: 'Erro ao buscar coberturas' });
@@ -441,97 +496,94 @@ exports.getCoberturasPorEmpresa = async (req, res) => {
 // API: Dias lançados (para colorir calendário)
 // ========================================
 exports.getDiasLancados = async (req, res) => {
-  try {
-    const condominio_id = req.query.condominio_id;
-    const mes = req.query.mes; // 'YYYY-MM'
+try {
+const condominio_id = req.query.condominio_id;
+const mes = req.query.mes; // 'YYYY-MM'
 
-    if (!condominio_id || !mes || !/^\d{4}-\d{2}$/.test(mes)) {
-      return res.status(400).json({ error: 'condominio_id e mes (YYYY-MM) são obrigatórios' });
-    }
+if (!condominio_id || !mes || !/^\d{4}-\d{2}$/.test(mes)) {
+  return res.status(400).json({ error: 'condominio_id e mes (YYYY-MM) são obrigatórios' });
+}
 
-    const [anoStr, mesStr] = mes.split('-');
-    const ano = Number(anoStr);
-    const mesNum = Number(mesStr); // 1..12
+const [anoStr, mesStr] = mes.split('-');
+const ano = Number(anoStr);
+const mesNum = Number(mesStr); // 1..12
 
-    const inicio = `${anoStr}-${mesStr}-01`;
-    const ultimoDia = new Date(ano, mesNum, 0).getDate();
-    const fim = `${anoStr}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`;
+const inicio = `${anoStr}-${mesStr}-01`;
+const ultimoDia = new Date(ano, mesNum, 0).getDate();
+const fim = `${anoStr}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`;
 
-    const [[tot]] = await db.query(
-      `
-      SELECT COUNT(*) AS totalColaboradores
-      FROM colaboradores
-      WHERE condominio_id = ?
-        AND ativo = 1
-      `,
-      [condominio_id]
-    );
-    const totalColaboradores = Number(tot?.totalColaboradores || 0);
+const [rows] = await db.query(
+  `
+  WITH RECURSIVE dias AS (
+    SELECT DATE(?) AS dia
+    UNION ALL
+    SELECT dia + INTERVAL 1 DAY
+    FROM dias
+    WHERE dia < DATE(?)
+  )
+  SELECT
+    d.dia AS dia,
+    COUNT(DISTINCT c.id) AS totalEsperado,
+    COUNT(DISTINCT IF(p.id IS NULL, NULL, c.id)) AS totalLancados
+  FROM dias d
+  LEFT JOIN colaboradores c
+    ON c.condominio_id = ?
+   -- Se quiser contar só FIXOS, descomente a linha abaixo
+   -- AND c.tipo = 'fixo'
+   AND c.criado_em <= d.dia
+   AND (c.inativado_em IS NULL OR c.inativado_em > d.dia)
+  LEFT JOIN presencas_diarias p
+    ON p.condominio_id = ?
+   AND p.data = d.dia
+   AND p.colaborador_id = c.id
+  GROUP BY d.dia
+  ORDER BY d.dia
+  `,
+  [inicio, fim, condominio_id, condominio_id]
+);
 
-    const [rows] = await db.query(
-      `
-      SELECT data, COUNT(DISTINCT colaborador_id) AS totalLancados
-      FROM presencas_diarias
-      WHERE condominio_id = ?
-        AND data BETWEEN ? AND ?
-      GROUP BY data
-      ORDER BY data
-      `,
-      [condominio_id, inicio, fim]
-    );
+const statusPorDia = {};
+const hoje = new Date();
+hoje.setHours(0, 0, 0, 0);
 
-    const statusPorDia = {};
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+rows.forEach(r => {
+  const d = (r.dia instanceof Date) ? r.dia : new Date(r.dia);
+  const diaDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  diaDate.setHours(0, 0, 0, 0);
 
-    for (let dia = 1; dia <= ultimoDia; dia++) {
-      const dd = String(dia).padStart(2, '0');
-      const iso = `${anoStr}-${mesStr}-${dd}`;
-      const diaDate = new Date(ano, mesNum - 1, dia);
+  const iso =
+    `${diaDate.getFullYear()}-${String(diaDate.getMonth() + 1).padStart(2, '0')}-${String(diaDate.getDate()).padStart(2, '0')}`;
 
-      if (diaDate < hoje) {
-        statusPorDia[iso] = 'vermelho';
-      }
-    }
+  // Só colore dias passados
+  if (diaDate >= hoje) return;
 
-    rows.forEach(r => {
-      let iso;
-      const d = r.data;
+  const esperado = Number(r.totalEsperado || 0);
+  const lancados = Number(r.totalLancados || 0);
 
-      if (d instanceof Date) {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        iso = `${yyyy}-${mm}-${dd}`;
-      } else {
-        iso = String(d).slice(0, 10);
-      }
+  if (esperado <= 0) {
+  // Não adiciona ao statusPorDia, ou seja, fica sem cor
+  return;
+}
 
-      const lancados = Number(r.totalLancados || 0);
-
-      if (lancados <= 0) {
-        statusPorDia[iso] = 'vermelho';
-        return;
-      }
-
-      if (totalColaboradores <= 0) {
-        statusPorDia[iso] = 'verde';
-        return;
-      }
-
-      if (lancados < totalColaboradores) statusPorDia[iso] = 'amarelo';
-      else statusPorDia[iso] = 'verde';
-    });
-
-    return res.json(statusPorDia);
-  } catch (error) {
-    console.error('Erro ao buscar dias lançados:', error);
-    return res.status(500).json({ error: 'Erro ao buscar dias lançados' });
+  if (lancados <= 0) {
+    statusPorDia[iso] = 'vermelho';
+    return;
   }
+
+  if (lancados < esperado) statusPorDia[iso] = 'amarelo';
+  else statusPorDia[iso] = 'verde';
+});
+
+return res.json(statusPorDia);
+
+} catch (error) {
+console.error('Erro ao buscar dias lançados:', error);
+return res.status(500).json({ error: 'Erro ao buscar dias lançados' });
+}
 };
 
 // ========================================
-// API: Buscar presenças (filtros) - Gestor vê só seus condomínios
+// API: Buscar presenças (filtros)
 // ========================================
 exports.consultarPresencas = async (req, res) => {
   try {
@@ -614,36 +666,25 @@ exports.consultarPresencas = async (req, res) => {
 };
 
 // ========================================
-// API: Buscar colaboradores (autocomplete geral + por empresa)
-// Usado na CONSULTA e no Lançar (campo "Colaborador" e "Cobertura")
-// Se enviar empresa_id, filtra pela empresa
-// Aceita query string "termo" ou "q"
-// ========================================
-// ========================================
-// API: Buscar colaboradores (autocomplete geral + por empresa/condomínio)
-// Usado na CONSULTA e no Lançar (campo "Colaborador" e "Cobertura")
-// Parâmetros opcionais:
-//  - termo / q       → parte do nome do colaborador ou da empresa
-//  - empresa_id      → filtra pela empresa
-//  - condominio_id   → filtra pelo condomínio
+// API: Buscar colaboradores (autocomplete geral)
 // ========================================
 exports.buscarColaboradores = async (req, res) => {
   try {
-    const termoRaw    = req.query.termo || req.query.q || '';
-    const termo       = termoRaw.trim();
-    const empresaId   = req.query.empresa_id    ? Number(req.query.empresa_id)    : null;
+    const termoRaw = req.query.termo || req.query.q || '';
+    const termo = termoRaw.trim();
+    const empresaId = req.query.empresa_id ? Number(req.query.empresa_id) : null;
     const condominioId = req.query.condominio_id ? Number(req.query.condominio_id) : null;
 
     let query = `
       SELECT
         c.id,
         c.nome,
-        e.nome   AS empresa,
+        e.nome AS empresa,
         c.condominio_id,
         cond.nome AS condominio
       FROM colaboradores c
-      LEFT JOIN empresas e    ON c.empresa_id   = e.id
-      LEFT JOIN condominios cond ON cond.id    = c.condominio_id
+      LEFT JOIN empresas e ON c.empresa_id = e.id
+      LEFT JOIN condominios cond ON cond.id = c.condominio_id
       WHERE c.ativo = 1
     `;
 
@@ -675,7 +716,7 @@ exports.buscarColaboradores = async (req, res) => {
 };
 
 // ========================================
-// POST: Salvar presença individual (HTMX) - com trava de edição
+// POST: Salvar presença individual (HTMX)
 // ========================================
 exports.salvarPresencaIndividual = async (req, res) => {
   try {
@@ -684,6 +725,28 @@ exports.salvarPresencaIndividual = async (req, res) => {
 
     if (!data || !condominio_id || !posto_id || !colaborador_id || !status) {
       return res.status(400).send('Dados obrigatórios faltando');
+    }
+
+    if (status === 'presente') {
+      const [[emOutroCondom]] = await db.query(
+        `
+        SELECT pd.id, pd.condominio_id, cond.nome AS condominio_nome
+        FROM presencas_diarias pd
+        JOIN condominios cond ON cond.id = pd.condominio_id
+        WHERE pd.data = ?
+          AND pd.colaborador_id = ?
+          AND pd.condominio_id <> ?
+          AND pd.status = 'presente'
+        LIMIT 1
+        `,
+        [data, colaborador_id, condominio_id]
+      );
+
+      if (emOutroCondom) {
+        return res.status(400).send(
+          `O colaborador está presente no condomínio "${emOutroCondom.condominio_nome}" nesta data. Não é permitido lançar presença em outro condomínio no mesmo dia.`
+        );
+      }
     }
 
     const [[jaExiste]] = await db.query(
@@ -702,17 +765,21 @@ exports.salvarPresencaIndividual = async (req, res) => {
       return res.status(403).send('Para editar lançamentos confirmados, consulte o seu gestor');
     }
 
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO presencas_diarias
         (data, colaborador_id, condominio_id, posto_id, status, observacoes)
       VALUES (?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-        status       = VALUES(status),
-        observacoes  = VALUES(observacoes),
+        status        = VALUES(status),
+        observacoes   = VALUES(observacoes),
         atualizado_em = CURRENT_TIMESTAMP
-    `, [data, colaborador_id, condominio_id, posto_id, status, observacoes || null]);
+      `,
+      [data, colaborador_id, condominio_id, posto_id, status, observacoes || null]
+    );
 
-    const [colaborador] = await db.query(`
+    const [colaborador] = await db.query(
+      `
       SELECT
         c.id,
         c.nome,
@@ -721,20 +788,25 @@ exports.salvarPresencaIndividual = async (req, res) => {
       FROM colaboradores c
       LEFT JOIN empresas e ON c.empresa_id = e.id
       WHERE c.id = ?
-    `, [colaborador_id]);
+      `,
+      [colaborador_id]
+    );
 
     if (colaborador.length === 0) {
       return res.status(404).send('Colaborador não encontrado');
     }
 
-    const [presenca] = await db.query(`
+    const [presenca] = await db.query(
+      `
       SELECT id, status, observacoes
       FROM presencas_diarias
       WHERE data = ?
         AND colaborador_id = ?
         AND posto_id = ?
         AND condominio_id = ?
-    `, [data, colaborador_id, posto_id, condominio_id]);
+      `,
+      [data, colaborador_id, posto_id, condominio_id]
+    );
 
     const c = colaborador[0];
     c.status = presenca[0]?.status || status;
@@ -747,7 +819,6 @@ exports.salvarPresencaIndividual = async (req, res) => {
       condominio_id,
       posto_id
     });
-
   } catch (error) {
     console.error('Erro ao salvar presença individual:', error);
     res.status(500).send('Erro ao salvar presença');
@@ -813,10 +884,6 @@ exports.relatorioMensalPdf = async (req, res) => {
       totalFerias     += Number(r.ferias);
     });
 
-    const PDFDocument = require('pdfkit');
-    const path = require('path');
-    const fs = require('fs');
-
     const doc = new PDFDocument({ size: 'A4', margin: 40, layout: 'landscape' });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -847,7 +914,6 @@ exports.relatorioMensalPdf = async (req, res) => {
     const rowHeight = 18;
     let currentY = doc.y;
 
-    // Cabeçalho da tabela (MENSAL)
     doc.save();
     doc.rect(40, currentY, 750, rowHeight).fill('#007bff');
     doc.fillColor('#ffffff').fontSize(8);
@@ -897,34 +963,33 @@ exports.relatorioMensalPdf = async (req, res) => {
         : '0.0';
 
       doc.fillColor('#000').fontSize(7);
-      doc.text(r.colaborador,      45, currentY + 5, { width: 120, ellipsis: true });
-      doc.text(r.empresa || '-',  165, currentY + 5, { width: 90,  ellipsis: true });
-      doc.text(String(presentes), 255, currentY + 5, { width: 60, align: 'center' });
-      doc.text(String(r.faltas),  315, currentY + 5, { width: 50, align: 'center' });
-      doc.text(String(r.folgas),  365, currentY + 5, { width: 50, align: 'center' });
-      doc.text(String(r.atestados),415, currentY + 5,{ width: 60, align: 'center' });
-      doc.text(String(r.ferias),  475, currentY + 5, { width: 50, align: 'center' });
-      doc.text(String(totalDiasColab), 525, currentY + 5, { width: 50, align: 'center' });
-      doc.text(`${percentual}%`,  575, currentY + 5, { width: 40, align: 'center' });
+      doc.text(r.colaborador,         45, currentY + 5, { width: 120, ellipsis: true });
+      doc.text(r.empresa || '-',     165, currentY + 5, { width: 90,  ellipsis: true });
+      doc.text(String(presentes),    255, currentY + 5, { width: 60, align: 'center' });
+      doc.text(String(r.faltas),     315, currentY + 5, { width: 50, align: 'center' });
+      doc.text(String(r.folgas),     365, currentY + 5, { width: 50, align: 'center' });
+      doc.text(String(r.atestados),  415, currentY + 5, { width: 60, align: 'center' });
+      doc.text(String(r.ferias),     475, currentY + 5, { width: 50, align: 'center' });
+      doc.text(String(totalDiasColab),525, currentY + 5, { width: 50, align: 'center' });
+      doc.text(`${percentual}%`,     575, currentY + 5, { width: 40, align: 'center' });
 
       currentY += rowHeight;
     });
 
     doc.rect(40, currentY, 750, rowHeight).fillAndStroke('#e9ecef', '#e9ecef');
     doc.fontSize(8).fillColor('#000');
-    doc.text('TOTAL GERAL',         45, currentY + 5, { width: 210, align: 'left' });
-    doc.text(String(totalPresentes),255, currentY + 5, { width: 60, align: 'center' });
-    doc.text(String(totalFaltas),   315, currentY + 5, { width: 50, align: 'center' });
-    doc.text(String(totalFolgas),   365, currentY + 5, { width: 50, align: 'center' });
-    doc.text(String(totalAtestados),415, currentY + 5, { width: 60, align: 'center' });
-    doc.text(String(totalFerias),   475, currentY + 5, { width: 50, align: 'center' });
-    doc.text(String(totalDias),     525, currentY + 5, { width: 50, align: 'center' });
+    doc.text('TOTAL GERAL',           45, currentY + 5, { width: 210, align: 'left' });
+    doc.text(String(totalPresentes),  255, currentY + 5, { width: 60, align: 'center' });
+    doc.text(String(totalFaltas),     315, currentY + 5, { width: 50, align: 'center' });
+    doc.text(String(totalFolgas),     365, currentY + 5, { width: 50, align: 'center' });
+    doc.text(String(totalAtestados),  415, currentY + 5, { width: 60, align: 'center' });
+    doc.text(String(totalFerias),     475, currentY + 5, { width: 50, align: 'center' });
+    doc.text(String(totalDias),       525, currentY + 5, { width: 50, align: 'center' });
 
     doc.fontSize(7).fillColor('#999');
-    doc.text('Sistema de Controle de Presença', 40, 560, { align: 'center', width: 750 });
+    doc.text('Sistema de Controle de presença', 40, 560, { align: 'center', width: 750 });
 
     doc.end();
-
   } catch (error) {
     console.error('Erro ao gerar relatório mensal PDF:', error);
     res.status(500).send('Erro ao gerar relatório mensal PDF');
@@ -938,51 +1003,60 @@ exports.relatorioColaboradorPdf = async (req, res) => {
   try {
     const { condominio_id, colaborador_id, mes } = req.query;
 
-    if (!condominio_id || !colaborador_id || !mes || !/^\d{4}-\d{2}$/.test(mes)) {
-      return res.status(400).send('Parâmetros obrigatórios: condominio_id, colaborador_id, mes (YYYY-MM)');
+    if (!colaborador_id || !mes || !/^\d{4}-\d{2}$/.test(mes)) {
+      return res.status(400).send('Parâmetros obrigatórios: colaborador_id, mes (YYYY-MM)');
     }
 
     const usuario = req.session.user || {};
 
     const [[colaborador]] = await db.query(
       `
-      SELECT c.nome AS colaborador, e.nome AS empresa
+      SELECT
+        c.nome AS colaborador,
+        e.nome AS empresa,
+        c.condominio_id AS condominio_fixo_id,
+        condFix.nome AS condominio_fixo_nome
       FROM colaboradores c
-      LEFT JOIN empresas e ON e.id = c.empresa_id
+      LEFT JOIN empresas    e       ON e.id       = c.empresa_id
+      LEFT JOIN condominios condFix ON condFix.id = c.condominio_id
       WHERE c.id = ?
       `,
       [colaborador_id]
     );
 
-    const [[condominio]] = await db.query(
-      'SELECT nome FROM condominios WHERE id = ?',
-      [condominio_id]
-    );
-
-    if (!colaborador || !condominio) {
-      return res.status(404).send('Colaborador ou condomínio não encontrado');
+    if (!colaborador) {
+      return res.status(404).send('Colaborador não encontrado');
     }
 
-    const [presencas] = await db.query(
-      `
+    let query = `
       SELECT
         p.data,
         p.status,
+        p.condominio_id,
+        cond.nome AS condominio,
         po.nome AS posto,
         cb.nome AS cobertura,
         p.observacoes
       FROM presencas_diarias p
-      LEFT JOIN postos po ON po.id = p.posto_id
-      LEFT JOIN colaboradores cb ON cb.id = p.cobertura_id
-      WHERE p.condominio_id = ?
-        AND p.colaborador_id = ?
+      LEFT JOIN condominios  cond ON cond.id = p.condominio_id
+      LEFT JOIN postos       po   ON po.id   = p.posto_id
+      LEFT JOIN colaboradores cb  ON cb.id   = p.cobertura_id
+      WHERE p.colaborador_id = ?
         AND DATE_FORMAT(p.data, '%Y-%m') = ?
-      ORDER BY p.data ASC
-      `,
-      [condominio_id, colaborador_id, mes]
-    );
+    `;
 
-    if (presencas.length === 0) {
+    const params = [colaborador_id, mes];
+
+    if (condominio_id) {
+      query += ` AND p.condominio_id = ?`;
+      params.push(condominio_id);
+    }
+
+    query += ` ORDER BY p.data ASC, cond.nome ASC`;
+
+    const [presencas] = await db.query(query, params);
+
+    if (!presencas || presencas.length === 0) {
       return res.status(404).send('Nenhum registro encontrado para este colaborador no período.');
     }
 
@@ -992,10 +1066,6 @@ exports.relatorioColaboradorPdf = async (req, res) => {
     const totalAtestados = presencas.filter(p => p.status === 'atestado').length;
     const totalFerias    = presencas.filter(p => p.status === 'ferias').length;
     const totalGeral     = presencas.length;
-
-    const PDFDocument = require('pdfkit');
-    const path = require('path');
-    const fs = require('fs');
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
 
@@ -1013,37 +1083,44 @@ exports.relatorioColaboradorPdf = async (req, res) => {
     }
 
     doc.fontSize(16).text('Relatório Detalhado - Colaborador', 110, 50);
+
     doc.fontSize(10)
-       .text(`Colaborador: ${colaborador.colaborador}`, 110, 70)
-       .text(`Empresa: ${colaborador.empresa || '-'}`, 110, 85)
-       .text(`Condomínio: ${condominio.nome}`, 110, 100)
-       .text(`Período: ${mes}`, 110, 115)
-       .text(
-         `Gerado em: ${new Date().toLocaleString('pt-BR')} por ${usuario.nome || 'Sistema'}`,
-         110,
-         130
-       );
+      .text(`Colaborador: ${colaborador.colaborador}`, 110, 70)
+      .text(`Empresa: ${colaborador.empresa || '-'}`, 110, 85)
+      .text(`Condomínio fixo: ${colaborador.condominio_fixo_nome || '-'}`, 110, 100)
+      .text(`Período: ${mes}`, 110, 115)
+      .text(`Gerado em: ${new Date().toLocaleString('pt-BR')} por ${usuario.nome || 'Sistema'}`, 110, 130);
+
+    let filtroTexto = 'Condomínios: todos onde houve lançamento para este colaborador';
+    if (condominio_id) {
+      const [[condFiltro]] = await db.query(
+        'SELECT nome FROM condominios WHERE id = ?',
+        [condominio_id]
+      );
+      filtroTexto = `Filtro de condomínio: ${condFiltro?.nome || condominio_id}`;
+    }
+
+    doc.fontSize(9).text(filtroTexto, 110, 145);
 
     doc.moveDown(2);
 
     const rowHeight = 18;
-    let currentY = doc.y;
+    let currentY = 175;
 
-    // Cabeçalho da tabela (DETALHADO)
     doc.save();
     doc.rect(50, currentY, 495, rowHeight).fill('#6081ae');
     doc.fillColor('#ffffff').fontSize(8);
-    doc.text('Data',        55, currentY + 5, { width: 70 });
-    doc.text('Status',     125, currentY + 5, { width: 70 });
-    doc.text('Posto',      195, currentY + 5, { width: 90 });
-    doc.text('Cobertura',  285, currentY + 5, { width: 80 });
-    doc.text('Observações',365, currentY + 5, { width: 180 });
+    doc.text('Data',         55,  currentY + 5, { width: 60 });
+    doc.text('Condomínio',   115, currentY + 5, { width: 90 });
+    doc.text('Status',       205, currentY + 5, { width: 55 });
+    doc.text('Posto',        260, currentY + 5, { width: 85 });
+    doc.text('Cobertura',    345, currentY + 5, { width: 70 });
+    doc.text('Observações',  415, currentY + 5, { width: 130 });
     doc.restore();
     doc.fillColor('#000000');
 
     currentY += rowHeight;
 
-    doc.fillColor('#000');
     presencas.forEach(p => {
       if (currentY > 720) {
         doc.addPage();
@@ -1051,11 +1128,12 @@ exports.relatorioColaboradorPdf = async (req, res) => {
 
         doc.fontSize(8).fillColor('#fff');
         doc.rect(50, currentY, 495, rowHeight).fillAndStroke('#28a745', '#28a745');
-        doc.text('Data',        55, currentY + 5, { width: 70 });
-        doc.text('Status',     125, currentY + 5, { width: 70 });
-        doc.text('Posto',      195, currentY + 5, { width: 90 });
-        doc.text('Cobertura',  285, currentY + 5, { width: 80 });
-        doc.text('Observações',365, currentY + 5, { width: 180 });
+        doc.text('Data',         55,  currentY + 5, { width: 60 });
+        doc.text('Condomínio',   115, currentY + 5, { width: 90 });
+        doc.text('Status',       205, currentY + 5, { width: 55 });
+        doc.text('Posto',        260, currentY + 5, { width: 85 });
+        doc.text('Cobertura',    345, currentY + 5, { width: 70 });
+        doc.text('Observações',  415, currentY + 5, { width: 130 });
 
         currentY += rowHeight;
         doc.fillColor('#000');
@@ -1071,11 +1149,27 @@ exports.relatorioColaboradorPdf = async (req, res) => {
       doc.rect(50, currentY, 495, rowHeight).fillAndStroke(bgColor, bgColor);
 
       doc.fillColor('#000').fontSize(7);
-      doc.text(new Date(p.data).toLocaleDateString('pt-BR'), 55, currentY + 5, { width: 70 });
-      doc.text(p.status || '-',        125, currentY + 5, { width: 70 });
-      doc.text(p.posto || '-',         195, currentY + 5, { width: 90, ellipsis: true });
-      doc.text(p.cobertura || '-',     285, currentY + 5, { width: 80, ellipsis: true });
-      doc.text(p.observacoes || '',    365, currentY + 5, { width: 180, ellipsis: true });
+
+      const dataFmt = (p.data instanceof Date)
+        ? p.data.toLocaleDateString('pt-BR')
+        : new Date(p.data).toLocaleDateString('pt-BR');
+
+      const condFixoId = colaborador.condominio_fixo_id;
+      const condTrabalhoId = p.condominio_id;
+
+      const ehCoberturaOutroCond =
+        condFixoId && condTrabalhoId && Number(condTrabalhoId) !== Number(condFixoId);
+
+      const textoCondominio = ehCoberturaOutroCond
+        ? `${p.condominio || '-'} (cobertura)`
+        : (p.condominio || '-');
+
+      doc.text(dataFmt,              55,  currentY + 5, { width: 60 });
+      doc.text(textoCondominio,     115, currentY + 5, { width: 90, ellipsis: true });
+      doc.text(p.status || '-',     205, currentY + 5, { width: 55, ellipsis: true });
+      doc.text(p.posto || '-',      260, currentY + 5, { width: 85, ellipsis: true });
+      doc.text(p.cobertura || '-',  345, currentY + 5, { width: 70, ellipsis: true });
+      doc.text(p.observacoes || '', 415, currentY + 5, { width: 130, ellipsis: true });
 
       currentY += rowHeight;
     });
@@ -1093,7 +1187,6 @@ exports.relatorioColaboradorPdf = async (req, res) => {
     doc.text('Sistema de Controle de Presença', 50, 780, { align: 'center', width: 495 });
 
     doc.end();
-
   } catch (error) {
     console.error('Erro ao gerar relatório detalhado PDF:', error);
     res.status(500).send('Erro ao gerar relatório detalhado PDF');

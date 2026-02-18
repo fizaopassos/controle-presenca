@@ -498,19 +498,20 @@ document.getElementById('btnExportarPdfMensal').addEventListener('click', functi
 
 // Botão PDF Detalhado
 document.getElementById('btnExportarPdfDetalhado').addEventListener('click', function() {
-  const condId = document.getElementById('condominio').value;
-  const dataInicio = document.getElementById('dataInicio').value;
+  const dataInicio    = document.getElementById('dataInicio').value;
   const colaboradorId = document.getElementById('colaboradorId').value;
 
-  if (!condId || !dataInicio || !colaboradorId) {
-    alert('Selecione condomínio, data de início e um colaborador.');
+  if (!dataInicio || !colaboradorId) {
+    alert('Selecione a data de início (mês) e um colaborador.');
     return;
   }
 
-  const mes = dataInicio.slice(0, 7);
-  const url = `/presenca/relatorios/colaborador/pdf?condominio_id=${condId}&colaborador_id=${colaboradorId}&mes=${encodeURIComponent(mes)}`;
+  const mes  = dataInicio.slice(0, 7); // YYYY-MM
+  const url  = `/presenca/relatorios/colaborador/pdf?colaborador_id=${colaboradorId}&mes=${encodeURIComponent(mes)}`;
+
   window.open(url, '_blank');
 });
+
 
 
 </script>

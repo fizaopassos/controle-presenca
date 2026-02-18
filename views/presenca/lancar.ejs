@@ -1,30 +1,29 @@
 <div class="container mt-4">
   <h1 class="h4 mb-4">Lançar Presença Diária</h1>
 
-  <div class="card mb-3">
-    <div class="card-body">
-      <form id="formFiltro" class="row g-3">
-        <div class="col-md-7">
-          <label class="form-label">Condomínio *</label>
-          <select class="form-select" id="inputCondominio" name="condominio_id" required>
-            <option value="">Selecione...</option>
-            <% condominios.forEach(cond => { %>
-              <option value="<%= cond.id %>"><%= cond.nome %></option>
-            <% }) %>
-          </select>
-        </div>
+  <form id="formFiltro">
+<div class="row g-2 align-items-end mb-3">
+<div class="col-md-7">
+<label class="form-label">Condomínio *</label>
+<select class="form-select" id="inputCondominio" name="condominio_id" required>
+<option value="">Selecione...</option>
+<% condominios.forEach(cond => { %>
+<option value="<%= cond.id %>"><%= cond.nome %></option>
+<% }) %>
+</select>
+</div>
 
-        <div class="col-md-3">
-          <label class="form-label">Data *</label>
-          <input type="text" class="form-control" id="inputData" name="data" required>
-        </div>
+<div class="col-md-3">
+  <label class="form-label">Data *</label>
+  <input type="text" class="form-control" id="inputData" name="data" required>
+</div>
 
-        <div class="col-md-2 d-flex align-items-end">
-          <button type="button" id="btnBuscar" class="btn btn-primary w-100" disabled>Buscar</button>
-        </div>
-      </form>
-    </div>
-  </div>
+<div class="col-md-2 d-flex align-items-end">
+  <button type="button" id="btnBuscar" class="btn btn-primary w-100" disabled>Buscar</button>
+</div>
+
+</div>
+</form>
 
   <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
     <button type="button" class="btn btn-outline-success btn-sm" id="btnSelecionarTodosPresente" disabled>
@@ -42,11 +41,12 @@
 
   <div id="areaColaboradores">
     <div class="alert alert-info">
-      Selecione o condomínio e a data para carregar os colaboradores.
+      Selecione data e condomínio para carregar os colaboradores.
     </div>
   </div>
 </div>
 
+<!-- Modal de confirmação -->
 <div class="modal fade" id="confirmLancamentoModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -55,7 +55,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="confirmLancamentoBody">
-        <!-- texto da confirmação entra via JS -->
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
@@ -119,24 +118,42 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
+  // ============================
+  // CONSTANTES / ESTADO
+  // ============================
+
   var STATUSES = [
-    { key: 'presente', label: 'Presente', btn: 'btn-outline-success', btnActive: 'btn-success' },
-    { key: 'falta',    label: 'Falta',    btn: 'btn-outline-danger',  btnActive: 'btn-danger' },
-    { key: 'folga',    label: 'Folga',    btn: 'btn-outline-secondary', btnActive: 'btn-secondary' },
-    { key: 'atestado', label: 'Atestado', btn: 'btn-outline-warning', btnActive: 'btn-warning' },
-    { key: 'ferias',   label: 'Férias',   btn: 'btn-outline-info',    btnActive: 'btn-info' }
+    { key: 'presente',     label: 'Presente',     btn: 'btn-outline-success',   btnActive: 'btn-success' },
+    { key: 'falta',        label: 'Falta',        btn: 'btn-outline-danger',    btnActive: 'btn-danger' },
+    { key: 'folga',        label: 'Folga',        btn: 'btn-outline-secondary', btnActive: 'btn-secondary' },
+    { key: 'atestado',     label: 'Atestado',     btn: 'btn-outline-warning',   btnActive: 'btn-warning' },
+    { key: 'ferias',       label: 'Férias',       btn: 'btn-outline-info',      btnActive: 'btn-info' },
+    { key: 'em_cobertura', label: 'Em cobertura', btn: 'btn-outline-dark',      btnActive: 'btn-dark' }
   ];
 
-  var STATUS_COM_OBS = ['falta', 'folga', 'atestado', 'ferias'];
+  var STATUS_COM_OBS = ['falta', 'folga', 'atestado', 'ferias', 'em_cobertura'];
   var STATUS_COM_COBERTURA = ['falta', 'folga', 'atestado', 'ferias'];
 
+  var estado = {};          // id -> {status, obs, cobertura_id, ...}
+  var listaIds = [];        // ids de todos os cards visíveis
   var payloadLancamento = null;
   var modalConfirmLanc = null;
 
-  var modalEl = document.getElementById('confirmLancamentoModal');
-  if (modalEl && window.bootstrap) {
-    modalConfirmLanc = new bootstrap.Modal(modalEl);
-  }
+  window.__colaboradoresRaw = {};      // id -> objeto original retornado pelo backend
+  window.__coberturasPorEmpresa = {};  // cache de coberturas
+  window.__coberturasLoading = {};
+
+  // Falta de efetivo: postos
+  var fePostos = [];
+  var fePostosCarregados = false;
+
+  // Debounce
+  var debounceCobertura = null;
+  var debounceFaltaEfetivo = null;
+
+  // ============================
+  // ELEMENTOS
+  // ============================
 
   var inputData = document.getElementById('inputData');
   var inputCondominio = document.getElementById('inputCondominio');
@@ -147,12 +164,14 @@ document.addEventListener('DOMContentLoaded', function() {
   var resumo = document.getElementById('resumo');
   var alerta = document.getElementById('alerta');
 
-  var estado = {};
-  var listaIds = [];
-  window.__colaboradoresRaw = {};
+  var modalEl = document.getElementById('confirmLancamentoModal');
+  if (modalEl && window.bootstrap) {
+    modalConfirmLanc = new bootstrap.Modal(modalEl);
+  }
 
-  window.__coberturasPorEmpresa = {};
-  window.__coberturasLoading = {};
+  // ============================
+  // FUNÇÕES DE APOIO
+  // ============================
 
   function hojeISO() {
     var d = new Date();
@@ -167,16 +186,21 @@ document.addEventListener('DOMContentLoaded', function() {
     alerta.textContent = msg;
     alerta.classList.remove('d-none');
     var t = (typeof timeoutMs === 'number') ? timeoutMs : 3500;
-    if (t > 0) setTimeout(function() { alerta.classList.add('d-none'); }, t);
+    if (t > 0) {
+      setTimeout(function() {
+        alerta.classList.add('d-none');
+      }, t);
+    }
   }
 
   function badgeStatus(status) {
     if (!status) return { cls: 'bg-light text-dark', text: 'Não lançado' };
-    if (status === 'presente') return { cls: 'bg-success', text: 'Presente' };
-    if (status === 'falta') return { cls: 'bg-danger', text: 'Falta' };
-    if (status === 'folga') return { cls: 'bg-secondary', text: 'Folga' };
-    if (status === 'atestado') return { cls: 'bg-warning text-dark', text: 'Atestado' };
-    if (status === 'ferias') return { cls: 'bg-info text-dark', text: 'Férias' };
+    if (status === 'presente')      return { cls: 'bg-success',           text: 'Presente' };
+    if (status === 'falta')         return { cls: 'bg-danger',            text: 'Falta' };
+    if (status === 'folga')         return { cls: 'bg-secondary',         text: 'Folga' };
+    if (status === 'atestado')      return { cls: 'bg-warning text-dark', text: 'Atestado' };
+    if (status === 'ferias')        return { cls: 'bg-info text-dark',    text: 'Férias' };
+    if (status === 'em_cobertura')  return { cls: 'bg-dark',              text: 'Em cobertura' };
     return { cls: 'bg-light text-dark', text: status };
   }
 
@@ -200,9 +224,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var mudouStatus = (s.status !== s.originalStatus);
     var mudouObs = ((s.observacoes || '') !== (s.originalObs || ''));
     var mudouCob = ((s.cobertura_id || null) !== (s.originalCobertura_id || null));
-    var naoSalvoAinda = !s.presenca_id;
 
-    return mudouStatus || mudouObs || mudouCob || naoSalvoAinda;
+    return mudouStatus || mudouObs || mudouCob;
   }
 
   function shouldEnviar(id) {
@@ -268,7 +291,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (window.__coberturasLoading[key]) {
-      setTimeout(function() { carregarCoberturasEmpresa(empresaId, onDone); }, 150);
+      setTimeout(function() {
+        carregarCoberturasEmpresa(empresaId, onDone);
+      }, 150);
       return;
     }
 
@@ -290,56 +315,107 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  var buscaCoberturaTimeout = null;
+  function buscarCoberturasPorNome(empresaId, termo, callback) {
+    if (!termo || termo.length < 2) {
+      if (typeof callback === 'function') callback([]);
+      return;
+    }
 
-function buscarCoberturasPorNome(empresaId, termo, callback) {
-  if (!empresaId || !termo || termo.length < 2) {
-    if (typeof callback === 'function') callback([]);
-    return;
+    var url = '/presenca/api/colaboradores/buscar?q=' + encodeURIComponent(termo);
+    if (empresaId) {
+      url += '&empresa_id=' + encodeURIComponent(empresaId);
+    }
+
+    fetch(url)
+      .then(function(resp) { return resp.json(); })
+      .then(function(lista) {
+        if (!Array.isArray(lista)) lista = [];
+        if (typeof callback === 'function') callback(lista);
+      })
+      .catch(function(e) {
+        console.error('Erro ao buscar colaboradores por nome:', e);
+        if (typeof callback === 'function') callback([]);
+      });
   }
 
-  var url = '/presenca/api/colaboradores/buscar?empresa_id='
-    + encodeURIComponent(empresaId)
-    + '&q=' + encodeURIComponent(termo);
+  function carregarPostosFaltaEfetivo(onDone) {
+var condId = inputCondominio.value;
+if (!condId) {
+fePostos = [];
+if (typeof onDone === 'function') onDone();
+return;
+}
 
-  fetch(url)
-    .then(function(resp) { return resp.json(); })
-    .then(function(lista) {
-      if (!Array.isArray(lista)) lista = [];
-      if (typeof callback === 'function') callback(lista);
-    })
-    .catch(function(e) {
-      console.error('Erro ao buscar coberturas por nome:', e);
-      if (typeof callback === 'function') callback([]);
+fetch('/presenca/api/postos/' + encodeURIComponent(condId))
+.then(async function(resp) {
+// se vier HTML (ex: 403/302), isto evita quebrar silenciosamente
+var ct = (resp.headers.get('content-type') || '').toLowerCase();
+if (!ct.includes('application/json')) {
+var txt = await resp.text();
+throw new Error('Resposta não-JSON em /api/postos: HTTP ' + resp.status + ' | ' + txt.slice(0, 200));
+}
+var data = await resp.json();
+if (!resp.ok) {
+throw new Error('HTTP ' + resp.status + ' em /api/postos: ' + JSON.stringify(data));
+}
+return data;
+})
+.then(function(data) {
+var lista = [];
+if (Array.isArray(data)) lista = data;
+else if (data && Array.isArray(data.postos)) lista = data.postos;
+else if (data && Array.isArray(data.data)) lista = data.data;
+else if (data && Array.isArray(data.rows)) lista = data.rows;
+
+  fePostos = lista;
+
+  var sel = document.getElementById('fe-posto-select');
+  if (sel) {
+    var options = '<option value="">Selecione o posto</option>';
+    fePostos.forEach(function(p) {
+      // aceita nome vindo como nome/nome_posto/descricao (ajuda a não “sumir”)
+      var nome = p.nome || p.nome_posto || p.descricao || ('Posto #' + p.id);
+      options += '<option value="' + String(p.id) + '">' + escapeHtml(nome) + '</option>';
     });
+    sel.innerHTML = options;
+  }
+
+  if (typeof onDone === 'function') onDone();
+})
+.catch(function(e) {
+  console.error('Erro ao buscar postos (falta de efetivo):', e);
+  fePostos = [];
+  if (typeof onDone === 'function') onDone();
+});
+
 }
 
+  // ============================
+  // RENDERIZAÇÃO DOS CARDS
+  // ============================
 
-  function buildCoberturaSelectHtml(c, s) {
-  var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
-  var mostrar = needsCobertura(statusAtual); // só mostra se for falta/folga/...
+  function buildCoberturaInputHtml(c, s) {
+    var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
+    var mostrar = needsCobertura(statusAtual);
+    var wrapClass = mostrar ? '' : 'd-none';
+    var empresaId = c.empresa_id ? String(c.empresa_id) : '';
+    var valorInput = s.cobertura_nome || '';
 
-  var wrapClass = mostrar ? '' : 'd-none';
-  var empresaId = c.empresa_id ? String(c.empresa_id) : '';
-
-  var valorInput = s.cobertura_nome || '';
-
-  return ''
-    + '<div class="mt-2 ' + wrapClass + '" id="cob-wrap-' + escapeHtml(c.id) + '">'
-    + '  <label class="form-label mb-1">Cobertura (opcional)</label>'
-    + '  <input type="text"'
-    + '         class="form-control form-control-sm"'
-    + '         placeholder="Digite o nome do colaborador cobertura ou fixo de outro condomínio..."'
-    + '         value="' + escapeHtml(valorInput) + '"'
-    + '         data-action="cobertura-input"'
-    + '         data-id="' + escapeHtml(c.id) + '"'
-    + '         data-empresa-id="' + escapeHtml(empresaId) + '">'
-    + '  <div class="list-group position-absolute w-100 d-none"'
-    + '       id="cob-suggestions-' + escapeHtml(c.id) + '"'
-    + '       style="z-index: 1050; max-height: 200px; overflow-y: auto;"></div>'
-    + '</div>';
-}
-
+    return ''
+      + '<div class="mt-2 ' + wrapClass + '" id="cob-wrap-' + escapeHtml(c.id) + '">'
+      + '  <label class="form-label mb-1">Cobertura (opcional)</label>'
+      + '  <input type="text"'
+      + '         class="form-control form-control-sm"'
+      + '         placeholder="Digite o nome do colaborador cobertura ou fixo de outro condomínio..."'
+      + '         value="' + escapeHtml(valorInput) + '"'
+      + '         data-action="cobertura-input"'
+      + '         data-id="' + escapeHtml(c.id) + '"'
+      + '         data-empresa-id="' + escapeHtml(empresaId) + '">'
+      + '  <div class="list-group position-absolute w-100 d-none"'
+      + '       id="cob-suggestions-' + escapeHtml(c.id) + '"'
+      + '       style="z-index: 1050; max-height: 200px; overflow-y: auto;"></div>'
+      + '</div>';
+  }
 
   function renderCard(c) {
     var id = String(c.id);
@@ -347,6 +423,10 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
     var statusAtual = (s.status != null && s.status !== '') ? s.status : '';
     var obsAtual = s.observacoes || '';
     var expanded = s.expanded ? true : false;
+    var isFaltaEfetivo = c.tipo === 'falta_efetivo' || s.tipo === 'falta_efetivo';
+
+    var estaEmOutroCond = !!s.presente_outro_condominio;
+    var nomeOutroCond   = s.presente_outro_condominio_nome || '';
 
     var badge = badgeStatus(statusAtual);
     var pendente = isPendente(id);
@@ -360,14 +440,39 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
       ? '<span class="badge bg-primary">Pendente</span>'
       : '<span class="badge bg-success">Confirmado</span>';
 
-    var btns = '';
-    STATUSES.forEach(function(st) {
-      var active = (st.key === statusAtual);
-      var cls = active ? st.btnActive : st.btn;
-      btns += '<button type="button" class="btn ' + cls + ' btn-sm" data-action="set-status" data-id="' + id + '" data-status="' + st.key + '">' + st.label + '</button> ';
-    });
+    var empresaText = escapeHtml(c.empresa || 'Sem empresa');
+    var postoText = c.posto_nome ? ' • ' + escapeHtml(c.posto_nome) : '';
 
-    var obsVisible = STATUS_COM_OBS.indexOf(statusAtual) !== -1;
+    var avisoOutroCond = '';
+    if (estaEmOutroCond) {
+      avisoOutroCond =
+        '<div class="text-danger small mt-1">'
+        + 'Já presente no condomínio: <strong>' + escapeHtml(nomeOutroCond) + '</strong>. '
+        + 'Use o status "Em cobertura" neste condomínio.'
+        + '</div>';
+    }
+
+    var btns = '';
+    if (!isFaltaEfetivo) {
+      STATUSES.forEach(function(st) {
+        var active = (st.key === statusAtual);
+        var cls = active ? st.btnActive : st.btn;
+
+        var disabled = false;
+        if (estaEmOutroCond && st.key !== 'em_cobertura') {
+          disabled = true;
+        }
+
+        btns += '<button type="button" class="btn ' + cls + ' btn-sm"'
+          + ' data-action="set-status" data-id="' + id + '" data-status="' + st.key + '"'
+          + (disabled ? ' disabled' : '') + '>'
+          + st.label + '</button> ';
+      });
+    } else {
+      btns = '<span class="badge bg-success">Presente (Falta de efetivo)</span>';
+    }
+
+    var obsVisible = STATUS_COM_OBS.indexOf(statusAtual) !== -1 || isFaltaEfetivo;
     var obsHtml = ''
       + '<div class="mt-2 ' + (obsVisible ? '' : 'd-none') + '" id="obs-wrap-' + id + '">'
       + '  <label class="form-label mb-1">Observação</label>'
@@ -376,23 +481,22 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
       + '         value="' + escapeHtml(obsAtual) + '" data-action="set-obs" data-id="' + id + '">'
       + '</div>';
 
-    var empresaText = escapeHtml(c.empresa || 'Sem empresa');
-    var postoText = c.posto_nome ? ' • ' + escapeHtml(c.posto_nome) : '';
-
     var chevron = expanded ? '▼' : '►';
     var detalhesClass = expanded ? '' : 'd-none';
 
-    var coberturaHtml = buildCoberturaSelectHtml(c, s);
+    var coberturaHtml = (!isFaltaEfetivo && statusAtual !== 'em_cobertura')
+      ? buildCoberturaInputHtml(c, s)
+      : '';
 
     return ''
       + '<div id="card-' + id + '" class="card mb-2 border-start border-3 ' + borderClass + '">'
       + '  <div class="card-body p-3">'
-
       + '    <div class="d-flex justify-content-between align-items-center gap-3">'
       + '      <button type="button" class="btn btn-link p-0 text-decoration-none text-start flex-grow-1"'
       + '              data-action="toggle-details" data-id="' + id + '">'
       + '        <div class="fw-semibold">' + escapeHtml(c.nome) + '</div>'
       + '        <div class="text-muted small">' + empresaText + postoText + '</div>'
+      +          avisoOutroCond
       + '      </button>'
 
       + '      <div class="text-end" style="min-width: 140px;">'
@@ -400,11 +504,20 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
       + '        <div class="mt-1">' + pendBadge + '</div>'
       + '      </div>'
 
-      + '      <button type="button" class="btn btn-outline-secondary btn-sm"'
-      + '              data-action="toggle-details" data-id="' + id + '"'
-      + '              aria-label="Expandir/Recolher">'
-      +          chevron
-      + '      </button>'
+      + '      <div class="d-flex align-items-center gap-1">'
+      + '        <button type="button" class="btn btn-outline-secondary btn-sm"'
+      + '                data-action="toggle-details" data-id="' + id + '"'
+      + '                aria-label="Expandir/Recolher">'
+      +            chevron
+      + '        </button>'
+      + (isFaltaEfetivo
+        ? '        <button type="button" class="btn btn-outline-danger btn-sm"'
+          + '                data-action="fe-remover" data-id="' + id + '"'
+          + '                aria-label="Remover falta de efetivo">'
+          + '          Remover'
+          + '        </button>'
+        : '')
+      + '      </div>'
       + '    </div>'
 
       + '    <div id="detalhes-' + id + '" class="mt-3 ' + detalhesClass + '">'
@@ -445,6 +558,10 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
     }
   }
 
+  // ============================
+  // BUSCAR COLABORADORES
+  // ============================
+
   function buscarColaboradores() {
     var data = inputData.value;
     var condId = inputCondominio.value;
@@ -480,11 +597,16 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
           window.__colaboradoresRaw[id] = c;
 
           var originalStatus = c.status || '';
-          var originalObs = c.observacoes || '';
-          var originalCob = c.cobertura_id || null;
+          var originalObs    = c.observacoes || '';
+          var originalCob    = c.cobertura_id || null;
+
+          var statusInicial = originalStatus;
+          if (!statusInicial && c.presente_outro_condominio) {
+            statusInicial = 'em_cobertura';
+          }
 
           estado[id] = {
-            status: originalStatus,
+            status: statusInicial,
             observacoes: originalObs,
             cobertura_id: originalCob,
             cobertura_nome: c.cobertura_nome,
@@ -494,7 +616,11 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
             originalCobertura_id: originalCob,
 
             presenca_id: c.presenca_id || null,
-            expanded: false
+            expanded: false,
+            tipo: c.tipo || null,
+
+            presente_outro_condominio: !!c.presente_outro_condominio,
+            presente_outro_condominio_nome: c.presente_outro_condominio_nome || null
           };
         });
 
@@ -502,7 +628,52 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
         colaboradores.forEach(function(c) {
           html += renderCard(c);
         });
+
+        // Bloco Falta de Efetivo
+        html += ''
+          + '<div class="card mt-3" id="bloco-falta-efetivo">'
+          + '  <div class="card-body p-3">'
+          + '    <div class="d-flex justify-content-between align-items-center mb-2">'
+          + '      <div>'
+          + '        <div class="fw-semibold">Falta de Efetivo</div>'
+          + '        <div class="text-muted small">'
+          + '          Registre PRESENÇA de colaborador que veio de outro condomínio.'
+          + '        </div>'
+          + '      </div>'
+          + '    </div>'
+          + '    <div class="row g-2 align-items-center">'
+          + '      <div class="col-md-4">'
+          + '        <select class="form-select form-select-sm" id="fe-posto-select" data-action="fe-posto">'
+          + '          <option value="">Selecione o posto</option>'
+          + '        </select>'
+          + '      </div>'
+          + '      <div class="col-md-8 position-relative">'
+          + '        <input type="text"'
+          + '               class="form-control form-control-sm"'
+          + '               placeholder="Digite o nome do colaborador (qualquer condomínio)"'
+          + '               data-action="fe-busca">'
+          + '        <div class="list-group position-absolute w-100 d-none"'
+          + '             id="fe-suggestions"'
+          + '             style="z-index: 1050; max-height: 200px; overflow-y: auto;"></div>'
+          + '      </div>'
+          + '    </div>'
+          + '    <div class="mt-3" id="fe-list"></div>'
+          + '  </div>'
+          + '</div>';
+
         areaColaboradores.innerHTML = html;
+
+        // Carrega postos para Falta de Efetivo
+        carregarPostosFaltaEfetivo(function() {
+          var sel = document.getElementById('fe-posto-select');
+          if (!sel) return;
+
+          var options = '<option value="">Selecione o posto</option>';
+          fePostos.forEach(function(p) {
+            options += '<option value="' + String(p.id) + '">' + escapeHtml(p.nome) + '</option>';
+          });
+          sel.innerHTML = options;
+        });
 
         atualizarResumo();
       })
@@ -516,9 +687,10 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
       });
   }
 
-  // ========================================
-  // FLATPICKR: calendário com indicadores coloridos
-  // ========================================
+  // ============================
+  // FLATPICKR + DIAS LANÇADOS
+  // ============================
+
   var statusDiasPorData = {};
   var fpData = null;
 
@@ -554,10 +726,8 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
       });
   }
 
-  // Sempre preenche o input com hoje (fallback)
   inputData.value = hojeISO();
 
-  // Inicializa o flatpickr (se existir)
   if (typeof window.flatpickr === 'function') {
     fpData = flatpickr(inputData, {
       dateFormat: 'Y-m-d',
@@ -605,9 +775,15 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
 
   btnBuscar.addEventListener('click', buscarColaboradores);
 
-  // Clique/ações dentro dos cards
+  // ============================
+  // EVENTOS NOS CARDS
+  // ============================
+
   areaColaboradores.addEventListener('click', function(evt) {
-    var tg = evt.target.closest('[data-action="toggle-details"]');
+    var el = evt.target;
+
+    // Expandir/recolher
+    var tg = el.closest('[data-action="toggle-details"]');
     if (tg) {
       var idT = String(tg.getAttribute('data-id'));
       var st = estado[idT];
@@ -616,175 +792,311 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
         estado[idT] = st;
         rerenderCardById(idT);
         atualizarResumo();
-
         if (st.expanded) ensureCoberturaLoadedIfNeededForCard(idT);
       }
       return;
     }
 
-      // Clique em uma sugestão de cobertura
-  var sug = evt.target.closest('button[data-action="cobertura-suggestion"]');
-  if (sug) {
-    var baseId = String(sug.getAttribute('data-base-id')); // id do colaborador base
-    var colabId = String(sug.getAttribute('data-colab-id'));
-    var colabNome = sug.getAttribute('data-colab-nome') || '';
+    // Sugestão de cobertura
+    var sug = el.closest('button[data-action="cobertura-suggestion"]');
+    if (sug) {
+      var baseId = String(sug.getAttribute('data-base-id'));
+      var colabId = String(sug.getAttribute('data-colab-id'));
+      var colabNome = sug.getAttribute('data-colab-nome') || '';
 
-    var s2 = estado[baseId];
-    if (!s2) return;
+      var s2 = estado[baseId];
+      if (!s2) return;
 
-    s2.cobertura_id = Number(colabId);
-    s2.cobertura_nome = colabNome;
-    estado[baseId] = s2;
+      s2.cobertura_id = Number(colabId);
+      s2.cobertura_nome = colabNome;
+      estado[baseId] = s2;
 
-    // Atualiza o input de texto com o nome escolhido
-    var inp = document.querySelector('input[data-action="cobertura-input"][data-id="' + baseId + '"]');
-    if (inp) {
-      inp.value = colabNome;
+      var inp = document.querySelector('input[data-action="cobertura-input"][data-id="' + baseId + '"]');
+      if (inp) inp.value = colabNome;
+
+      var sugDiv2 = document.getElementById('cob-suggestions-' + baseId);
+      if (sugDiv2) {
+        sugDiv2.innerHTML = '';
+        sugDiv2.classList.add('d-none');
+      }
+
+      atualizarResumo();
+      return;
     }
 
-    // Esconde a lista de sugestões
-    var sugDiv2 = document.getElementById('cob-suggestions-' + baseId);
-    if (sugDiv2) {
-      sugDiv2.innerHTML = '';
-      sugDiv2.classList.add('d-none');
-    }
+    // Sugestão Falta de Efetivo
+    var sugFe = el.closest('button[data-action="fe-suggestion"]');
+    if (sugFe) {
+      var colabIdFe      = String(sugFe.getAttribute('data-colab-id'));
+      var colabNomeFe    = sugFe.getAttribute('data-colab-nome') || '';
+      var colabEmpresaFe = sugFe.getAttribute('data-colab-empresa') || '';
 
-    atualizarResumo();
-    return;
-  }
+      var selPosto = document.getElementById('fe-posto-select');
+      if (!selPosto || !selPosto.value) {
+        showAlert('warning', 'Selecione o posto da falta de efetivo antes de escolher o colaborador.', 5000);
+        return;
+      }
+      var postoIdFe   = Number(selPosto.value);
+      var postoNomeFe = selPosto.options[selPosto.selectedIndex].text;
 
-
-    var btn = evt.target.closest('button[data-action="set-status"]');
-    if (!btn) return;
-
-    var id = String(btn.getAttribute('data-id'));
-    var novoStatus = btn.getAttribute('data-status');
-
-    var s = estado[id];
-    if (!s) return;
-
-    s.status = novoStatus;
-
-    if (STATUS_COM_OBS.indexOf(novoStatus) === -1) {
-      s.observacoes = '';
-    }
-
-    if (!needsCobertura(novoStatus)) {
-      s.cobertura_id = null;
-    }
-
-    if (novoStatus === 'presente') {
-      s.expanded = false;
-    } else if (needsCobertura(novoStatus)) {
-      s.expanded = true;
-    } else {
-      s.expanded = false;
-    }
-
-    estado[id] = s;
-    rerenderCardById(id);
-    atualizarResumo();
-
-    if (needsCobertura(novoStatus)) {
-      ensureCoberturaLoadedIfNeededForCard(id);
-    }
-  });
-
-  areaColaboradores.addEventListener('input', function(evt) {
-      // AUTOCOMPLETE COBERTURA: digitação no campo de cobertura
-  var inpCob = evt.target.closest('input[data-action="cobertura-input"]');
-  if (inpCob) {
-    var id = String(inpCob.getAttribute('data-id'));
-    var empresaId = inpCob.getAttribute('data-empresa-id') || '';
-    var termo = inpCob.value || '';
-
-    // Atualiza apenas o nome no estado; o id só muda quando clicar na sugestão
-    var s = estado[id];
-    if (!s) return;
-    s.cobertura_nome = termo;
-    // Não zera cobertura_id aqui para não perder se o cara só corrigiu um detalhe
-
-    if (buscaCoberturaTimeout) clearTimeout(buscaCoberturaTimeout);
-    buscaCoberturaTimeout = setTimeout(function() {
-      buscarCoberturasPorNome(empresaId, termo, function(lista) {
-        var sugDiv = document.getElementById('cob-suggestions-' + id);
-        if (!sugDiv) return;
-
-        if (!termo || lista.length === 0) {
-          sugDiv.innerHTML = '';
-          sugDiv.classList.add('d-none');
-          return;
+      if (window.__colaboradoresRaw[colabIdFe]) {
+        showAlert('warning', 'Este colaborador já está na lista deste condomínio.');
+        var sd = document.getElementById('fe-suggestions');
+        if (sd) {
+          sd.innerHTML = '';
+          sd.classList.add('d-none');
         }
+        return;
+      }
 
-        var html = '';
-        lista.forEach(function(col) {
-          var label = col.nome;
-          if (col.condominio_nome) {
-            label += ' - ' + col.condominio_nome;
-          }
-          label += ' (' + (col.tipo === 'cobertura' ? 'Cobertura' : 'Fixo') + ')';
+      var novo = {
+        id: Number(colabIdFe),
+        nome: colabNomeFe,
+        empresa: colabEmpresaFe,
+        posto_nome: postoNomeFe,
+        posto_id: postoIdFe,
+        empresa_id: null,
+        tipo: 'falta_efetivo'
+      };
 
-          html += ''
-            + '<button type="button"'
-            + '        class="list-group-item list-group-item-action"'
-            + '        data-action="cobertura-suggestion"'
-            + '        data-base-id="' + escapeHtml(id) + '"'
-            + '        data-colab-id="' + escapeHtml(String(col.id)) + '"'
-            + '        data-colab-nome="' + escapeHtml(col.nome) + '">'
-            +        escapeHtml(label)
-            + '</button>';
-        });
+      window.__colaboradoresRaw[colabIdFe] = novo;
 
-        sugDiv.innerHTML = html;
-        sugDiv.classList.remove('d-none');
-      });
-    }, 250); // debounce 250ms
+      estado[colabIdFe] = {
+        status: 'presente',
+        observacoes: 'Falta de efetivo',
+        cobertura_id: null,
+        cobertura_nome: '',
+        originalStatus: '',
+        originalObs: '',
+        originalCobertura_id: null,
+        presenca_id: null,
+        expanded: true,
+        tipo: 'falta_efetivo',
+        presente_outro_condominio: false,
+        presente_outro_condominio_nome: null
+      };
 
-    return;
-  }
+      if (listaIds.indexOf(colabIdFe) === -1) {
+        listaIds.push(colabIdFe);
+      }
 
-    var inp = evt.target.closest('input[data-action="set-obs"]');
-    if (!inp) return;
+      var listaFe = document.getElementById('fe-list');
+      if (listaFe) {
+        listaFe.insertAdjacentHTML('beforeend', renderCard(novo));
+      }
 
-    var id = String(inp.getAttribute('data-id'));
-    var s = estado[id];
-    if (!s) return;
+      var inpFe = document.querySelector('input[data-action="fe-busca"]');
+      if (inpFe) inpFe.value = '';
 
-    s.observacoes = inp.value || '';
-    estado[id] = s;
+      var sd2 = document.getElementById('fe-suggestions');
+      if (sd2) {
+        sd2.innerHTML = '';
+        sd2.classList.add('d-none');
+      }
 
-    atualizarResumo();
-  });
-
-  areaColaboradores.addEventListener('change', function(evt) {
-    var sel = evt.target.closest('select[data-action="set-cobertura"]');
-    if (!sel) return;
-
-    var id = String(sel.getAttribute('data-id'));
-    var s = estado[id];
-    if (!s) return;
-
-    var val = sel.value ? Number(sel.value) : null;
-    s.cobertura_id = val;
-
-    var status = (s.status != null && s.status !== '') ? s.status : '';
-    if (needsCobertura(status) && s.cobertura_id) {
-      s.expanded = false;
+      atualizarResumo();
+      return;
     }
 
-    estado[id] = s;
-    rerenderCardById(id);
-    atualizarResumo();
+    // Remover Falta de Efetivo
+    var btnRemFe = el.closest('button[data-action="fe-remover"]');
+    if (btnRemFe) {
+      var idFe = String(btnRemFe.getAttribute('data-id'));
+
+      delete estado[idFe];
+      delete window.__colaboradoresRaw[idFe];
+      listaIds = listaIds.filter(function(x) { return String(x) !== idFe; });
+
+      var cardFe = document.getElementById('card-' + idFe);
+      if (cardFe) cardFe.remove();
+
+      atualizarResumo();
+      return;
+    }
+
+    // Botões de status
+    var btn = el.closest('button[data-action="set-status"]');
+    if (btn) {
+      var id = String(btn.getAttribute('data-id'));
+      var novoStatus = btn.getAttribute('data-status');
+      var s = estado[id];
+      if (!s) return;
+
+      s.status = novoStatus;
+
+      if (STATUS_COM_OBS.indexOf(novoStatus) === -1 && s.tipo !== 'falta_efetivo') {
+        s.observacoes = '';
+      }
+
+      if (!needsCobertura(novoStatus)) {
+        s.cobertura_id = null;
+        s.cobertura_nome = '';
+      }
+
+      if (novoStatus === 'presente') {
+        s.expanded = false;
+      } else if (needsCobertura(novoStatus) || novoStatus === 'em_cobertura') {
+        s.expanded = true;
+      } else {
+        s.expanded = false;
+      }
+
+      estado[id] = s;
+      rerenderCardById(id);
+      atualizarResumo();
+
+      if (needsCobertura(novoStatus)) {
+        ensureCoberturaLoadedIfNeededForCard(id);
+      }
+      return;
+    }
   });
 
+  // INPUT: observação, coberturas e Falta de Efetivo
+  areaColaboradores.addEventListener('input', function(evt) {
+    var el = evt.target;
+
+    // Falta de Efetivo - busca colaborador
+    var inpFe = el.closest('input[data-action="fe-busca"]');
+    if (inpFe) {
+      var termoFe = inpFe.value || '';
+
+      if (!termoFe || termoFe.length < 2) {
+        var sdFe0 = document.getElementById('fe-suggestions');
+        if (sdFe0) {
+          sdFe0.innerHTML = '';
+          sdFe0.classList.add('d-none');
+        }
+        return;
+      }
+
+      if (debounceFaltaEfetivo) clearTimeout(debounceFaltaEfetivo);
+      debounceFaltaEfetivo = setTimeout(function() {
+        buscarCoberturasPorNome('', termoFe, function(lista) {
+          var sdFe = document.getElementById('fe-suggestions');
+          if (!sdFe) return;
+
+          if (!termoFe || lista.length === 0) {
+            sdFe.innerHTML = '';
+            sdFe.classList.add('d-none');
+            return;
+          }
+
+          var html = '';
+          lista.forEach(function(col) {
+            var label = col.nome;
+            if (col.empresa) label += ' - ' + col.empresa;
+            if (col.condominio) label += ' (' + col.condominio + ')';
+
+            html += ''
+              + '<button type="button"'
+              + '        class="list-group-item list-group-item-action"'
+              + '        data-action="fe-suggestion"'
+              + '        data-colab-id="' + escapeHtml(String(col.id)) + '"'
+              + '        data-colab-nome="' + escapeHtml(col.nome) + '"'
+              + '        data-colab-empresa="' + escapeHtml(col.empresa || '') + '">'
+              +        escapeHtml(label)
+              + '</button>';
+          });
+
+          sdFe.innerHTML = html;
+          sdFe.classList.remove('d-none');
+        });
+      }, 250);
+
+      return;
+    }
+
+    // Cobertura (campo texto dentro do card)
+    var inpCob = el.closest('input[data-action="cobertura-input"]');
+    if (inpCob) {
+      var idCob = String(inpCob.getAttribute('data-id'));
+      var empresaId = inpCob.getAttribute('data-empresa-id') || '';
+      var termo = inpCob.value || '';
+
+      var sCob = estado[idCob];
+      if (!sCob) return;
+
+      sCob.cobertura_nome = termo;
+      estado[idCob] = sCob;
+
+      if (debounceCobertura) clearTimeout(debounceCobertura);
+      if (!termo || termo.length < 2) {
+        var sugDiv0 = document.getElementById('cob-suggestions-' + idCob);
+        if (sugDiv0) {
+          sugDiv0.innerHTML = '';
+          sugDiv0.classList.add('d-none');
+        }
+        atualizarResumo();
+        return;
+      }
+
+      debounceCobertura = setTimeout(function() {
+        buscarCoberturasPorNome(empresaId, termo, function(lista) {
+          var sugDiv = document.getElementById('cob-suggestions-' + idCob);
+          if (!sugDiv) return;
+
+          if (!termo || lista.length === 0) {
+            sugDiv.innerHTML = '';
+            sugDiv.classList.add('d-none');
+            return;
+          }
+
+          var html = '';
+          lista.forEach(function(col) {
+            var label = col.nome;
+            if (col.condominio_nome) {
+              label += ' - ' + col.condominio_nome;
+            }
+            label += ' (' + (col.tipo === 'cobertura' ? 'Cobertura' : 'Fixo') + ')';
+
+            html += ''
+              + '<button type="button"'
+              + '        class="list-group-item list-group-item-action"'
+              + '        data-action="cobertura-suggestion"'
+              + '        data-base-id="' + escapeHtml(idCob) + '"'
+              + '        data-colab-id="' + escapeHtml(String(col.id)) + '"'
+              + '        data-colab-nome="' + escapeHtml(col.nome) + '">'
+              +        escapeHtml(label)
+              + '</button>';
+          });
+
+          sugDiv.innerHTML = html;
+          sugDiv.classList.remove('d-none');
+        });
+      }, 250);
+
+      atualizarResumo();
+      return;
+    }
+
+    // Observações
+    var inpObs = el.closest('input[data-action="set-obs"]');
+    if (inpObs) {
+      var idObs = String(inpObs.getAttribute('data-id'));
+      var sObs = estado[idObs];
+      if (!sObs) return;
+      sObs.observacoes = inpObs.value || '';
+      estado[idObs] = sObs;
+      atualizarResumo();
+      return;
+    }
+  });
+
+  // Selecionar todos: Presente
   btnSelecionarTodosPresente.addEventListener('click', function() {
     listaIds.forEach(function(id) {
       var s = estado[String(id)];
       if (!s) return;
 
+      // se está marcado como presente em outro condomínio, não força "presente" aqui
+      if (s.presente_outro_condominio) return;
+      if (s.tipo === 'falta_efetivo') return;
+
       s.status = 'presente';
       s.observacoes = '';
       s.cobertura_id = null;
+      s.cobertura_nome = '';
       s.expanded = false;
 
       estado[String(id)] = s;
@@ -792,6 +1104,10 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
     });
     atualizarResumo();
   });
+
+  // ============================
+  // CONFIRMAR LANÇAMENTOS
+  // ============================
 
   btnConfirmarTudo.addEventListener('click', function() {
     var data = inputData.value;
@@ -808,7 +1124,6 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
     }
 
     var idsParaProcessar = getIdsParaProcessar();
-
     if (idsParaProcessar.length === 0) {
       showAlert('warning', 'Nenhum colaborador teve status/observação/cobertura definido ou alterado.');
       return;
@@ -825,8 +1140,7 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
 
     var presencas = idsParaProcessar.map(function(id) {
       var s = estado[String(id)];
-      var raw = window.__colaboradoresRaw[String(id)];
-
+      var raw = window.__colaboradoresRaw[String(id)] || {};
       var postoIdColab = raw && raw.posto_id ? raw.posto_id : null;
 
       return {
@@ -841,7 +1155,8 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
     payloadLancamento = {
       data: data,
       condId: condId,
-      presencas: presencas
+      presencas: presencas,
+      ids: idsParaProcessar
     };
 
     var bodyEl = document.getElementById('confirmLancamentoBody');
@@ -861,9 +1176,10 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
   function enviarLancamentos() {
     if (!payloadLancamento) return;
 
-    var data = payloadLancamento.data;
-    var condId = payloadLancamento.condId;
+    var data      = payloadLancamento.data;
+    var condId    = payloadLancamento.condId;
     var presencas = payloadLancamento.presencas;
+    var idsProc   = payloadLancamento.ids || [];
 
     btnConfirmarTudo.disabled = true;
 
@@ -876,24 +1192,40 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
         presencas: presencas
       })
     })
-    .then(function(resp) { return resp.json(); })
-    .then(function(result) {
-      if (!result.success) {
-        showAlert('danger', result.message || 'Erro ao salvar presenças.', 5000);
+    .then(async function(resp) {
+      let result = {};
+      try {
+        result = await resp.json();
+      } catch (e) {
+        result = {};
+      }
+
+      if (!resp.ok || result.success === false) {
+        showAlert('danger', result.message || 'Erro ao salvar presenças.', 7000);
         btnConfirmarTudo.disabled = false;
         return;
       }
 
-      showAlert('success', 'Presenças confirmadas com sucesso!');
+      idsProc.forEach(function(id) {
+        var s = estado[String(id)];
+        if (!s) return;
+        s.originalStatus = s.status;
+        s.originalObs = s.observacoes;
+        s.originalCobertura_id = s.cobertura_id || null;
+        s.presenca_id = s.presenca_id || 1;
+        estado[String(id)] = s;
+        rerenderCardById(String(id));
+      });
+
+      showAlert('success', result.message || 'Presenças confirmadas com sucesso!');
       payloadLancamento = null;
-      
-      // Recarrega colaboradores e atualiza indicadores do calendário
-      buscarColaboradores();
+      btnConfirmarTudo.disabled = false;
+      atualizarResumo();
       carregarDiasLancadosDoMes();
     })
-    .catch(function(e) {
-      console.error(e);
-      showAlert('danger', 'Erro ao salvar presenças.', 5000);
+    .catch(function(err) {
+      console.error('Erro na requisição de lançamentos:', err);
+      showAlert('danger', 'Erro ao salvar presenças.', 7000);
       btnConfirmarTudo.disabled = false;
     });
   }
@@ -906,22 +1238,30 @@ function buscarCoberturasPorNome(empresaId, termo, callback) {
       enviarLancamentos();
     });
 
-    document.addEventListener('click', function(evt) {
-  var el = evt.target;
+  // Fecha sugestões ao clicar fora
+  document.addEventListener('click', function(evt) {
+    var el = evt.target;
 
-  // Se o clique não foi em input de cobertura nem em sugestão, fecha todas
-  if (!el.closest('input[data-action="cobertura-input"]') &&
-      !el.closest('button[data-action="cobertura-suggestion"]')) {
-    listaIds.forEach(function(id) {
-      var sugDiv = document.getElementById('cob-suggestions-' + String(id));
-      if (sugDiv) {
-        sugDiv.innerHTML = '';
-        sugDiv.classList.add('d-none');
+    if (!el.closest('input[data-action="cobertura-input"]') &&
+        !el.closest('button[data-action="cobertura-suggestion"]')) {
+      listaIds.forEach(function(id) {
+        var sugDiv = document.getElementById('cob-suggestions-' + String(id));
+        if (sugDiv) {
+          sugDiv.innerHTML = '';
+          sugDiv.classList.add('d-none');
+        }
+      });
+    }
+
+    if (!el.closest('input[data-action="fe-busca"]') &&
+        !el.closest('button[data-action="fe-suggestion"]')) {
+      var sdFe = document.getElementById('fe-suggestions');
+      if (sdFe) {
+        sdFe.innerHTML = '';
+        sdFe.classList.add('d-none');
       }
-    });
-  }
-});
-
+    }
+  });
 
 }); // FIM DOMContentLoaded
 </script>
