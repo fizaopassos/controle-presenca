@@ -13,6 +13,8 @@ router.get('/', colaboradoresController.listar);
 // Formulário de novo colaborador
 router.get('/novo', colaboradoresController.formNovo);
 
+router.post('/inativar-com-data/:id', colaboradoresController.inativarComData);
+
 // Salvar novo colaborador
 router.post('/novo', colaboradoresController.criar);
 

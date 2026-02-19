@@ -91,6 +91,116 @@ placeholder="Buscar colaborador por nome..."
 </div>
 </div>
 
+<!-- Modal para inativar com data -->
+<!-- Modal para inativar com data -->
+<div class="modal fade" id="modalInativarColaborador" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Inativar colaborador</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form
+            id="formInativarColaborador"
+            method="POST"
+            action="/colaboradores/inativar-com-data/0"
+            hx-post="/colaboradores/inativar-com-data/0"
+            hx-target="#colaborador-0"
+            hx-swap="outerHTML"
+            hx-include="#formInativarColaborador"
+      >
+        <div class="modal-body">
+          <p>
+            Você está prestes a inativar <strong id="nomeColaboradorInativar"></strong>.
+          </p>
+          <p class="text-muted small">
+            Informe a partir de qual data ele não deve mais aparecer no efetivo:
+          </p>
+
+          <label class="form-label" for="data_inativacao">
+            Data de inativação *
+          </label>
+          <input
+            type="date"
+            class="form-control"
+            id="data_inativacao"
+            name="data_inativacao"
+            required
+          >
+          <small class="text-muted">
+            A partir desta data, ele não aparecerá mais no lançamento e não será contado no calendário.
+            Registros anteriores permanecem intactos.
+          </small>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+
+          <!-- AGORA O BOTÃO É SÓ SUBMIT NORMAL -->
+          <button
+            type="submit"
+            class="btn btn-danger"
+            id="btnConfirmarInativar"
+          >
+            Confirmar inativação
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // Preencher modal de inativação quando abrir
+  const modalInativar = document.getElementById('modalInativarColaborador');
+  if (modalInativar) {
+    modalInativar.addEventListener('show.bs.modal', function (event) {
+const button = event.relatedTarget;
+const colaboradorId = button && button.getAttribute('data-colaborador-id');
+const colaboradorNome = button && button.getAttribute('data-colaborador-nome');
+
+const nomeEl = document.getElementById('nomeColaboradorInativar');
+const dataEl = document.getElementById('data_inativacao');
+const form = document.getElementById('formInativarColaborador');
+
+if (!colaboradorId || !form || !nomeEl || !dataEl) return;
+
+nomeEl.textContent = colaboradorNome || '';
+
+const hoje = new Date().toISOString().split('T')[0];
+dataEl.value = hoje;
+
+const url = '/colaboradores/inativar-com-data/' + colaboradorId;
+
+form.setAttribute('action', url);
+form.setAttribute('hx-post', url);
+form.setAttribute('hx-target', '#colaborador-' + colaboradorId);
+
+if (window.htmx) {
+window.htmx.process(form);
+}
+    });
+  }
+
+  // Fechar modal após inativação bem-sucedida
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
+    if (!el || !evt.detail.successful) return;
+
+    // Se a requisição veio do formulário de inativação
+    if (el.id === 'formInativarColaborador') {
+      const modal = bootstrap.Modal.getInstance(modalInativar);
+      if (modal) modal.hide();
+    }
+  });
+</script>
+
+
+
 <script>
   // Abrir modal quando o conteúdo do formulário for carregado via HTMX
   document.body.addEventListener('htmx:afterSwap', function (evt) {

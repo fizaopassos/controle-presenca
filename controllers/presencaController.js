@@ -109,10 +109,13 @@ res.status(500).json({ error: 'Erro ao buscar postos' });
 exports.getFuncionariosPorCondominio = async (req, res) => {
   try {
     const condominio_id = req.params.condominio_id;
-    const data = req.query.data;
+    const data = req.query.data; // YYYY-MM-DD
 
     if (!condominio_id) {
       return res.status(400).json({ error: 'condominio_id é obrigatório' });
+    }
+    if (!data) {
+      return res.status(400).json({ error: 'data é obrigatória (YYYY-MM-DD)' });
     }
 
     const sqlColabs = `
@@ -127,11 +130,12 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       LEFT JOIN empresas e ON c.empresa_id = e.id
       LEFT JOIN postos p ON c.posto_id = p.id
       WHERE c.condominio_id = ?
-        AND c.ativo = 1
+        AND c.criado_em <= ?
+        AND (c.inativado_em IS NULL OR c.inativado_em > ?)
       ORDER BY c.nome
     `;
 
-    const [colaboradores] = await db.query(sqlColabs, [condominio_id]);
+    const [colaboradores] = await db.query(sqlColabs, [condominio_id, data, data]);
 
     if (!data || colaboradores.length === 0) {
       colaboradores.forEach(c => {
@@ -249,8 +253,8 @@ exports.getFuncionarios = async (req, res) => {
     const { posto_id } = req.params;
     const { data, condominio_id } = req.query;
 
-    if (!posto_id || !condominio_id) {
-      return res.status(400).json({ error: 'posto_id e condominio_id são obrigatórios' });
+    if (!posto_id || !condominio_id || !data) {
+      return res.status(400).json({ error: 'posto_id, condominio_id e data são obrigatórios' });
     }
 
     const [colaboradores] = await db.query(`
@@ -262,10 +266,10 @@ exports.getFuncionarios = async (req, res) => {
       LEFT JOIN empresas e ON c.empresa_id = e.id
       WHERE c.posto_id = ?
         AND c.condominio_id = ?
-        AND c.ativo = 1
+        AND c.criado_em <= ?
+        AND (c.inativado_em IS NULL OR c.inativado_em > ?)
       ORDER BY c.nome
-    `, [posto_id, condominio_id]);
-
+    `, [posto_id, condominio_id, data, data]);
     console.log(
       'Colaboradores encontrados para condominio',
       condominio_id,
@@ -685,7 +689,7 @@ exports.buscarColaboradores = async (req, res) => {
       FROM colaboradores c
       LEFT JOIN empresas e ON c.empresa_id = e.id
       LEFT JOIN condominios cond ON cond.id = c.condominio_id
-      WHERE c.ativo = 1
+      WHERE 1 = 1
     `;
 
     const params = [];

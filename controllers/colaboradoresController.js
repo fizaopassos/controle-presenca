@@ -516,34 +516,109 @@ return res.status(500).send('Erro ao atualizar colaborador');
 }
 };
 
-exports.toggleAtivo = async (req, res) => {
-const { id } = req.params;
+exports.inativarComData = async (req, res) => {
+  const { id } = req.params;
+  const { data_inativacao } = req.body;
 
-try {
-const [rows] = await db.query(
-'SELECT ativo FROM colaboradores WHERE id = ?',
-[id]
-);
-if (rows.length === 0) {
-return res.status(404).send('Colaborador não encontrado');
-}
+  try {
+    if (!data_inativacao) {
+      return res.status(400).send('Data de inativação é obrigatória.');
+    }
 
-const ativoAtual = rows[0].ativo ? 1 : 0;
-const novoAtivo = ativoAtual ? 0 : 1;
+    // Valida formato YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data_inativacao)) {
+      return res.status(400).send('Formato de data inválido (use YYYY-MM-DD).');
+    }
 
-const sql = `
-  UPDATE colaboradores
-  SET ativo = ?,
-      inativado_em = CASE WHEN ? = 1 THEN NULL ELSE NOW() END
-  WHERE id = ?
-`;
+    const sql = `
+      UPDATE colaboradores
+      SET ativo = 0,
+          inativado_em = ?
+      WHERE id = ?
+    `;
 
-await db.query(sql, [novoAtivo, novoAtivo, id]);
+    await db.query(sql, [data_inativacao, id]);
 
-return res.redirect('/colaboradores');
+    if (isHTMX(req)) {
+      // Retorna a linha atualizada para substituir no DOM
+      const sqlSelectUm = `
+        SELECT 
+          c.*, 
+          e.nome AS empresa_nome, 
+          p.nome AS posto_nome, 
+          cond.nome AS condominio_nome 
+        FROM colaboradores c 
+        LEFT JOIN empresas e ON c.empresa_id = e.id 
+        LEFT JOIN postos p ON c.posto_id = p.id 
+        LEFT JOIN condominios cond ON c.condominio_id = cond.id 
+        WHERE c.id = ?
+      `;
+      const [rows] = await db.query(sqlSelectUm, [id]);
+      return res.render('colaboradores/_linha', { c: rows[0] });
+    }
 
-} catch (error) {
-console.error('Erro ao alterar status do colaborador:', error);
-return res.status(500).send('Erro ao alterar status do colaborador');
-}
+    return res.redirect('/colaboradores');
+
+  } catch (error) {
+    console.error('Erro ao inativar colaborador:', error);
+    return res.status(500).send('Erro ao inativar colaborador');
+  }
 };
+
+
+exports.toggleAtivo = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [rows] = await db.query(
+      'SELECT ativo FROM colaboradores WHERE id = ?',
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).send('Colaborador não encontrado');
+    }
+
+    const ativoAtual = rows[0].ativo ? 1 : 0;
+
+    // Se está ativo, não faz nada aqui (vai usar inativarComData)
+    // Se está inativo, ATIVA (e limpa inativado_em)
+    if (ativoAtual === 0) {
+      const sql = `
+        UPDATE colaboradores
+        SET ativo = 1,
+            inativado_em = NULL
+        WHERE id = ?
+      `;
+      await db.query(sql, [id]);
+
+      if (isHTMX(req)) {
+        const sqlSelectUm = `
+          SELECT 
+            c.*, 
+            e.nome AS empresa_nome, 
+            p.nome AS posto_nome, 
+            cond.nome AS condominio_nome 
+          FROM colaboradores c 
+          LEFT JOIN empresas e ON c.empresa_id = e.id 
+          LEFT JOIN postos p ON c.posto_id = p.id 
+          LEFT JOIN condominios cond ON c.condominio_id = cond.id 
+          WHERE c.id = ?
+        `;
+        const [rows] = await db.query(sqlSelectUm, [id]);
+        return res.render('colaboradores/_linha', { c: rows[0] });
+      }
+
+      return res.redirect('/colaboradores');
+    }
+
+    // Se está ativo (ativoAtual === 1), retorna erro ou não faz nada
+    // (porque o botão "Inativar" agora vai abrir modal, não chamar esta rota)
+    return res.status(400).send('Use a rota de inativação com data.');
+
+  } catch (error) {
+    console.error('Erro ao alterar status do colaborador:', error);
+    return res.status(500).send('Erro ao alterar status do colaborador');
+  }
+};
+
+
