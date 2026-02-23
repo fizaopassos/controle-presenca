@@ -413,12 +413,14 @@ document.getElementById('btnExportar').disabled = false;
 
 function getStatusBadge(status) {
 const badges = {
-presente: '<span class="badge bg-success">Presente</span>',
-falta: '<span class="badge bg-danger">Falta</span>',
-folga: '<span class="badge bg-secondary">Folga</span>',
-atestado: '<span class="badge bg-warning text-dark">Atestado</span>'
+presente:     '<span class="badge bg-success">Presente</span>',
+falta:        '<span class="badge bg-danger">Falta</span>',
+folga:        '<span class="badge bg-secondary">Folga</span>',
+atestado:     '<span class="badge bg-warning text-dark">Atestado</span>',
+ferias:       '<span class="badge bg-info text-dark">Férias</span>',
+em_cobertura: '<span class="badge bg-dark">Em cobertura</span>'
 };
-return badges[status] || '<span class="badge bg-light text-dark">' + status + '</span>';
+return badges[status] || '<span class="badge bg-light text-dark">' + (status || 'Não lançado') + '</span>';
 }
 
 // Limpar filtros

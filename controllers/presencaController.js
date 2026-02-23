@@ -227,7 +227,7 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
 
         // Caso especial: se o próprio registro aqui estiver como 'em_cobertura',
         // tratamos como "bloqueado/confirmado" também
-        if (pres && pres.status === 'em_cobertura') {
+        if (pres && pres.status === 'em_cobertura' && !outro) {
           c.presente_outro_condominio      = true;
           c.presente_outro_condominio_nome = pres.observacoes || 'Em cobertura';
         }
@@ -398,9 +398,7 @@ exports.lancarPresenca = async (req, res) => {
 
       // Trava de edição para lançador
       const [[jaExiste]] = await connection.query(
-        `SELECT id FROM presencas_diarias
-         WHERE data = ? AND colaborador_id = ? AND (posto_id <=> ?)
-         LIMIT 1`,
+        'SELECT id FROM presencas_diarias WHERE data = ? AND colaborador_id = ? AND (posto_id <=> ?) LIMIT 1',
         [data, colaborador_id, posto_id]
       );
       if (jaExiste && usuario.perfil === 'lancador') {
@@ -756,10 +754,9 @@ exports.salvarPresencaIndividual = async (req, res) => {
     }
 
     const [[jaExiste]] = await db.query(
-      `SELECT id FROM presencas_diarias
-       WHERE data = ? AND colaborador_id = ? AND (posto_id <=> ?) LIMIT 1`,
-      [data, colaborador_id, posto_id]
-    );
+'SELECT id FROM presencas_diarias WHERE data = ? AND colaborador_id = ? AND condominio_id = ? AND (posto_id <=> ?) LIMIT 1',
+[data, colaborador_id, condominio_id, posto_id]
+);
     if (jaExiste && usuario.perfil === 'lancador') {
       return res.status(403).send('Para editar lançamentos confirmados, consulte o seu gestor');
     }
