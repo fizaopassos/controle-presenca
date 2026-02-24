@@ -871,7 +871,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       debounceCobertura = setTimeout(function () {
-        buscarCoberturasPorNome(empresaId, termo, function (lista) {
+        buscarCoberturasPorNome('', termo, function (lista) {
           var sugDiv = document.getElementById('cob-suggestions-' + idCob);
           if (!sugDiv) return;
           if (!termo || lista.length === 0) { sugDiv.innerHTML = ''; sugDiv.classList.add('d-none'); return; }

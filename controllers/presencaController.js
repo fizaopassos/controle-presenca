@@ -239,6 +239,7 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
          pd.id   AS presenca_id,
          c.condominio_id        AS condominio_origem_id,
          condOrig.nome          AS condominio_origem_nome,
+         c.tipo                 AS tipo_colaborador,
          -- tenta achar o registro de ausência que gerou esta cobertura
          cobOrig.colaborador_id AS origem_colaborador_id,
          cOrigCol.nome          AS origem_colaborador_nome,
@@ -263,9 +264,17 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       [data, condominio_id, condominio_id]
     );
 
-    extras.forEach(x => {
+        extras.forEach(x => {
       x.eh_externo = true;
+
+      // Se for um colaborador cadastrado como "cobertura",
+      // ajusta a forma como o "condomínio de origem" será exibido
+      if (x.tipo_colaborador === 'cobertura') {
+        // Aqui você escolhe o texto que quiser
+        x.condominio_origem_nome = 'Cobertura (sem condomínio fixo)';
+      }
     });
+
 
     return res.json({ fixos: colaboradores, extras });
 
@@ -666,9 +675,18 @@ exports.getDiasLancados = async (req, res) => {
 exports.consultarPresencas = async (req, res) => {
   try {
     const usuario = req.session.user;
-    const { data_inicio, data_fim, condominio_id, empresa_id, colaborador_id, status } = req.query;
+    const {
+      data_inicio,
+      data_fim,
+      condominio_id,
+      empresa_id,
+      colaborador_id,
+      status
+    } = req.query;
 
-    // Parte 1: presenças normais
+    // ---------------------------
+    // PARTE 1: PRESENÇAS NORMAIS
+    // ---------------------------
     let query = `
       SELECT
         pd.id,
@@ -682,9 +700,9 @@ exports.consultarPresencas = async (req, res) => {
         c.condominio_id AS condominio_fixo_id
       FROM presencas_diarias pd
       INNER JOIN colaboradores c   ON pd.colaborador_id = c.id
-      LEFT JOIN  empresas e        ON c.empresa_id      = e.id
-      INNER JOIN condominios cond  ON pd.condominio_id  = cond.id
-      LEFT JOIN  postos p          ON pd.posto_id       = p.id
+      LEFT  JOIN empresas     e    ON c.empresa_id      = e.id
+      INNER JOIN condominios  cond ON pd.condominio_id  = cond.id
+      LEFT  JOIN postos       p    ON pd.posto_id       = p.id
       WHERE 1=1
     `;
     const params = [];
@@ -698,19 +716,27 @@ exports.consultarPresencas = async (req, res) => {
       params.push(usuario.id);
     }
 
-    if (data_inicio)    { query += ' AND pd.data >= ?';           params.push(data_inicio); }
-    if (data_fim)       { query += ' AND pd.data <= ?';           params.push(data_fim); }
-    if (condominio_id)  { query += ' AND pd.condominio_id = ?';   params.push(condominio_id); }
-    if (empresa_id)     { query += ' AND c.empresa_id = ?';       params.push(empresa_id); }
-    if (colaborador_id) { query += ' AND pd.colaborador_id = ?';  params.push(colaborador_id); }
+    if (data_inicio)    { query += ' AND pd.data >= ?';          params.push(data_inicio); }
+    if (data_fim)       { query += ' AND pd.data <= ?';          params.push(data_fim); }
+    if (condominio_id)  { query += ' AND pd.condominio_id = ?';  params.push(condominio_id); }
+    if (empresa_id)     { query += ' AND c.empresa_id = ?';      params.push(empresa_id); }
+    if (colaborador_id) { query += ' AND pd.colaborador_id = ?'; params.push(colaborador_id); }
 
     const filtraEmCobertura = (status === 'em_cobertura');
-    if (status && !filtraEmCobertura) {
+
+    // IMPORTANTE: agora SEMPRE filtramos pelo status informado,
+    // inclusive quando for "em_cobertura"
+    if (status) {
       query += ' AND pd.status = ?';
       params.push(status);
     }
 
-    // Parte 2: linhas virtuais de cobertura (somente se status não foi filtrado ou foi filtrado como em_cobertura)
+    // ----------------------------------------------
+    // PARTE 2: LINHAS VIRTUAIS "EM COBERTURA"
+    // ----------------------------------------------
+    // Só entra aqui se:
+    //  - status não foi informado (Todos)
+    //  - ou status === 'em_cobertura'
     const incluirCobertura = !status || filtraEmCobertura;
     let queryCobertura = '';
     const paramsCobertura = [];
@@ -718,32 +744,34 @@ exports.consultarPresencas = async (req, res) => {
     if (incluirCobertura) {
       queryCobertura = `
         SELECT
-          NULL        AS id,
-          pd_out.data AS data,
+          NULL           AS id,
+          pd_out.data    AS data,
           'em_cobertura' AS status,
           CONCAT('Em cobertura no condomínio ', cond_out.nome) AS observacoes,
-          c.nome      AS colaborador,
-          e.nome      AS empresa,
-          cond_fix.nome AS condominio,
-          po.nome     AS posto,
+          c.nome         AS colaborador,
+          e.nome         AS empresa,
+          cond_fix.nome  AS condominio,
+          po.nome        AS posto,
           c.condominio_id AS condominio_fixo_id
         FROM presencas_diarias pd_out
-        INNER JOIN colaboradores c      ON c.id           = pd_out.colaborador_id
-        LEFT JOIN  empresas e           ON e.id           = c.empresa_id
-        INNER JOIN condominios cond_out ON cond_out.id    = pd_out.condominio_id
-        LEFT JOIN  condominios cond_fix ON cond_fix.id    = c.condominio_id
-        LEFT JOIN  postos po            ON po.id          = pd_out.posto_id
+        INNER JOIN colaboradores c      ON c.id        = pd_out.colaborador_id
+        LEFT  JOIN empresas     e      ON e.id        = c.empresa_id
+        INNER JOIN condominios  cond_out ON cond_out.id = pd_out.condominio_id
+        LEFT  JOIN condominios  cond_fix ON cond_fix.id = c.condominio_id
+        LEFT  JOIN postos       po       ON po.id       = pd_out.posto_id
         WHERE pd_out.status = 'presente'
           AND pd_out.condominio_id <> c.condominio_id
           AND NOT EXISTS (
-            SELECT 1 FROM presencas_diarias pd_fix
+            SELECT 1
+            FROM presencas_diarias pd_fix
             WHERE pd_fix.colaborador_id = c.id
               AND pd_fix.condominio_id  = c.condominio_id
               AND pd_fix.data           = pd_out.data
           )
-     `;
+      `;
 
       if (usuario.perfil !== 'admin') {
+        // Aqui o filtro é pelo condomínio FIXO do colaborador
         queryCobertura += `
           AND c.condominio_id IN (
             SELECT condominio_id FROM usuario_condominios WHERE usuario_id = ?
@@ -759,17 +787,17 @@ exports.consultarPresencas = async (req, res) => {
       if (colaborador_id) { queryCobertura += ' AND pd_out.colaborador_id = ?'; paramsCobertura.push(colaborador_id); }
     }
 
+    // ---------------------------
+    // MONTAGEM FINAL (UNION)
+    // ---------------------------
     let queryFinal;
     let paramsFinal;
 
     if (incluirCobertura && queryCobertura) {
-      if (filtraEmCobertura) {
-        queryFinal  = queryCobertura + ' ORDER BY data DESC, colaborador';
-        paramsFinal = paramsCobertura;
-      } else {
-        queryFinal  = `(${query}) UNION ALL (${queryCobertura}) ORDER BY data DESC, colaborador`;
-        paramsFinal = [...params, ...paramsCobertura];
-      }
+      // Aqui é o ponto que deu erro: em vez de usar string com "${query}",
+      // montamos com concatenação normal de JS.
+      queryFinal  = '(' + query + ') UNION ALL (' + queryCobertura + ') ORDER BY data DESC, colaborador';
+      paramsFinal = [...params, ...paramsCobertura];
     } else {
       queryFinal  = query + ' ORDER BY pd.data DESC, c.nome';
       paramsFinal = params;
@@ -782,6 +810,7 @@ exports.consultarPresencas = async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar presenças' });
   }
 };
+
 
 // ========================================
 // API: Buscar colaboradores (autocomplete geral)
