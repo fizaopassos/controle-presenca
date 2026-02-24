@@ -1,4 +1,4 @@
-const db = require('..\/config\/db');
+const db = require('../config/db');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
@@ -88,8 +88,6 @@ exports.getConsultarPresenca = async (req, res) => {
 // ========================================
 exports.getPostos = async (req, res) => {
   try {
-    // Se você tiver postos por condomínio, ajuste aqui.
-    // Por enquanto retorna todos os postos ativos.
     const [postos] = await db.query(
       'SELECT id, nome FROM postos WHERE ativo = 1 ORDER BY nome'
     );
@@ -100,12 +98,6 @@ exports.getPostos = async (req, res) => {
   }
 };
 
-// ========================================
-// API: Buscar colaboradores por condomínio (para lançar)
-// Retorna: { fixos: [...], extras: [...] }
-// - fixos: colaboradores do próprio condomínio
-// - extras: colaboradores de OUTRO condomínio que já têm presença lançada aqui nesta data
-// ========================================
 // ========================================
 // API: Buscar colaboradores por condomínio (para lançar)
 // Retorna: { fixos: [...], extras: [...] }
@@ -186,8 +178,6 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       });
 
       // Verifica se algum fixo está "presente" em OUTRO condomínio na mesma data
-      // Aqui é só para o caso de cobertura recebida (falta de efetivo):
-      // o registro no outro condomínio é sempre status = 'presente'
       const [presencasOutros] = await db.query(
         `SELECT
            pd.colaborador_id,
@@ -381,25 +371,73 @@ exports.lancarPresenca = async (req, res) => {
 
       if (!colaborador_id || !status) continue;
 
-      // Se já está presente em OUTRO condomínio nesta data → não mexe
-      // (isso evita sobrescrever o status do colaborador no condomínio de origem)
-      const [[emOutroCondom]] = await connection.query(
-        `SELECT pd.id, cond.nome AS condominio_nome
-         FROM presencas_diarias pd
-         JOIN condominios cond ON cond.id = pd.condominio_id
-         WHERE pd.data           = ?
-           AND pd.colaborador_id = ?
-           AND pd.condominio_id <> ?
-           AND pd.status         = 'presente'
-         LIMIT 1`,
-        [data, colaborador_id, condominio_id]
-      );
-      if (emOutroCondom) continue;
+      // Se estiver tentando marcar como PRESENTE aqui,
+      // não pode já estar PRESENTE em outro condomínio nesta data
+            if (status === 'presente') {
+        const [[emOutroCondom]] = await connection.query(
+          `SELECT
+             pd.id,
+             cond.nome AS condominio_nome,
+             po.nome   AS posto_nome,
+             c.nome    AS colaborador_nome,
+             abs.colaborador_id           AS origem_colaborador_id,
+             cOrig.nome                   AS origem_colaborador_nome,
+             abs.status                   AS origem_status
+           FROM presencas_diarias pd
+           JOIN condominios cond ON cond.id = pd.condominio_id
+           LEFT JOIN postos po   ON po.id   = pd.posto_id
+           JOIN colaboradores c  ON c.id    = pd.colaborador_id
+           LEFT JOIN presencas_diarias abs
+                  ON abs.data          = pd.data
+                 AND abs.condominio_id = pd.condominio_id
+                 AND abs.posto_id      = pd.posto_id
+                 AND abs.cobertura_id  = pd.colaborador_id
+                 AND abs.status IN ('falta','folga','atestado','ferias')
+           LEFT JOIN colaboradores cOrig ON cOrig.id = abs.colaborador_id
+           WHERE pd.data           = ?
+             AND pd.colaborador_id = ?
+             AND pd.condominio_id <> ?
+             AND pd.status         = 'presente'
+           LIMIT 1`,
+          [data, colaborador_id, condominio_id]
+        );
 
-      // Trava de edição para lançador
+        if (emOutroCondom) {
+          const local = emOutroCondom.posto_nome
+            ? `no condomínio "${emOutroCondom.condominio_nome}", posto "${emOutroCondom.posto_nome}"`
+            : `no condomínio "${emOutroCondom.condominio_nome}"`;
+
+          let msg;
+          if (emOutroCondom.origem_colaborador_nome) {
+            const tipoAusencia =
+              emOutroCondom.origem_status === 'falta'    ? 'falta'    :
+              emOutroCondom.origem_status === 'folga'    ? 'folga'    :
+              emOutroCondom.origem_status === 'atestado' ? 'atestado' :
+              emOutroCondom.origem_status === 'ferias'   ? 'férias'   :
+              'ausência';
+
+            msg = `O colaborador "${emOutroCondom.colaborador_nome}" já está ${local}, cobrindo a ${tipoAusencia} de "${emOutroCondom.origem_colaborador_nome}" nesta data.`;
+          } else {
+            msg = `O colaborador "${emOutroCondom.colaborador_nome}" já está ${local} nesta data.`;
+          }
+
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            message: msg
+          });
+        }
+      }
+
+      // Trava de edição para lançador (agora considerando também o condomínio)
       const [[jaExiste]] = await connection.query(
-        'SELECT id FROM presencas_diarias WHERE data = ? AND colaborador_id = ? AND (posto_id <=> ?) LIMIT 1',
-        [data, colaborador_id, posto_id]
+        `SELECT id FROM presencas_diarias
+         WHERE data = ?
+           AND colaborador_id = ?
+           AND condominio_id = ?
+           AND (posto_id <=> ?)
+         LIMIT 1`,
+        [data, colaborador_id, condominio_id, posto_id]
       );
       if (jaExiste && usuario.perfil === 'lancador') {
         await connection.rollback();
@@ -409,7 +447,7 @@ exports.lancarPresenca = async (req, res) => {
         });
       }
 
-      // UPSERT
+      // UPSERT da linha principal
       await connection.query(
         `INSERT INTO presencas_diarias
            (data, colaborador_id, condominio_id, posto_id, status, observacoes, cobertura_id)
@@ -424,7 +462,63 @@ exports.lancarPresenca = async (req, res) => {
 
       const ehAusencia = ['falta', 'folga', 'atestado', 'ferias'].includes(status);
 
-      if (ehAusencia && cobertura_id && posto_id) {
+           if (ehAusencia && cobertura_id && posto_id) {
+        // Antes de lançar a presença automática da cobertura,
+        // verifica se essa cobertura já está PRESENTE em outro condomínio no mesmo dia
+        const [[cobJaPresenteOutro]] = await connection.query(
+          `SELECT
+             pd.id,
+             cond.nome AS condominio_nome,
+             po.nome   AS posto_nome,
+             c.nome    AS colaborador_nome,
+             abs.colaborador_id           AS origem_colaborador_id,
+             cOrig.nome                   AS origem_colaborador_nome,
+             abs.status                   AS origem_status
+           FROM presencas_diarias pd
+           JOIN condominios cond ON cond.id = pd.condominio_id
+           LEFT JOIN postos po   ON po.id   = pd.posto_id
+           JOIN colaboradores c  ON c.id    = pd.colaborador_id
+           LEFT JOIN presencas_diarias abs
+                  ON abs.data          = pd.data
+                 AND abs.condominio_id = pd.condominio_id
+                 AND abs.posto_id      = pd.posto_id
+                 AND abs.cobertura_id  = pd.colaborador_id
+                 AND abs.status IN ('falta','folga','atestado','ferias')
+           LEFT JOIN colaboradores cOrig ON cOrig.id = abs.colaborador_id
+           WHERE pd.data           = ?
+             AND pd.colaborador_id = ?
+             AND pd.condominio_id <> ?
+             AND pd.status         = 'presente'
+           LIMIT 1`,
+          [data, cobertura_id, condominio_id]
+        );
+
+        if (cobJaPresenteOutro) {
+          const local = cobJaPresenteOutro.posto_nome
+            ? `no condomínio "${cobJaPresenteOutro.condominio_nome}", posto "${cobJaPresenteOutro.posto_nome}"`
+            : `no condomínio "${cobJaPresenteOutro.condominio_nome}"`;
+
+          let msg;
+          if (cobJaPresenteOutro.origem_colaborador_nome) {
+            const tipoAusencia =
+              cobJaPresenteOutro.origem_status === 'falta'    ? 'falta'    :
+              cobJaPresenteOutro.origem_status === 'folga'    ? 'folga'    :
+              cobJaPresenteOutro.origem_status === 'atestado' ? 'atestado' :
+              cobJaPresenteOutro.origem_status === 'ferias'   ? 'férias'   :
+              'ausência';
+
+            msg = `A cobertura selecionada "${cobJaPresenteOutro.colaborador_nome}" já está ${local}, cobrindo a ${tipoAusencia} de "${cobJaPresenteOutro.origem_colaborador_nome}" nesta data.`;
+          } else {
+            msg = `A cobertura selecionada "${cobJaPresenteOutro.colaborador_nome}" já está ${local} nesta data.`;
+          }
+
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            message: msg
+          });
+        }
+
         // Lança presença automática do colaborador de cobertura no mesmo condomínio
         await connection.query(
           `INSERT INTO presencas_diarias
@@ -436,6 +530,8 @@ exports.lancarPresenca = async (req, res) => {
              atualizado_em = CURRENT_TIMESTAMP`,
           [data, cobertura_id, condominio_id, posto_id, observacoes]
         );
+
+
       } else if (!ehAusencia && cobertura_id && posto_id) {
         // Removeu a ausência: apaga presença automática do colaborador de cobertura
         await connection.query(
@@ -645,7 +741,7 @@ exports.consultarPresencas = async (req, res) => {
               AND pd_fix.condominio_id  = c.condominio_id
               AND pd_fix.data           = pd_out.data
           )
-      `;
+     `;
 
       if (usuario.perfil !== 'admin') {
         queryCobertura += `
@@ -737,26 +833,70 @@ exports.salvarPresencaIndividual = async (req, res) => {
       return res.status(400).send('Dados obrigatórios faltando');
     }
 
+    // Bloqueia se já houver PRESENÇA em outro condomínio na mesma data
+        // Bloqueia se já houver PRESENÇA em outro condomínio na mesma data
     if (status === 'presente') {
       const [[emOutroCondom]] = await db.query(
-        `SELECT pd.id, cond.nome AS condominio_nome
+        `SELECT
+           pd.id,
+           cond.nome AS condominio_nome,
+           po.nome   AS posto_nome,
+           c.nome    AS colaborador_nome,
+           abs.colaborador_id           AS origem_colaborador_id,
+           cOrig.nome                   AS origem_colaborador_nome,
+           abs.status                   AS origem_status
          FROM presencas_diarias pd
          JOIN condominios cond ON cond.id = pd.condominio_id
-         WHERE pd.data = ? AND pd.colaborador_id = ? AND pd.condominio_id <> ? AND pd.status = 'presente'
+         LEFT JOIN postos po   ON po.id   = pd.posto_id
+         JOIN colaboradores c  ON c.id    = pd.colaborador_id
+         LEFT JOIN presencas_diarias abs
+                ON abs.data          = pd.data
+               AND abs.condominio_id = pd.condominio_id
+               AND abs.posto_id      = pd.posto_id
+               AND abs.cobertura_id  = pd.colaborador_id
+               AND abs.status IN ('falta','folga','atestado','ferias')
+         LEFT JOIN colaboradores cOrig ON cOrig.id = abs.colaborador_id
+         WHERE pd.data           = ?
+           AND pd.colaborador_id = ?
+           AND pd.condominio_id <> ?
+           AND pd.status         = 'presente'
          LIMIT 1`,
         [data, colaborador_id, condominio_id]
       );
+
       if (emOutroCondom) {
-        return res.status(400).send(
-          `O colaborador está presente no condomínio "${emOutroCondom.condominio_nome}" nesta data.`
-        );
+        const local = emOutroCondom.posto_nome
+          ? `no condomínio "${emOutroCondom.condominio_nome}", posto "${emOutroCondom.posto_nome}"`
+          : `no condomínio "${emOutroCondom.condominio_nome}"`;
+
+        let msg;
+        if (emOutroCondom.origem_colaborador_nome) {
+          const tipoAusencia =
+            emOutroCondom.origem_status === 'falta'    ? 'falta'    :
+            emOutroCondom.origem_status === 'folga'    ? 'folga'    :
+            emOutroCondom.origem_status === 'atestado' ? 'atestado' :
+            emOutroCondom.origem_status === 'ferias'   ? 'férias'   :
+            'ausência';
+
+          msg = `O colaborador "${emOutroCondom.colaborador_nome}" já está ${local}, cobrindo a ${tipoAusencia} de "${emOutroCondom.origem_colaborador_nome}" nesta data.`;
+        } else {
+          msg = `O colaborador "${emOutroCondom.colaborador_nome}" já está ${local} nesta data.`;
+        }
+
+        return res.status(400).send(msg);
       }
     }
 
+
     const [[jaExiste]] = await db.query(
-'SELECT id FROM presencas_diarias WHERE data = ? AND colaborador_id = ? AND condominio_id = ? AND (posto_id <=> ?) LIMIT 1',
-[data, colaborador_id, condominio_id, posto_id]
-);
+      `SELECT id FROM presencas_diarias
+       WHERE data = ?
+         AND colaborador_id = ?
+         AND condominio_id = ?
+         AND (posto_id <=> ?)
+       LIMIT 1`,
+      [data, colaborador_id, condominio_id, posto_id]
+    );
     if (jaExiste && usuario.perfil === 'lancador') {
       return res.status(403).send('Para editar lançamentos confirmados, consulte o seu gestor');
     }
@@ -799,7 +939,6 @@ exports.salvarPresencaIndividual = async (req, res) => {
 
 // ========================================
 // Relatório Consolidado Mensal (PDF)
-// (mantido como estava)
 // ========================================
 exports.relatorioMensalPdf = async (req, res) => {
   try {
@@ -929,7 +1068,6 @@ exports.relatorioMensalPdf = async (req, res) => {
 
 // ========================================
 // Relatório Detalhado por Colaborador (PDF)
-// (mantido como estava)
 // ========================================
 exports.relatorioColaboradorPdf = async (req, res) => {
   try {
