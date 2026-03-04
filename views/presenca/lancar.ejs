@@ -881,26 +881,51 @@ input.addEventListener('input', filtrar);
     }
 
     // Botões de status
-    var btn = el.closest('button[data-action="set-status"]');
-    if (btn) {
-      var id         = String(btn.getAttribute('data-id'));
-      var novoStatus = btn.getAttribute('data-status');
-      var s          = estado[id];
-      if (!s) return;
+var btn = el.closest('button[data-action="set-status"]');
+if (btn) {
+var id         = String(btn.getAttribute('data-id'));
+var novoStatus = btn.getAttribute('data-status');
+var s          = estado[id];
+if (!s) return;
 
-      // Bloqueados não alteram nada
-      if (s.presente_outro_condominio || s.eh_externo) return;
+// Bloqueados não alteram nada
+if (s.presente_outro_condominio || s.eh_externo) return;
 
-      s.status = novoStatus;
-      if (STATUS_COM_OBS.indexOf(novoStatus) === -1 && s.tipo !== 'falta_efetivo') s.observacoes = '';
-      if (!needsCobertura(novoStatus)) { s.cobertura_id = null; s.cobertura_nome = ''; }
-      s.expanded = (novoStatus !== 'presente');
+// Não deixa "Falta de efetivo" virar "não lançado"
+if (s.tipo === 'falta_efetivo') return;
 
-      estado[id] = s;
-      rerenderCardById(id);
-      atualizarResumo();
-      return;
+var statusAtual = (s.status != null) ? String(s.status) : '';
+var originalStatus = (s.originalStatus != null) ? String(s.originalStatus) : '';
+
+// TOGGLE OFF:
+// Se ele estava sem lançamento originalmente e o usuário clicou no mesmo status novamente,
+// volta para "Não lançado"
+if (statusAtual === novoStatus && originalStatus === '') {
+s.status = '';
+s.observacoes = '';
+s.cobertura_id = null;
+s.cobertura_nome = '';
+s.expanded = false;
+
+estado[id] = s;
+rerenderCardById(id);
+atualizarResumo();
+return;
     }
+// Comportamento normal (seta o status)
+s.status = novoStatus;
+
+if (STATUS_COM_OBS.indexOf(novoStatus) === -1) s.observacoes = '';
+if (!needsCobertura(novoStatus)) { s.cobertura_id = null; s.cobertura_nome = ''; }
+
+s.expanded = (novoStatus !== 'presente');
+
+estado[id] = s;
+rerenderCardById(id);
+atualizarResumo();
+return;
+}
+
   });
 
   // INPUT: observação, coberturas, Falta de Efetivo
