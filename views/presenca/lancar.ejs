@@ -93,6 +93,16 @@
     border-left: 4px solid #6f42c1;
     padding-left: 8px;
   }
+
+  card-pendente,
+.card-nao-lancado {
+background: #fff3cd; /* amarelo suave */
+}
+
+/* opcional: deixa o “Pendente” mais forte */
+.card-pendente {
+box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, 0.12);
+}
 </style>
 
 <script>
@@ -163,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function badgeStatus(status) {
-    if (!status)                    return { cls: 'bg-light text-dark',    text: 'Não lançado'   };
+    if (!status)                    return { cls: 'bg-warning text-dark',  text: 'Não lançado'   };    
     if (status === 'presente')      return { cls: 'bg-success',            text: 'Presente'      };
     if (status === 'falta')         return { cls: 'bg-danger',             text: 'Falta'         };
     if (status === 'folga')         return { cls: 'bg-secondary',          text: 'Folga'         };
@@ -349,6 +359,13 @@ document.addEventListener('DOMContentLoaded', function () {
           ? '<span class="badge bg-primary">Pendente</span>'
           : '<span class="badge bg-success">Confirmado</span>');
 
+     var naoLancado = (!statusAtual || statusAtual === '') && !estaEmOutroCond && !isExterno && !isFaltaEfetivo;
+
+      var highlightClass = pendente
+      ? ' card-pendente'
+      : (naoLancado ? ' card-nao-lancado' : '');
+
+
     var borderClass =
       isExterno                  ? 'border-purple' :
       estaEmOutroCond            ? 'border-dark' :
@@ -419,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var cardExtraClass = isExterno ? ' card-externo' : '';
 
     return ''
-      + '<div id="card-' + id + '" class="card mb-2 border-start border-3 ' + borderClass + cardExtraClass + '">'
+      + '<div id="card-' + id + '" class="card mb-2 border-start border-3 ' + borderClass + cardExtraClass + highlightClass + ' card-func" data-nome="' + escapeHtml(c.nome) + '">'
       + '  <div class="card-body p-3">'
       + '    <div class="d-flex justify-content-between align-items-center gap-3">'
       + '      <button type="button" class="btn btn-link p-0 text-decoration-none text-start flex-grow-1"'
@@ -495,123 +512,196 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function buscarColaboradores() {
-    var data   = inputData.value;
-    var condId = inputCondominio.value;
-    if (!data || !condId) { showAlert('warning', 'Preencha data e condomínio.'); return; }
+var data   = inputData.value;
+var condId = inputCondominio.value;
+if (!data || !condId) { showAlert('warning', 'Preencha data e condomínio.'); return; }
 
-    alerta.classList.add('d-none');
-    areaColaboradores.innerHTML =
-      '<div class="text-center py-4"><div class="spinner-border" role="status"></div>'
-      + '<div class="mt-2">Carregando colaboradores...</div></div>';
+alerta.classList.add('d-none');
+areaColaboradores.innerHTML =
+'<div class="text-center py-4"><div class="spinner-border" role="status"></div>'
++ '<div class="mt-2">Carregando colaboradores...</div></div>';
 
-    fetch('/presenca/api/colaboradores/condominio/' + condId + '?data=' + encodeURIComponent(data))
-      .then(function (resp) { return resp.json(); })
-      .then(function (respData) {
-        var fixos  = [];
-        var extras = [];
+fetch('/presenca/api/colaboradores/condominio/' + condId + '?data=' + encodeURIComponent(data))
+.then(function (resp) { return resp.json(); })
+.then(function (respData) {
+var fixos  = [];
+var extras = [];
 
-        // Compatibilidade: aceita array (backend antigo) ou objeto {fixos, extras}
-        if (Array.isArray(respData)) {
-          fixos  = respData;
-          extras = [];
-        } else {
-          fixos  = Array.isArray(respData.fixos)  ? respData.fixos  : [];
-          extras = Array.isArray(respData.extras) ? respData.extras : [];
-        }
-
-        var todos = fixos.concat(extras);
-
-        if (todos.length === 0 && extras.length === 0) {
-          estado = {};
-          listaIds = [];
-          window.__colaboradoresRaw = {};
-          areaColaboradores.innerHTML =
-            '<div class="alert alert-warning">Nenhum colaborador encontrado para este condomínio.</div>';
-          atualizarResumo();
-          return;
-        }
-
-        estado = {};
-        listaIds = [];
-        window.__colaboradoresRaw = {};
-
-        todos.forEach(function (c) {
-          var id = String(c.id);
-          if (listaIds.indexOf(id) === -1) listaIds.push(id);
-          registrarColaborador(c);
-        });
-
-        // Render HTML
-        var html = '';
-
-        html += '<div class="mb-2 mt-2">'
-          + '<span class="fw-semibold">Efetivo do condomínio</span>'
-          + '</div>';
-        if (fixos.length === 0) {
-          html += '<div class="alert alert-warning">Nenhum colaborador fixo neste condomínio.</div>';
-        } else {
-          fixos.forEach(function (c) { html += renderCard(c); });
-        }
-
-        if (extras.length > 0) {
-          html += '<div class="secao-extras mt-4 mb-2">'
-            + '<span class="fw-semibold">Coberturas recebidas</span> '
-            + '<span class="text-muted small">(colaboradores de outros condomínios presentes aqui hoje)</span>'
-            + '</div>';
-          extras.forEach(function (c) { html += renderCard(c); });
-        }
-
-        // Falta de Efetivo
-        html += ''
-          + '<div class="card mt-4" id="bloco-falta-efetivo">'
-          + '  <div class="card-body p-3">'
-          + '    <div class="d-flex justify-content-between align-items-center mb-2">'
-          + '      <div>'
-          + '        <div class="fw-semibold">Falta de Efetivo</div>'
-          + '        <div class="text-muted small">Registre presença de colaborador que veio de outro condomínio.</div>'
-          + '      </div>'
-          + '    </div>'
-          + '    <div class="row g-2 align-items-center">'
-          + '      <div class="col-md-4">'
-          + '        <select class="form-select form-select-sm" id="fe-posto-select" data-action="fe-posto">'
-          + '          <option value="">Selecione o posto</option>'
-          + '        </select>'
-          + '      </div>'
-          + '      <div class="col-md-8 position-relative">'
-          + '        <input type="text" class="form-control form-control-sm"'
-          + '               placeholder="Digite o nome do colaborador (qualquer condomínio)"'
-          + '               data-action="fe-busca">'
-          + '        <div class="list-group position-absolute w-100 d-none" id="fe-suggestions"'
-          + '             style="z-index:1050;max-height:200px;overflow-y:auto;"></div>'
-          + '      </div>'
-          + '    </div>'
-          + '    <div class="mt-3" id="fe-list"></div>'
-          + '  </div>'
-          + '</div>';
-
-        areaColaboradores.innerHTML = html;
-
-        carregarPostosFaltaEfetivo(function () {
-          var sel = document.getElementById('fe-posto-select');
-          if (!sel) return;
-          var opts = '<option value="">Selecione o posto</option>';
-          fePostos.forEach(function (p) {
-            opts += '<option value="' + String(p.id) + '">' + escapeHtml(p.nome) + '</option>';
-          });
-          sel.innerHTML = opts;
-        });
-
-        atualizarResumo();
-      })
-      .catch(function (e) {
-        console.error(e);
-        areaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao buscar colaboradores.</div>';
-        estado = {};
-        listaIds = [];
-        window.__colaboradoresRaw = {};
-        atualizarResumo();
-      });
+  // Compatibilidade: aceita array (backend antigo) ou objeto {fixos, extras}
+  if (Array.isArray(respData)) {
+    fixos  = respData;
+    extras = [];
+  } else {
+    fixos  = Array.isArray(respData.fixos)  ? respData.fixos  : [];
+    extras = Array.isArray(respData.extras) ? respData.extras : [];
   }
+
+  var todos = fixos.concat(extras);
+
+  if (todos.length === 0) {
+    estado = {};
+    listaIds = [];
+    window.__colaboradoresRaw = {};
+    areaColaboradores.innerHTML =
+      '<div class="alert alert-warning">Nenhum colaborador encontrado para este condomínio.</div>';
+    atualizarResumo();
+    return;
+  }
+
+  estado = {};
+  listaIds = [];
+  window.__colaboradoresRaw = {};
+
+  todos.forEach(function (c) {
+    var id = String(c.id);
+    if (listaIds.indexOf(id) === -1) listaIds.push(id);
+    registrarColaborador(c);
+  });
+
+  // Datalist do autocomplete (nomes)
+  var optionsNomes = '';
+  var nomesMap = {};
+  todos.forEach(function (c) {
+    var n = (c.nome || '').trim();
+    if (!n) return;
+    if (nomesMap[n]) return;
+    nomesMap[n] = true;
+    optionsNomes += '<option value="' + escapeHtml(n) + '"></option>';
+  });
+
+  // Render HTML
+  var html = '';
+
+  // Campo de filtro por colaborador
+  html += ''
+    + '<div class="row mb-3">'
+    + '  <div class="col-md-6">'
+    + '    <label class="form-label">Buscar colaborador</label>'
+    + '    <input type="text"'
+    + '           id="filtroColaborador"'
+    + '           class="form-control form-control-sm"'
+    + '           placeholder="Digite o nome do colaborador..."'
+    + '           autocomplete="off"'
+    + '           list="lista-colaboradores">'
+    + '    <datalist id="lista-colaboradores">'
+    +          optionsNomes
+    + '    </datalist>'
+    + '    <div class="form-text">Digite para filtrar. Ao apagar o texto, todos os cards voltam.</div>'
+    + '  </div>'
+    + '</div>';
+
+  // Container dos cards (para o filtro agir só aqui)
+  html += '<div id="listaCards">';
+
+  html += '<div class="mb-2 mt-2">'
+    + '<span class="fw-semibold">Efetivo do condomínio</span>'
+    + '</div>';
+
+  if (fixos.length === 0) {
+    html += '<div class="alert alert-warning">Nenhum colaborador fixo neste condomínio.</div>';
+  } else {
+    fixos.forEach(function (c) { html += renderCard(c); });
+  }
+
+  if (extras.length > 0) {
+    html += '<div class="secao-extras mt-4 mb-2">'
+      + '<span class="fw-semibold">Coberturas recebidas</span> '
+      + '<span class="text-muted small">(colaboradores de outros condomínios presentes aqui hoje)</span>'
+      + '</div>';
+    extras.forEach(function (c) { html += renderCard(c); });
+  }
+
+  html += '</div>'; // fecha #listaCards
+
+  // Falta de Efetivo (mantido igual ao seu)
+  html += ''
+    + '<div class="card mt-4" id="bloco-falta-efetivo">'
+    + '  <div class="card-body p-3">'
+    + '    <div class="d-flex justify-content-between align-items-center mb-2">'
+    + '      <div>'
+    + '        <div class="fw-semibold">Falta de Efetivo</div>'
+    + '        <div class="text-muted small">Registre presença de colaborador que veio de outro condomínio.</div>'
+    + '      </div>'
+    + '    </div>'
+    + '    <div class="row g-2 align-items-center">'
+    + '      <div class="col-md-4">'
+    + '        <select class="form-select form-select-sm" id="fe-posto-select" data-action="fe-posto">'
+    + '          <option value="">Selecione o posto</option>'
+    + '        </select>'
+    + '      </div>'
+    + '      <div class="col-md-8 position-relative">'
+    + '        <input type="text" class="form-control form-control-sm"'
+    + '               placeholder="Digite o nome do colaborador (qualquer condomínio)"'
+    + '               data-action="fe-busca">'
+    + '        <div class="list-group position-absolute w-100 d-none" id="fe-suggestions"'
+    + '             style="z-index:1050;max-height:200px;overflow-y:auto;"></div>'
+    + '      </div>'
+    + '    </div>'
+    + '    <div class="mt-3" id="fe-list"></div>'
+    + '  </div>'
+    + '</div>';
+
+  areaColaboradores.innerHTML = html;
+
+  carregarPostosFaltaEfetivo(function () {
+    var sel = document.getElementById('fe-posto-select');
+    if (!sel) return;
+    var opts = '<option value="">Selecione o posto</option>';
+    fePostos.forEach(function (p) {
+      opts += '<option value="' + String(p.id) + '">' + escapeHtml(p.nome) + '</option>';
+    });
+    sel.innerHTML = opts;
+  });
+
+  // Inicializa o filtro (tem que ser depois do innerHTML)
+  initFiltroColaboradores();
+
+  atualizarResumo();
+})
+.catch(function (e) {
+  console.error(e);
+  areaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao buscar colaboradores.</div>';
+  estado = {};
+  listaIds = [];
+  window.__colaboradoresRaw = {};
+  atualizarResumo();
+});
+
+}
+
+function initFiltroColaboradores() {
+var input = document.getElementById('filtroColaborador');
+if (!input) return;
+
+var cards = document.querySelectorAll('#listaCards .card-func');
+if (!cards || cards.length === 0) return;
+
+function normalizar(texto) {
+return (texto || '')
+.toString()
+.toLowerCase()
+.normalize('NFD')
+.replace(/[\u0300-\u036f]/g, '');
+}
+
+function filtrar() {
+var termo = normalizar(input.value || '');
+
+for (var i = 0; i < cards.length; i++) {
+  var card = cards[i];
+  var nome = normalizar(card.getAttribute('data-nome') || '');
+
+  if (!termo) {
+    card.style.display = '';
+  } else {
+    card.style.display = (nome.indexOf(termo) !== -1) ? '' : 'none';
+  }
+}
+
+}
+
+input.addEventListener('input', filtrar);
+}
 
   // ============================
   // FLATPICKR + DIAS LANÇADOS
