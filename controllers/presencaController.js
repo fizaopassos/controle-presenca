@@ -129,8 +129,8 @@ exports.getFuncionariosPorCondominio = async (req, res) => {
       LEFT JOIN empresas  e ON e.id = c.empresa_id
       LEFT JOIN postos    p ON p.id = c.posto_id
       WHERE c.condominio_id = ?
-        AND c.criado_em <= ?
-        AND (c.inativado_em IS NULL OR c.inativado_em > ?)
+      AND DATE(c.criado_em) <= ?
+      AND (c.inativado_em IS NULL OR DATE(c.inativado_em) > ?)
       ORDER BY c.nome
     `;
     const [colaboradores] = await db.query(sqlColabs, [condominio_id, data, data]);
@@ -304,9 +304,9 @@ exports.getFuncionarios = async (req, res) => {
       FROM colaboradores c
       LEFT JOIN empresas e ON c.empresa_id = e.id
       WHERE c.posto_id = ?
-        AND c.condominio_id = ?
-        AND c.criado_em <= ?
-        AND (c.inativado_em IS NULL OR c.inativado_em > ?)
+          AND c.condominio_id = ?
+          AND DATE(c.criado_em) <= ?
+          AND (c.inativado_em IS NULL OR DATE(c.inativado_em) > ?)
       ORDER BY c.nome
     `, [posto_id, condominio_id, data, data]);
 
@@ -621,8 +621,8 @@ exports.getDiasLancados = async (req, res) => {
        FROM dias d
        LEFT JOIN colaboradores c
               ON c.condominio_id = ?
-             AND c.criado_em <= d.dia
-             AND (c.inativado_em IS NULL OR c.inativado_em > d.dia)
+              AND DATE(c.criado_em) <= d.dia
+              AND (c.inativado_em IS NULL OR DATE(c.inativado_em) > d.dia)
        LEFT JOIN presencas_diarias emOutro
               ON emOutro.colaborador_id = c.id
              AND emOutro.data           = d.dia
@@ -810,7 +810,6 @@ exports.consultarPresencas = async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar presenças' });
   }
 };
-
 
 // ========================================
 // API: Buscar colaboradores (autocomplete geral)

@@ -1,175 +1,175 @@
 <div class="row">
-  <div class="col-12 col-lg-8">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2><i class="bi bi-person-gear"></i> Editar Usuário</h2>
-      <a href="/usuarios" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i> Voltar
-      </a>
+<div class="col-12 col-lg-8">
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h2><i class="bi bi-person-gear"></i> Editar Usuário</h2>
+<a href="/usuarios" class="btn btn-outline-secondary">
+<i class="bi bi-arrow-left"></i> Voltar
+</a>
+</div>
+
+<form method="post" action="/usuarios/editar/<%= usuarioEditado.id %>">
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      Dados do Usuário
     </div>
-
-    <form method="post" action="/usuarios/editar/<%= usuario.id %>">
-      <div class="card mb-4">
-        <div class="card-header bg-light">
-          Dados do Usuário
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">Nome *</label>
-            <input type="text" name="nome" class="form-control" value="<%= usuario.nome %>" required>
-          </div>
-          
-          <div class="mb-3">
-            <label class="form-label">E-mail (login) *</label>
-            <input type="email" name="email" class="form-control" value="<%= usuario.email %>" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Perfil *</label>
-            <select name="perfil" id="perfil" class="form-select" required>
-              <option value="admin" <%= usuario.perfil === 'admin' ? 'selected' : '' %>>ADMIN</option>
-              <option value="gestor" <%= usuario.perfil === 'gestor' ? 'selected' : '' %>>GESTOR</option>
-              <option value="operador" <%= usuario.perfil === 'operador' ? 'selected' : '' %>>OPERADOR</option>
-            </select>
-
-                  <div class="card mb-4">
-        <div class="card-header bg-light">
-          Alterar senha
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">Nova senha</label>
-            <input 
-              type="password" 
-              name="senha" 
-              id="senhaNova" 
-              class="form-control" 
-              minlength="6"
-            >
-            <div class="form-text">
-              Deixe em branco para manter a senha atual.
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Confirmar nova senha</label>
-            <input 
-              type="password" 
-              name="senhaConfirm" 
-              id="senhaNovaConfirm" 
-              class="form-control" 
-              minlength="6"
-            >
-          </div>
-        </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">Nome *</label>
+        <input type="text" name="nome" class="form-control" value="<%= usuarioEditado.nome %>" required>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">E-mail (login) *</label>
+        <input type="email" name="email" class="form-control" value="<%= usuarioEditado.email %>" required>
       </div>
 
-          </div>
-        </div>
+      <div class="mb-3">
+        <label class="form-label">Perfil *</label>
+        <select name="perfil" id="perfil" class="form-select" required>
+          <option value="admin"    <%= usuarioEditado.perfil === 'admin'    ? 'selected' : '' %>>ADMIN</option>
+          <option value="gestor"   <%= usuarioEditado.perfil === 'gestor'   ? 'selected' : '' %>>GESTOR</option>
+          <option value="lancador" <%= usuarioEditado.perfil === 'lancador' ? 'selected' : '' %>>OPERADOR</option>
+        </select>
       </div>
-
-      <!-- ✅ CORRIGIDO: mostra para gestor e lançador -->
-      <div class="card mb-4" id="cardCondominios">
-        <div class="card-header bg-light">
-          Condomínios que este usuário pode enxergar
-        </div>
-        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-          <% if (condominios && condominios.length > 0) { %>
-            <% condominios.forEach(c => { %>
-              <div class="form-check">
-                <input 
-                  class="form-check-input" 
-                  type="checkbox" 
-                  name="condominios" 
-                  value="<%= c.id %>" 
-                  id="cond_<%= c.id %>"
-                  <%= condoIdsPermitidos.includes(c.id) ? 'checked' : '' %>
-                >
-                <label class="form-check-label" for="cond_<%= c.id %>">
-                  <%= c.nome %>
-                </label>
-              </div>
-            <% }) %>
-          <% } else { %>
-            <p class="text-muted">Nenhum condomínio cadastrado.</p>
-          <% } %>
-        </div>
-      </div>
-
-      <button type="submit" class="btn btn-success">
-        <i class="bi bi-save"></i> Salvar
-      </button>
-    </form>
+    </div>
   </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      Alterar senha
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">Nova senha</label>
+        <input 
+          type="password" 
+          name="senha" 
+          id="senhaNova" 
+          class="form-control" 
+          minlength="6"
+        >
+        <div class="form-text">
+          Deixe em branco para manter a senha atual.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Confirmar nova senha</label>
+        <input 
+          type="password" 
+          name="senhaConfirm" 
+          id="senhaNovaConfirm" 
+          class="form-control" 
+          minlength="6"
+        >
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4" id="cardCondominios">
+    <div class="card-header bg-light">
+      Condomínios que este usuário pode enxergar
+    </div>
+    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+      <% if (condominios && condominios.length > 0) { %>
+        <% condominios.forEach(c => { %>
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              name="condominios" 
+              value="<%= c.id %>" 
+              id="cond_<%= c.id %>"
+              <%= condoIdsPermitidos.includes(c.id) ? 'checked' : '' %>
+            >
+            <label class="form-check-label" for="cond_<%= c.id %>">
+              <%= c.nome %>
+            </label>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <p class="text-muted">Nenhum condomínio cadastrado.</p>
+      <% } %>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-success">
+    <i class="bi bi-save"></i> Salvar
+  </button>
+</form>
+
+</div>
 </div>
 
 <script>
-  const selectPerfil = document.getElementById('perfil');
-  const cardCondominios = document.getElementById('cardCondominios');
+const selectPerfil = document.getElementById('perfil');
+const cardCondominios = document.getElementById('cardCondominios');
 
-  function atualizarVisibilidadeCondominios() {
-    // ✅ CORRIGIDO: só admin não precisa escolher condomínios
-    if (selectPerfil.value === 'admin') {
-      cardCondominios.classList.add('opacity-50');
-      Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
-        chk.disabled = true;
-      });
-    } else {
-      // gestor e lançador: habilitados
-      cardCondominios.classList.remove('opacity-50');
-      Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
-        chk.disabled = false;
-      });
+function atualizarVisibilidadeCondominios() {
+// Só admin não escolhe condomínios (tem acesso total)
+if (selectPerfil.value === 'admin') {
+cardCondominios.classList.add('opacity-50');
+Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
+chk.disabled = true;
+});
+} else {
+// gestor e lançador: habilitados
+cardCondominios.classList.remove('opacity-50');
+Array.from(cardCondominios.querySelectorAll('input[type="checkbox"]')).forEach(chk => {
+chk.disabled = false;
+});
+}
+}
+
+selectPerfil.addEventListener('change', atualizarVisibilidadeCondominios);
+atualizarVisibilidadeCondominios(); // executa ao carregar
+
+const senhaNova = document.getElementById('senhaNova');
+const senhaNovaConfirm = document.getElementById('senhaNovaConfirm');
+
+function validarSenhaNova() {
+if (!senhaNova || !senhaNovaConfirm) return true;
+
+const s1 = senhaNova.value;
+const s2 = senhaNovaConfirm.value;
+
+// Se os dois estiverem vazios, não valida nada (não vai trocar senha)
+if (!s1 && !s2) {
+  senhaNova.classList.remove('is-invalid');
+  senhaNovaConfirm.classList.remove('is-invalid');
+  return true;
+}
+
+if (s1.length < 6) {
+  senhaNova.classList.add('is-invalid');
+  return false;
+} else {
+  senhaNova.classList.remove('is-invalid');
+}
+
+if (s1 !== s2) {
+  senhaNovaConfirm.classList.add('is-invalid');
+  return false;
+} else {
+  senhaNovaConfirm.classList.remove('is-invalid');
+}
+
+return true;
+
+}
+
+if (senhaNova && senhaNovaConfirm) {
+senhaNova.addEventListener('input', validarSenhaNova);
+senhaNovaConfirm.addEventListener('input', validarSenhaNova);
+
+const form = document.querySelector('form[action^="/usuarios/editar/"]');
+if (form) {
+  form.addEventListener('submit', function (e) {
+    if (!validarSenhaNova()) {
+      e.preventDefault();
     }
-  }
+  });
+}
 
-  selectPerfil.addEventListener('change', atualizarVisibilidadeCondominios);
-  atualizarVisibilidadeCondominios(); // executa ao carregar
-
-    const senhaNova = document.getElementById('senhaNova');
-  const senhaNovaConfirm = document.getElementById('senhaNovaConfirm');
-
-  function validarSenhaNova() {
-    if (!senhaNova || !senhaNovaConfirm) return true;
-
-    const s1 = senhaNova.value;
-    const s2 = senhaNovaConfirm.value;
-
-    // Se os dois estiverem vazios, não valida nada (não vai trocar senha)
-    if (!s1 && !s2) {
-      senhaNova.classList.remove('is-invalid');
-      senhaNovaConfirm.classList.remove('is-invalid');
-      return true;
-    }
-
-    if (s1.length < 6) {
-      senhaNova.classList.add('is-invalid');
-      return false;
-    } else {
-      senhaNova.classList.remove('is-invalid');
-    }
-
-    if (s1 !== s2) {
-      senhaNovaConfirm.classList.add('is-invalid');
-      return false;
-    } else {
-      senhaNovaConfirm.classList.remove('is-invalid');
-    }
-
-    return true;
-  }
-
-  if (senhaNova && senhaNovaConfirm) {
-    senhaNova.addEventListener('input', validarSenhaNova);
-    senhaNovaConfirm.addEventListener('input', validarSenhaNova);
-
-    const form = document.querySelector('form[action^="/usuarios/editar/"]');
-    if (form) {
-      form.addEventListener('submit', function (e) {
-        if (!validarSenhaNova()) {
-          e.preventDefault();
-        }
-      });
-    }
-  }
-
+}
 </script>
