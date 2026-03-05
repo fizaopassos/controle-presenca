@@ -504,7 +504,16 @@ color: #ffffff;
 }
 
 
-
+#userMenuDropdown {
+width: auto !important;
+height: auto !important;
+border-radius: .25rem !important;
+padding: .25rem .5rem !important;
+font-size: .875rem !important;
+text-indent: 0 !important;
+overflow: visible !important;
+white-space: nowrap !important;
+}
 
 
 

@@ -23,9 +23,79 @@
   </form>
 
   <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-    <button type="button" class="btn btn-outline-success btn-sm" id="btnSelecionarTodosPresente" disabled>
-      Selecionar todos: Presente
-    </button>
+    <div class="btn-group">
+<button type="button"
+          class="btn btn-outline-secondary btn-sm dropdown-toggle"
+          id="btnSelecionarTodosPresente"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+          disabled>
+          Aplicar em massa
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="btnSelecionarTodosPresente">
+<li>
+<button class="dropdown-item"
+type="button"
+data-bulk-status="presente"
+data-confirm="1"
+data-confirm-title="Aplicar em massa"
+data-confirm-body="Selecionar todos os não lançados como Presente?"
+data-confirm-ok="Aplicar">
+Selecionar todos: Presente
+</button>
+</li>
+
+<li>
+<button class="dropdown-item"
+type="button"
+data-bulk-status="folga"
+data-confirm="1"
+data-confirm-title="Aplicar em massa"
+data-confirm-body="Selecionar todos os não lançados como Folga?"
+data-confirm-ok="Aplicar">
+Selecionar todos: Folga
+</button>
+</li>
+
+<li>
+<button class="dropdown-item"
+type="button"
+data-bulk-status="falta"
+data-confirm="1"
+data-confirm-title="Aplicar em massa"
+data-confirm-body="Selecionar todos os não lançados como Falta?"
+data-confirm-ok="Aplicar">
+Selecionar todos: Falta
+</button>
+</li>
+
+<li>
+<button class="dropdown-item"
+type="button"
+data-bulk-status="atestado"
+data-confirm="1"
+data-confirm-title="Aplicar em massa"
+data-confirm-body="Selecionar todos os não lançados como Atestado?"
+data-confirm-ok="Aplicar">
+Selecionar todos: Atestado
+</button>
+</li>
+
+<li>
+<button class="dropdown-item"
+type="button"
+data-bulk-status="ferias"
+data-confirm="1"
+data-confirm-title="Aplicar em massa"
+data-confirm-body="Selecionar todos os não lançados como Férias?"
+data-confirm-ok="Aplicar">
+Selecionar todos: Férias
+</button>
+</li>
+</ul>
+</ul>
+</div>
+
     <button type="button" class="btn btn-success btn-sm" id="btnConfirmarTudo" disabled>
       Confirmar lançamentos
     </button>
@@ -94,9 +164,9 @@
     padding-left: 8px;
   }
 
-  card-pendente,
+  .card-pendente,
 .card-nao-lancado {
-background: #fff3cd; /* amarelo suave */
+background: #fff3cd;
 }
 
 /* opcional: deixa o “Pendente” mais forte */
@@ -252,6 +322,46 @@ document.addEventListener('DOMContentLoaded', function () {
     btnConfirmarTudo.disabled        = (idsProc.length === 0);
     btnSelecionarTodosPresente.disabled = (total === 0);
   }
+
+  function aplicarStatusEmMassa(novoStatus) {
+listaIds.forEach(function (id) {
+var sid = String(id);
+var s = estado[sid];
+if (!s) return;
+
+  // Regras de bloqueio (mesmas do resto do sistema)
+  if (s.presente_outro_condominio) return;
+  if (s.eh_externo)                return;
+  if (s.tipo === 'falta_efetivo')  return;
+
+  // Só altera quem estiver SEM lançamento
+  var atual = (s.status != null) ? String(s.status) : '';
+  if (atual !== '') return;
+
+  // Define o novo status
+  s.status = novoStatus;
+
+  // Zera obs se esse status não exige observação
+  if (STATUS_COM_OBS.indexOf(novoStatus) === -1) {
+    s.observacoes = '';
+  }
+
+  // Zera cobertura se esse status não usa cobertura
+  if (!needsCobertura(novoStatus)) {
+    s.cobertura_id   = null;
+    s.cobertura_nome = '';
+  }
+
+  // Expande só se não for "presente"
+  s.expanded = (novoStatus !== 'presente');
+
+  estado[sid] = s;
+  rerenderCardById(sid);
+});
+
+atualizarResumo();
+
+}
 
   function buscarCoberturasPorNome(empresaId, termo, callback) {
     if (!termo || termo.length < 2) { if (typeof callback === 'function') callback([]); return; }
@@ -1023,24 +1133,14 @@ return;
     }
   });
 
-  // Selecionar todos: Presente
-  btnSelecionarTodosPresente.addEventListener('click', function () {
-    listaIds.forEach(function (id) {
-      var s = estado[String(id)];
-      if (!s) return;
-      if (s.presente_outro_condominio) return;
-      if (s.eh_externo)                return;
-      if (s.tipo === 'falta_efetivo')  return;
-      s.status         = 'presente';
-      s.observacoes    = '';
-      s.cobertura_id   = null;
-      s.cobertura_nome = '';
-      s.expanded       = false;
-      estado[String(id)] = s;
-      rerenderCardById(String(id));
-    });
-    atualizarResumo();
-  });
+  // Aplicar em massa (Presente, Folga, Falta, etc.) só em "Não lançado"
+document.querySelectorAll('button[data-bulk-status]').forEach(function (btn) {
+btn.addEventListener('confirmed', function () {
+var status = btn.getAttribute('data-bulk-status');
+if (!status) return;
+aplicarStatusEmMassa(status);
+});
+});
 
   // ============================
   // CONFIRMAR LANÇAMENTOS
