@@ -462,12 +462,21 @@ atualizarResumo();
       badge = { cls: 'bg-success', text: 'Presente (cobertura)' };
     }
 
-    var pendente = isPendente(id);
-    var pendBadge = (estaEmOutroCond || isExterno)
-      ? '<span class="badge bg-success">Confirmado</span>'
-      : (pendente
-          ? '<span class="badge bg-primary">Pendente</span>'
-          : '<span class="badge bg-success">Confirmado</span>');
+   var pendente = isPendente(id);
+
+var pendBadge = '';
+if (estaEmOutroCond || isExterno) {
+pendBadge = '<span class="badge bg-success">Confirmado</span>';
+} else if (!statusAtual || statusAtual === '') {
+// Não lançado ainda => pendente (aberto)
+pendBadge = '<span class="badge bg-primary">Pendente</span>';
+} else if (pendente) {
+// Alterado e ainda não confirmou
+pendBadge = '<span class="badge bg-primary">Pendente</span>';
+} else {
+// Tem status e não mudou nada em relação ao original (já confirmado)
+pendBadge = '<span class="badge bg-success">Confirmado</span>';
+}
 
      var naoLancado = (!statusAtual || statusAtual === '') && !estaEmOutroCond && !isExterno && !isFaltaEfetivo;
 
