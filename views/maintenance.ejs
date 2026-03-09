@@ -1,1 +1,206 @@
-Sistema em manutenção..
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title || 'Manutenção' %></title>
+
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+<style>
+:root{
+--bg1:#0b1220;
+--bg2:#0f1b2d;
+--card:#0f172a;
+--muted:#94a3b8;
+--text:#e5e7eb;
+--border:rgba(255,255,255,.10);
+--brand:#60a5fa;
+--warn:#fbbf24;
+}
+body{
+min-height:100vh;
+background:
+radial-gradient(900px 400px at 15% 15%, rgba(96,165,250,.18), transparent 60%),
+radial-gradient(700px 350px at 85% 25%, rgba(251,191,36,.14), transparent 60%),
+linear-gradient(180deg, var(--bg1), var(--bg2));
+color:var(--text);
+}
+.shell{
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:24px;
+}
+.cardx{
+width:100%;
+max-width:780px;
+border:1px solid var(--border);
+background:rgba(15,23,42,.82);
+backdrop-filter: blur(10px);
+border-radius:18px;
+box-shadow: 0 12px 40px rgba(0,0,0,.35);
+overflow:hidden;
+}
+.top{
+padding:22px 22px 0 22px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:16px;
+}
+.brand{
+display:flex;
+align-items:center;
+gap:12px;
+min-width:0;
+}
+.brand img{
+width:36px;
+height:36px;
+object-fit:contain;
+}
+.brand .name{
+font-weight:700;
+letter-spacing:.2px;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+}
+.badge-soft{
+border:1px solid rgba(251,191,36,.35);
+background:rgba(251,191,36,.12);
+color:#fde68a;
+border-radius:999px;
+padding:6px 10px;
+font-size:.85rem;
+display:inline-flex;
+align-items:center;
+gap:8px;
+white-space:nowrap;
+}
+.content{
+padding:16px 22px 22px 22px;
+}
+.title{
+font-size:1.65rem;
+line-height:1.2;
+font-weight:800;
+margin:10px 0 8px 0;
+}
+.subtitle{
+color:var(--muted);
+margin:0 0 18px 0;
+font-size:1rem;
+}
+.panel{
+border:1px solid var(--border);
+border-radius:14px;
+padding:14px 14px;
+background:rgba(2,6,23,.35);
+}
+.k{
+color:var(--muted);
+font-size:.86rem;
+}
+.v{
+font-weight:700;
+}
+.hrx{
+height:1px;
+background:rgba(255,255,255,.08);
+margin:14px 0;
+}
+.btnx{
+border-radius:12px;
+padding:10px 14px;
+}
+.foot{
+color:var(--muted);
+font-size:.85rem;
+display:flex;
+justify-content:space-between;
+gap:12px;
+flex-wrap:wrap;
+margin-top:12px;
+}
+.spinner{
+width:18px;height:18px;
+border:2px solid rgba(255,255,255,.25);
+border-top-color: rgba(96,165,250,.9);
+border-radius:50%;
+animation: spin 1s linear infinite;
+}
+@keyframes spin{ to{ transform: rotate(360deg);} }
+</style>
+</head>
+<body>
+<div class="shell">
+<div class="cardx">
+<div class="top">
+<div class="brand">
+<img src="/img/logo.png" alt="Logo">
+<div class="name">Controle de Presença</div>
+</div>
+
+    <div class="badge-soft">
+      <span class="spinner" aria-hidden="true"></span>
+      Em manutenção
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="title">Estamos realizando uma atualização</div>
+    <p class="subtitle">
+      O sistema está temporariamente indisponível para garantir melhorias e estabilidade.
+      Tente novamente em alguns minutos.
+    </p>
+
+    <div class="panel">
+      <div class="row g-3 align-items-center">
+        <div class="col-12 col-md-6">
+          <div class="k">Status</div>
+          <div class="v">Manutenção programada</div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="k">Acesso</div>
+          <div class="v">Admins podem acessar normalmente</div>
+        </div>
+      </div>
+
+      <div class="hrx"></div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-light btnx" href="/auth/login">
+          <i class="bi bi-box-arrow-in-right me-2"></i> Ir para o login
+        </a>
+        <a class="btn btn-primary btnx" href="javascript:location.reload()">
+          <i class="bi bi-arrow-clockwise me-2"></i> Tentar novamente
+        </a>
+        <a class="btn btn-outline-warning btnx" href="/auth/logout">
+          <i class="bi bi-door-open me-2"></i> Sair
+        </a>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div>Se estiver demorando, aguarde 2–5 minutos e atualize a página.</div>
+      <div>HTTP 503</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// Atualiza automaticamente a cada 30s (opcional)
+setTimeout(() => {
+try { location.reload(); } catch (e) {}
+}, 30000);
+</script>
+</body>
+</html>
