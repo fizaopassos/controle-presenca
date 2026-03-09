@@ -1,173 +1,195 @@
 <%
 const isNovo = (acao === 'novo');
+const modal = (typeof isModal !== 'undefined') ? !!isModal : false;
 
 const postUrl  = isNovo
-  ? '/colaboradores/novo'
-  : '/colaboradores/editar/' + colaborador.id;
+? '/colaboradores/novo'
+: '/colaboradores/editar/' + colaborador.id;
 
 const hxTarget = isNovo
-  ? '#tabelaColaboradores'
-  : '#colaborador-' + colaborador.id;
+? '#tabelaColaboradores'
+: '#colaborador-' + colaborador.id;
 
 const hxSwap = isNovo ? 'beforeend' : 'outerHTML';
+
+const tipoAtual = (colaborador && colaborador.tipo) ? colaborador.tipo : 'fixo';
+
+const dataInicioVal = (() => {
+if (colaborador && colaborador.data_inicio) {
+if (typeof colaborador.data_inicio === 'string') return colaborador.data_inicio.slice(0, 10);
+try { return new Date(colaborador.data_inicio).toISOString().slice(0, 10); } catch (e) {}
+}
+return new Date().toISOString().slice(0, 10);
+})();
+
+const ativoAtual = (colaborador && typeof colaborador.ativo !== 'undefined')
+? (colaborador.ativo ? true : false)
+: true;
+
+let voltarUrl = '/colaboradores';
+if (colaborador && colaborador.tipo === 'fixo' && colaborador.condominio_id) {
+voltarUrl = '/colaboradores?condominio_id=' + colaborador.condominio_id;
+}
 %>
 
 <form
-  id="formColaboradorHtmx"
-  class="row g-3"
-  method="post"
+id="formColaboradorHtmx"
+class="row g-3"
+method="post"
+action="<%= postUrl %>"
+<% if (modal) { %>
+hx-post="<%= postUrl %>"
+hx-target="<%= hxTarget %>"
+hx-swap="<%= hxSwap %>"
+<% } %>
+
+<div class="col-12" id="alertaColaboradorModal"></div>
+
+<div class="col-12 col-lg-6">
+<label class="form-label" for="nome">Nome *</label>
+<input
+class="form-control form-control-sm"
+id="nome"
+name="nome"
+required
+value="<%= colaborador ? colaborador.nome : '' %>"
 >
-  <div class="col-12">
-    <h5 class="mb-2"><%= isNovo ? 'Novo Colaborador' : 'Editar Colaborador' %></h5>
-  </div>
+</div>
 
-  <!-- Área de alerta dentro do modal -->
-  <div class="col-12" id="alertaColaboradorModal"></div>
+<div class="col-12 col-lg-3">
+<label class="form-label" for="empresa_id">Empresa *</label>
+<select class="form-select form-select-sm" id="empresa_id" name="empresa_id" required>
+<option value="">Selecione...</option>
+<% empresas.forEach(e => { %>
+<option value="<%= e.id %>" <%= (colaborador && Number(colaborador.empresa_id) === Number(e.id)) ? 'selected' : '' %>>
+<%= e.nome %>
+</option>
+<% }) %>
+</select>
+</div>
 
-  <div class="col-12 col-lg-6">
-    <label class="form-label" for="nome">Nome *</label>
-    <input
-      class="form-control"
-      id="nome"
-      name="nome"
-      required
-      value="<%= colaborador ? colaborador.nome : '' %>"
-    >
-  </div>
+<div class="col-12 col-lg-3">
+<label class="form-label" for="tipo">Tipo *</label>
+<select class="form-select form-select-sm" id="tipo" name="tipo" required>
+<option value="fixo" <%= tipoAtual === 'fixo' ? 'selected' : '' %>>Fixo</option>
+<option value="cobertura" <%= tipoAtual === 'cobertura' ? 'selected' : '' %>>Cobertura</option>
+</select>
+</div>
 
-  <div class="col-12 col-lg-3">
-    <label class="form-label" for="empresa_id">Empresa *</label>
-    <select class="form-select" id="empresa_id" name="empresa_id" required>
-      <option value="">Selecione...</option>
-      <% empresas.forEach(e => { %>
-        <option value="<%= e.id %>" <%= (colaborador && colaborador.empresa_id === e.id) ? 'selected' : '' %>>
-          <%= e.nome %>
-        </option>
-      <% }) %>
-    </select>
-  </div>
+<div class="col-12 col-lg-3" id="grupoDataInicio">
+<label class="form-label" for="data_inicio">Data de início *</label>
+<input
+type="date"
+class="form-control form-control-sm"
+id="data_inicio"
+name="data_inicio"
+value="<%= dataInicioVal %>"
+>
+</div>
 
-  <div class="col-12 col-lg-3">
-    <label class="form-label" for="tipo">Tipo *</label>
-    <select class="form-select" id="tipo" name="tipo" required>
-      <%
-      const tipoAtual = colaborador && colaborador.tipo ? colaborador.tipo : 'fixo';
-      %>
-      <option value="fixo" <%= tipoAtual === 'fixo' ? 'selected' : '' %>>Fixo</option>
-      <option value="cobertura" <%= tipoAtual === 'cobertura' ? 'selected' : '' %>>Cobertura</option>
-    </select>
-  </div>
+<div class="col-12 col-lg-5" id="grupoCondominio">
+<label class="form-label" for="condominio_id">Condomínio *</label>
+<select class="form-select form-select-sm" id="condominio_id" name="condominio_id">
+<option value="">Selecione...</option>
+<% condominios.forEach(cond => { %>
+<option value="<%= cond.id %>" <%= (colaborador && Number(colaborador.condominio_id) === Number(cond.id)) ? 'selected' : '' %>>
+<%= cond.nome %>
+</option>
+<% }) %>
+</select>
+</div>
 
-  <div class="col-12 col-lg-6" id="grupoCondominio">
-    <label class="form-label" id="labelCondominio" for="condominio_id">Condomínio</label>
-    <select class="form-select" id="condominio_id" name="condominio_id">
-      <option value="">Selecione...</option>
-      <% condominios.forEach(cond => { %>
-        <option value="<%= cond.id %>" <%= (colaborador && colaborador.condominio_id === cond.id) ? 'selected' : '' %>>
-          <%= cond.nome %>
-        </option>
-      <% }) %>
-    </select>
-    <small class="text-muted" id="helpCondominio">
-      Para colaboradores de Cobertura, este campo pode ficar em branco.
-    </small>
-  </div>
+<div class="col-12 col-lg-4" id="grupoPosto">
+<label class="form-label" for="posto_id">Posto *</label>
+<select class="form-select form-select-sm" id="posto_id" name="posto_id">
+<option value="">Selecione...</option>
+<% postos.forEach(p => { %>
+<option value="<%= p.id %>" <%= (colaborador && Number(colaborador.posto_id) === Number(p.id)) ? 'selected' : '' %>>
+<%= p.nome %>
+</option>
+<% }) %>
+</select>
+</div>
 
-  <div class="col-12 col-lg-6">
-    <label class="form-label" id="labelPosto" for="posto_id">Posto</label>
-    <select class="form-select" id="posto_id" name="posto_id">
-      <option value="">Selecione...</option>
-      <% postos.forEach(p => { %>
-        <option value="<%= p.id %>" <%= (colaborador && colaborador.posto_id === p.id) ? 'selected' : '' %>>
-          <%= p.nome %>
-        </option>
-      <% }) %>
-    </select>
-    <small class="text-muted" id="helpPosto">
-      Para colaboradores de Cobertura, este campo pode ficar em branco.
-    </small>
-  </div>
+<div class="col-12" id="alertImpactoDataInicio">
+<div class="alert alert-light border py-2 mb-0 small">
+<strong>Impacto no lançamento:</strong> o colaborador passa a contar a partir da Data de início.
+Se você colocar uma data retroativa, o calendário pode indicar pendências desde essa data.
+</div>
+</div>
 
-  <% if (!isNovo) { %>
-    <div class="col-12">
-      <div class="form-check form-switch">
-        <input
-          class="form-check-input"
-          type="checkbox"
-          name="ativo"
-          id="ativo"
-          <%= colaborador && colaborador.ativo ? 'checked' : '' %>
-        >
-        <label class="form-check-label" for="ativo">Ativo</label>
-      </div>
-    </div>
-  <% } %>
+<% if (!isNovo) { %>
+<div class="col-12 col-lg-4" id="grupoAtivo">
+<label class="form-label d-block">Status</label>
+<div class="form-check form-switch">
+<input
+class="form-check-input"
+type="checkbox"
+id="ativo"
+name="ativo"
+<%= ativoAtual ? 'checked' : '' %>
+>
+<label class="form-check-label" for="ativo">Colaborador ativo</label>
+</div>
+</div>
+<% } %>
 
-  <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-      Cancelar
-    </button>
-    <button
-      type="button"
-      class="btn btn-primary"
-      data-confirm="1"
-      data-confirm-title="Confirmar <%= isNovo ? 'cadastro' : 'edição' %>"
-      data-confirm-body="Deseja realmente <%= isNovo ? 'cadastrar' : 'salvar as alterações' %> deste colaborador?"
-      data-confirm-ok="Sim, continuar"
-      hx-post="<%= postUrl %>"
-      hx-target="<%= hxTarget %>"
-      hx-swap="<%= hxSwap %>"
-      hx-trigger="confirmed"
-      hx-include="#formColaboradorHtmx"
-    >
-      Salvar
-    </button>
-  </div>
+<div class="col-12 d-flex gap-2 justify-content-end mt-2">
+<% if (modal) { %>
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+<% } else { %>
+<a class="btn btn-outline-secondary" href="<%= voltarUrl %>">Cancelar</a>
+<% } %>
+
+<button type="submit" class="btn btn-primary">
+  <%= isNovo ? 'Cadastrar' : 'Salvar' %>
+</button>
+
+</div>
 </form>
 
 <script>
 (function () {
-  const tipo = document.getElementById('tipo');
-  const cond = document.getElementById('condominio_id');
-  const posto = document.getElementById('posto_id');
+const tipoEl = document.getElementById('tipo');
 
-  const grupoCondominio = document.getElementById('grupoCondominio');
-  const labelCond = document.getElementById('labelCondominio');
-  const labelPosto = document.getElementById('labelPosto');
-  const helpCond = document.getElementById('helpCondominio');
-  const helpPosto = document.getElementById('helpPosto');
+const grupoDataInicio = document.getElementById('grupoDataInicio');
+const dataInicioEl = document.getElementById('data_inicio');
 
-  if (!tipo || !cond || !posto) return;
+const grupoCondominio = document.getElementById('grupoCondominio');
+const condEl = document.getElementById('condominio_id');
 
-  function aplicarRegra() {
-    const tipoVal = (tipo.value || '').toLowerCase();
-    const ehFixo = tipoVal === 'fixo';
+const grupoPosto = document.getElementById('grupoPosto');
+const postoEl = document.getElementById('posto_id');
 
-    cond.required = ehFixo;
-    posto.required = ehFixo;
+const alertImpacto = document.getElementById('alertImpactoDataInicio');
 
-    if (grupoCondominio) {
-      if (ehFixo) {
-        grupoCondominio.style.display = '';
-      } else {
-        grupoCondominio.style.display = 'none';
-        cond.value = '';
-      }
-    }
+function aplicarRegrasTipo() {
+  const tipo = (tipoEl.value || 'fixo').toLowerCase();
+  const isFixo = (tipo === 'fixo');
 
-    if (labelCond) labelCond.textContent = ehFixo ? 'Condomínio *' : 'Condomínio';
-    if (labelPosto) labelPosto.textContent = ehFixo ? 'Posto *' : 'Posto';
+  if (isFixo) {
+    grupoDataInicio.classList.remove('d-none');
+    grupoCondominio.classList.remove('d-none');
+    grupoPosto.classList.remove('d-none');
+    if (alertImpacto) alertImpacto.classList.remove('d-none');
 
-    if (helpCond) helpCond.textContent = ehFixo
-      ? 'Para colaboradores FIXOS, este campo é obrigatório.'
-      : 'Para colaboradores de Cobertura, este campo pode ficar em branco.';
+    dataInicioEl.required = true;
+    condEl.required = true;
+    postoEl.required = true;
+  } else {
+    grupoDataInicio.classList.add('d-none');
+    grupoCondominio.classList.add('d-none');
+    grupoPosto.classList.add('d-none');
+    if (alertImpacto) alertImpacto.classList.add('d-none');
 
-    if (helpPosto) helpPosto.textContent = ehFixo
-      ? 'Para colaboradores FIXOS, este campo é obrigatório.'
-      : 'Para colaboradores de Cobertura, este campo pode ficar em branco.';
+    dataInicioEl.required = false;
+    condEl.required = false;
+    postoEl.required = false;
   }
+}
 
-  tipo.addEventListener('change', aplicarRegra);
-  aplicarRegra();
+tipoEl.addEventListener('change', aplicarRegrasTipo);
+aplicarRegrasTipo();
+
 })();
 </script>

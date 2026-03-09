@@ -71,6 +71,18 @@ Olá, <%= usuario.nome %> (<%= usuario.perfil %>)
 </div>
 </header>
 
+<% if (avisoSistema) { %>
+<div class="system-ticker">
+<div class="system-ticker-track">
+<span>⚠ Aviso do sistema:</span>
+<span><%= avisoSistema %></span>
+<span>•</span>
+<span>⚠ Aviso do sistema:</span>
+<span><%= avisoSistema %></span>
+</div>
+</div>
+<% } %>
+
 <main class="app-content <%= _mainClass %>">
 <%- include(page) %>
 </main>

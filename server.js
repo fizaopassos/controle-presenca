@@ -60,6 +60,12 @@ return res.status(503).render('maintenance', { title: 'Manutenção' });
 // ========================
 const PORT = process.env.PORT || 3000;
 
+app.use((req, res, next) => {
+res.locals.usuario = req.session?.user || null;
+res.locals.avisoSistema = process.env.AVISO_SISTEMA || null;
+next();
+});
+
 // Necessário para cookies secure atrás do Nginx
 app.set('trust proxy', 1);
 

@@ -515,5 +515,32 @@ overflow: visible !important;
 white-space: nowrap !important;
 }
 
+.system-ticker {
+width: 100%;
+overflow: hidden;
+background: #fff3cd;
+border-bottom: 1px solid #ffe69c;
+color: #664d03;
+font-size: 0.85rem;
+}
 
+.system-ticker-track {
+display: inline-block;
+white-space: nowrap;
+padding: 6px 0;
+animation: tickerScroll 25s linear infinite;
+}
+
+.system-ticker-track span {
+margin-right: 40px;
+}
+
+@keyframes tickerScroll {
+from {
+transform: translateX(100%);
+}
+to {
+transform: translateX(-100%);
+}
+}
 
