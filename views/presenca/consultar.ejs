@@ -381,8 +381,8 @@ let html = '<div class="table-responsive"><table class="table table-striped tabl
 html += '<thead class="table-dark">';
 html += '<tr>';
 html += '<th>Data</th>';
-html += '<th>Colaborador</th>';
 html += '<th>Condomínio</th>';
+html += '<th>Colaborador</th>';
 html += '<th>Empresa</th>';
 html += '<th>Posto</th>';
 html += '<th style="text-align: center;">Status</th>';
@@ -396,8 +396,8 @@ presencas.forEach(function (p) {
 
   html += '<tr>';
   html += '<td>' + dataFormatada + '</td>';
-  html += '<td>' + p.colaborador + '</td>';
   html += '<td>' + p.condominio + '</td>';
+  html += '<td>' + p.colaborador + '</td>';
   html += '<td>' + (p.empresa || '-') + '</td>';
   html += '<td>' + (p.posto || '-') + '</td>';
   html += '<td style="text-align: center;">' + statusBadge + '</td>';
