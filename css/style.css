@@ -516,23 +516,27 @@ white-space: nowrap !important;
 }
 
 .system-ticker {
+position: fixed;
+top: 56px; /* altura da navbar */
+left: 0;
 width: 100%;
 overflow: hidden;
 background: #fff3cd;
 border-bottom: 1px solid #ffe69c;
 color: #664d03;
-font-size: 0.85rem;
+font-size: 0.9rem;
+z-index: 1030;
 }
 
 .system-ticker-track {
 display: inline-block;
 white-space: nowrap;
 padding: 6px 0;
-animation: tickerScroll 25s linear infinite;
+animation: tickerScroll 45s linear infinite;
 }
 
 .system-ticker-track span {
-margin-right: 40px;
+margin-right: 60px;
 }
 
 @keyframes tickerScroll {
