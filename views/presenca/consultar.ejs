@@ -463,8 +463,8 @@ function exportarExcel(dados) {
 
 const linhas = dados.map(p => ({
 Data: formatarData(p.data),
-Colaborador: p.colaborador,
 Condomínio: p.condominio,
+Colaborador: p.colaborador,
 Empresa: p.empresa || '-',
 Posto: p.posto || '-',
 Status: p.status,
