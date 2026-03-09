@@ -382,8 +382,8 @@ html += '<thead class="table-dark">';
 html += '<tr>';
 html += '<th>Data</th>';
 html += '<th>Colaborador</th>';
-html += '<th>Empresa</th>';
 html += '<th>Condomínio</th>';
+html += '<th>Empresa</th>';
 html += '<th>Posto</th>';
 html += '<th style="text-align: center;">Status</th>';
 html += '<th>Observações</th>';
@@ -397,8 +397,8 @@ presencas.forEach(function (p) {
   html += '<tr>';
   html += '<td>' + dataFormatada + '</td>';
   html += '<td>' + p.colaborador + '</td>';
-  html += '<td>' + (p.empresa || '-') + '</td>';
   html += '<td>' + p.condominio + '</td>';
+  html += '<td>' + (p.empresa || '-') + '</td>';
   html += '<td>' + (p.posto || '-') + '</td>';
   html += '<td style="text-align: center;">' + statusBadge + '</td>';
   html += '<td>' + (p.observacoes || '-') + '</td>';
@@ -449,38 +449,50 @@ document.getElementById('btnExportar').disabled = true;
 
 });
 
+
 // Exportar CSV
 document.getElementById('btnExportar').addEventListener('click', function () {
 if (!presencasGlobal || presencasGlobal.length === 0) {
 alert('Nenhum registro para exportar');
 return;
 }
-exportarCSV(presencasGlobal);
+exportarExcel(presencasGlobal);
 });
 
-function exportarCSV(dados) {
-let csv = 'Data;Colaborador;Empresa;Condomínio;Posto;Status;Observações\n';
+function exportarExcel(dados) {
 
-dados.forEach(function (p) {
-  const dataFormatada = formatarData(p.data);
-  csv += dataFormatada + ';';
-  csv += p.colaborador + ';';
-  csv += (p.empresa || '-') + ';';
-  csv += p.condominio + ';';
-  csv += (p.posto || '-') + ';';
-  csv += p.status + ';';
-  csv += (p.observacoes || '-') + '\n';
-});
+const linhas = dados.map(p => ({
+Data: formatarData(p.data),
+Colaborador: p.colaborador,
+Condomínio: p.condominio,
+Empresa: p.empresa || '-',
+Posto: p.posto || '-',
+Status: p.status,
+Observações: p.observacoes || '-'
+}));
 
-const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-const link = document.createElement('a');
-const url = URL.createObjectURL(blob);
-link.setAttribute('href', url);
-link.setAttribute('download', 'relatorio_presencas_' + new Date().getTime() + '.csv');
-link.style.visibility = 'hidden';
-document.body.appendChild(link);
-link.click();
-document.body.removeChild(link);
+const worksheet = XLSX.utils.json_to_sheet(linhas);
+
+// largura das colunas
+worksheet['!cols'] = [
+{ wch: 12 }, // Data
+{ wch: 28 }, // Colaborador
+{ wch: 28 }, // Condomínio
+{ wch: 25 }, // Empresa
+{ wch: 18 }, // Posto
+{ wch: 14 }, // Status
+{ wch: 40 }  // Observações
+];
+
+// cria workbook
+const workbook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(workbook, worksheet, "Presenças");
+
+// gera arquivo
+XLSX.writeFile(
+workbook,
+"relatorio_presencas_" + new Date().toISOString().slice(0,10) + ".xlsx"
+);
 
 }
 
