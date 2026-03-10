@@ -122,23 +122,34 @@ return res.status(500).send('Erro ao listar colaboradores');
 };
 
 exports.listarCoberturas = async (req, res) => {
-try {
-const sql = 'SELECT c.*, e.nome AS empresa_nome, p.nome AS posto_nome, cond.nome AS condominio_nome FROM colaboradores c LEFT JOIN empresas e ON c.empresa_id = e.id LEFT JOIN postos p ON c.posto_id = p.id LEFT JOIN condominios cond ON c.condominio_id = cond.id WHERE c.tipo = cobertura ORDER BY c.nome';
+  try {
 
-const [rows] = await db.query(sql);
+    const [coberturas] = await db.query(`
+      SELECT 
+        c.*, 
+        e.nome AS empresa_nome, 
+        p.nome AS posto_nome, 
+        cond.nome AS condominio_nome 
+      FROM colaboradores c
+      LEFT JOIN empresas e ON c.empresa_id = e.id
+      LEFT JOIN postos p ON c.posto_id = p.id
+      LEFT JOIN condominios cond ON c.condominio_id = cond.id
+      WHERE c.tipo = 'cobertura'
+      ORDER BY c.nome
+    `);
 
-return res.render('layout', {
-  title: 'Colaboradores - Coberturas',
-  page: 'colaboradores/lista',
-  menuAtivo: 'cadastros',
-  colaboradores: rows,
-  condominioSelecionado: { nome: 'Coberturas' }
-});
+    res.render('layout', {
+      title: 'Colaboradores',
+      menuAtivo: 'colaboradores',
+      page: 'colaboradores/lista',
+      colaboradores: coberturas,
+        condominioSelecionado: { nome: 'Coberturas' }
+    });
 
-} catch (error) {
-console.error('Erro ao listar coberturas:', error);
-return res.status(500).send('Erro ao listar coberturas');
-}
+  } catch (error) {
+    console.error('Erro ao listar coberturas:', error);
+    res.status(500).send('Erro ao listar coberturas');
+  }
 };
 
 exports.formNovo = async (req, res) => {

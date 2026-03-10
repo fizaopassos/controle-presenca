@@ -21,7 +21,9 @@ Novo colaborador
 </div>
 
 <%
-const isCoberturas = condominioSelecionado && condominioSelecionado.nome === 'Coberturas';
+const isCoberturas = typeof condominioSelecionado !== 'undefined' &&
+                     condominioSelecionado &&
+                     condominioSelecionado.nome === 'Coberturas';
 %>
 
 <% if (typeof condominioSelecionado !== 'undefined' && condominioSelecionado && !isCoberturas) { %>
