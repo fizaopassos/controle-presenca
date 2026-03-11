@@ -3,9 +3,16 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
+const Sentry = require('@sentry/node');
 
 const app = express();
 const perfilRoutes = require('./routes/perfil');
+
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'development',
+});
 
 // ========================
 // Validações de produção
@@ -118,6 +125,10 @@ next();
 // ========================
 app.use(maintenanceMiddleware);
 
+app.get('/erro-teste', (req, res) => {
+  throw new Error('Erro de teste do Sentry');
+});
+
 // ========================
 // Rotas
 // ========================
@@ -157,6 +168,27 @@ mainClass: 'container',
 menuAtivo: ''
 });
 });
+
+// ========================
+// Identificar o usuário - Sentry
+// ========================
+
+app.use((err, req, res, next) => {
+  Sentry.captureException(err);
+  next(err);
+});
+
+app.use((req, res, next) => {
+  if (req.session?.user) {
+    Sentry.setUser({
+      id: req.session.user.id,
+      username: req.session.user.nome,
+      email: req.session.user.email
+    });
+  }
+  next();
+});
+
 
 // ========================
 // Inicialização
