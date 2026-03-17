@@ -1,5 +1,6 @@
 require('../config/db');
 const db = require('../config/db');
+const registrarLog = require('../scripts/logger');
 
 function isHTMX(req) {
 return req.get('HX-Request') === 'true';
@@ -311,6 +312,15 @@ const [result] = await db.query(sqlInsert, [
   dataInicioFinal
 ]);
 
+await registrarLog({
+  req,
+  usuario_id: user.id,
+  acao: 'INSERT',
+  tabela: 'colaboradores',
+  registro_id: result.insertId,
+  descricao: `Criou colaborador ${nomeNormalizado}`
+});
+
 if (isHTMX(req)) {
   const insertedId = result.insertId;
 
@@ -515,6 +525,10 @@ if (tipoFinal === 'fixo') {
   // virou cobertura: não usa data_inicio
   dataInicioFinal = null;
 }
+const [[antes]] = await db.query(
+  'SELECT * FROM colaboradores WHERE id = ?',
+  [id]
+);
 
 const sqlUpdate = `
   UPDATE colaboradores
@@ -540,6 +554,25 @@ await db.query(sqlUpdate, [
   dataInicioFinal,
   id
 ]);
+
+await registrarLog({
+  req,
+  usuario_id: req.session.user.id,
+  acao: 'UPDATE',
+  tabela: 'colaboradores',
+  registro_id: id,
+  descricao: `Alterou colaborador ${nomeNormalizado} (ID ${id})`,
+  dados_antes: antes,
+  dados_depois: {
+    nome: nomeNormalizado,
+    empresa_id,
+    condominio_id: condFinal,
+    posto_id: postoFinal,
+    tipo: tipoFinal,
+    ativo: ativoBool,
+    data_inicio: dataInicioFinal
+  }
+});
 
 if (isHTMX(req)) {
   const sqlSelectUm =
@@ -577,14 +610,28 @@ const { id } = req.params;
 const { data_inativacao } = req.body;
 
 try {
+
 if (!data_inativacao) {
-return res.status(400).send('Data de inativação é obrigatória.');
+  return res.status(400).send('Data de inativação é obrigatória.');
 }
 
 if (!/^\d{4}-\d{2}-\d{2}$/.test(data_inativacao)) {
   return res.status(400).send('Formato de data inválido (use YYYY-MM-DD).');
 }
 
+/* BUSCA O NOME DO COLABORADOR */
+const [[colab]] = await db.query(
+  'SELECT nome FROM colaboradores WHERE id = ?',
+  [id]
+);
+
+if (!colab) {
+  return res.status(404).send('Colaborador não encontrado');
+}
+
+const nomeColaborador = colab.nome;
+
+/* INATIVA O COLABORADOR */
 const sql = `
   UPDATE colaboradores
   SET ativo = 0,
@@ -594,7 +641,19 @@ const sql = `
 
 await db.query(sql, [data_inativacao, id]);
 
+/* LOG DA AÇÃO */
+await registrarLog({
+  req,
+  usuario_id: req.session.user.id,
+  acao: 'UPDATE',
+  tabela: 'colaboradores',
+  registro_id: id,
+  descricao: `Inativou colaborador ${nomeColaborador} em ${data_inativacao}`
+});
+
+/* RETORNO PARA HTMX */
 if (isHTMX(req)) {
+
   const sqlSelectUm = `
     SELECT 
       c.*, 
@@ -607,66 +666,102 @@ if (isHTMX(req)) {
     LEFT JOIN condominios cond ON c.condominio_id = cond.id 
     WHERE c.id = ?
   `;
+
   const [rows] = await db.query(sqlSelectUm, [id]);
+
   return res.render('colaboradores/_linha', { c: rows[0] });
 }
 
 return res.redirect('/colaboradores');
 
 } catch (error) {
+
 console.error('Erro ao inativar colaborador:', error);
 return res.status(500).send('Erro ao inativar colaborador');
+
 }
 };
 
+
 exports.toggleAtivo = async (req, res) => {
 const { id } = req.params;
+const { data_ativacao } = req.body;
 
 try {
+
 const [rows] = await db.query(
-'SELECT ativo FROM colaboradores WHERE id = ?',
+'SELECT nome, ativo FROM colaboradores WHERE id = ?',
 [id]
 );
+
 if (rows.length === 0) {
 return res.status(404).send('Colaborador não encontrado');
 }
 
+const nomeColaborador = rows[0].nome;
 const ativoAtual = rows[0].ativo ? 1 : 0;
 
-// Se está inativo, ATIVA (e limpa inativado_em)
+// Se está inativo → REATIVAR
 if (ativoAtual === 0) {
-  const sql = `
-    UPDATE colaboradores
-    SET ativo = 1,
-        inativado_em = NULL
-    WHERE id = ?
-  `;
-  await db.query(sql, [id]);
 
-  if (isHTMX(req)) {
-    const sqlSelectUm = `
-      SELECT 
-        c.*, 
-        e.nome AS empresa_nome, 
-        p.nome AS posto_nome, 
-        cond.nome AS condominio_nome 
-      FROM colaboradores c 
-      LEFT JOIN empresas e ON c.empresa_id = e.id 
-      LEFT JOIN postos p ON c.posto_id = p.id 
-      LEFT JOIN condominios cond ON c.condominio_id = cond.id 
-      WHERE c.id = ?
-    `;
-    const [rows] = await db.query(sqlSelectUm, [id]);
-    return res.render('colaboradores/_linha', { c: rows[0] });
-  }
+if (!data_ativacao) {
+return res.status(400).send('Data de ativação é obrigatória.');
+}
 
-  return res.redirect('/colaboradores');
+if (!/^\d{4}-\d{2}-\d{2}$/.test(data_ativacao)) {
+return res.status(400).send('Formato de data inválido (use YYYY-MM-DD).');
+}
+
+const sql = `
+UPDATE colaboradores
+SET ativo = 1,
+    inativado_em = NULL,
+    data_inicio = ?
+WHERE id = ?
+`;
+
+await db.query(sql, [data_ativacao, id]);
+
+await registrarLog({
+req,
+usuario_id: req.session.user.id,
+acao: 'UPDATE',
+tabela: 'colaboradores',
+registro_id: id,
+descricao: `Reativou colaborador ${nomeColaborador} em ${data_ativacao}`
+});
+
+if (isHTMX(req)) {
+
+const sqlSelectUm = `
+SELECT 
+c.*, 
+e.nome AS empresa_nome, 
+p.nome AS posto_nome, 
+cond.nome AS condominio_nome 
+FROM colaboradores c 
+LEFT JOIN empresas e ON c.empresa_id = e.id 
+LEFT JOIN postos p ON c.posto_id = p.id 
+LEFT JOIN condominios cond ON c.condominio_id = cond.id 
+WHERE c.id = ?
+`;
+
+const [rows] = await db.query(sqlSelectUm, [id]);
+
+return res.render('colaboradores/_linha', { c: rows[0] });
+
+}
+
+return res.redirect('/colaboradores');
+
 }
 
 return res.status(400).send('Use a rota de inativação com data.');
 
 } catch (error) {
+
 console.error('Erro ao alterar status do colaborador:', error);
 return res.status(500).send('Erro ao alterar status do colaborador');
+
 }
 };

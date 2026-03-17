@@ -2,6 +2,7 @@ const db = require('../config/db');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const registrarLog = require('../scripts/logger');
 
 // ========================================
 // TELA: Lançar presença
@@ -554,6 +555,14 @@ exports.lancarPresenca = async (req, res) => {
     }
 
     await connection.commit();
+    await registrarLog({
+  req,
+  usuario_id: usuario.id,
+  acao: 'INSERT',
+  tabela: 'presencas_diarias',
+  descricao: `Lançou presenças do dia ${data}`
+});
+
     res.json({ success: true, message: 'Presenças salvas com sucesso!' });
 
   } catch (error) {

@@ -1265,5 +1265,65 @@ aplicarStatusEmMassa(status);
     }
   });
 
+  // AUTO-PREENCER vindo do dashboard
+document.addEventListener('DOMContentLoaded', function () {
+  
+  // Pega parâmetros da URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const condId = urlParams.get('condominio_id');
+  const data = urlParams.get('data');
+  
+  if (condId && data) {
+    
+    // Preenche os campos
+    const inputCondominio = document.getElementById('inputCondominio');
+    const inputData = document.getElementById('inputData');
+    
+    if (inputCondominio) {
+      inputCondominio.value = condId;
+      inputCondominio.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    if (inputData) {
+      inputData.value = data;
+      if (window.fpData) {
+        window.fpData.setDate(data); // atualiza o flatpickr
+      }
+    }
+    
+    // Simula clique no "Buscar" (com delay pra garantir)
+    setTimeout(function() {
+      const btnBuscar = document.getElementById('btnBuscar');
+      if (btnBuscar && !btnBuscar.disabled) {
+        btnBuscar.click();
+      }
+    }, 500);
+    
+  }
+});
+
+// AUTO-PREENCHE vindo do dashboard
+const urlParams = new URLSearchParams(window.location.search);
+const condId = urlParams.get('condominio_id');
+const dataParam = urlParams.get('data');
+
+if (condId && dataParam) {
+  inputCondominio.value = condId;
+  inputData.value = dataParam;
+
+  if (fpData) {
+    fpData.setDate(dataParam);
+  }
+
+  // habilita botão manualmente
+  btnBuscar.disabled = false;
+
+  // dispara busca
+  setTimeout(() => {
+    btnBuscar.click();
+  }, 300);
+}
+
+
 });
 </script>

@@ -94,7 +94,6 @@ placeholder="Buscar colaborador por nome..."
 </div>
 
 <!-- Modal para inativar com data -->
-<!-- Modal para inativar com data -->
 <div class="modal fade" id="modalInativarColaborador" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -155,6 +154,72 @@ placeholder="Buscar colaborador por nome..."
   </div>
 </div>
 
+<!-- Modal para ativar com data -->
+<div class="modal fade" id="modalAtivarColaborador" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Ativar colaborador</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form
+        id="formAtivarColaborador"
+        method="POST"
+        action="/colaboradores/toggle-ativo/0"
+        hx-post="/colaboradores/toggle-ativo/0"
+        hx-target="#colaborador-0"
+        hx-swap="outerHTML"
+        hx-include="#formAtivarColaborador"
+      >
+
+        <div class="modal-body">
+
+          <p>
+            Você está prestes a ativar <strong id="nomeColaboradorAtivar"></strong>.
+          </p>
+
+          <p class="text-muted small">
+            Informe a partir de qual data ele volta a aparecer no efetivo:
+          </p>
+
+          <label class="form-label" for="data_ativacao">
+            Data de ativação *
+          </label>
+
+          <input
+            type="date"
+            class="form-control"
+            id="data_ativacao"
+            name="data_ativacao"
+            required
+          >
+
+        </div>
+
+        <div class="modal-footer">
+
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="btn btn-success"
+          >
+            Confirmar ativação
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+
+
 
 <script>
   // Preencher modal de inativação quando abrir
@@ -200,7 +265,6 @@ window.htmx.process(form);
     }
   });
 </script>
-
 
 
 <script>
@@ -259,6 +323,63 @@ window.htmx.process(form);
     }
   });
 </script>
+
+<script>
+  const modalAtivar = document.getElementById('modalAtivarColaborador');
+
+  if (modalAtivar) {
+    modalAtivar.addEventListener('show.bs.modal', function (event) {
+
+      const button = event.relatedTarget;
+      const colaboradorId = button && button.getAttribute('data-colaborador-id');
+      const colaboradorNome = button && button.getAttribute('data-colaborador-nome');
+
+      const nomeEl = document.getElementById('nomeColaboradorAtivar');
+      const dataEl = document.getElementById('data_ativacao');
+      const form = document.getElementById('formAtivarColaborador');
+
+      if (!colaboradorId || !form || !nomeEl || !dataEl) return;
+
+      nomeEl.textContent = colaboradorNome || '';
+
+      const hoje = new Date().toISOString().split('T')[0];
+      dataEl.value = hoje;
+
+      const url = '/colaboradores/toggle-ativo/' + colaboradorId;
+
+      form.setAttribute('action', url);
+      form.setAttribute('hx-post', url);
+      form.setAttribute('hx-target', '#colaborador-' + colaboradorId);
+
+      if (window.htmx) {
+        window.htmx.process(form);
+      }
+
+    });
+  }
+</script>
+
+<script>
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+
+  const el = evt.detail && evt.detail.elt ? evt.detail.elt : null;
+
+  if (!el || !evt.detail.successful) return;
+
+  if (el.id === 'formAtivarColaborador') {
+
+    const modalEl = document.getElementById('modalAtivarColaborador');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+
+    if (modal) modal.hide();
+
+  }
+
+});
+
+</script>
+
+
 
 <!-- Modal para criar/editar Colaborador via HTMX -->
 <div class="modal fade" id="colaboradorModal" tabindex="-1">

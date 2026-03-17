@@ -1,58 +1,234 @@
-<div class="row mb-4">
-  <div class="col-12">
-    <h2><i class="bi bi-speedometer2"></i> Página inicial</h2>
- </div>
-</div>
-
-<div class="row g-3">
-
-  <div class="col-md-3">
-    <a href="/presenca/lancar" class="text-decoration-none">
-      <div class="card text-white bg-danger h-100 shadow-sm card-hover">
-        <div class="card-body">
-          <h5 class="card-title">
-            <i class="bi bi-calendar-check"></i> Lançar Presença
-          </h5>
-          <p class="card-text">
-            Registrar a presença de hoje ou de dias anteriores.
-          </p>
-        </div>
-      </div>
-    </a>
+<div class="dashboard-modern">
+  
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+  
+  <div>
+    <h4 class="fw-bold mb-0">Operação do Dia</h4>
+    <small class="text-muted">Status em tempo real dos lançamentos</small>
+  </div>
+    <div class="text-end">
+      <span class="badge bg-primary fs-6 px-3 py-2 shadow-sm">
+        <%= resumoGeral.condominios %> Condomínios
+      </span>
+    </div>
   </div>
 
-  <div class="col-md-3">
-    <a href="/presenca/consultar" class="text-decoration-none">
-      <div class="card text-white bg-success h-100 shadow-sm card-hover">
-        <div class="card-body">
-          <h5 class="card-title">
-            <i class="bi bi-clipboard-data"></i> Consultar Presenças
-          </h5>
-          <p class="card-text">
-            Ver o histórico de presenças, faltas e atestados e emitir relatórios.
-          </p>
-        </div>
-      </div>
-    </a>
+ <!-- Barra de Filtros + Resumo -->
+<div class="dashboard-topbar card border-0 shadow-sm mb-4">
+  <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+
+    <!-- Filtros -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+
+      <!-- Select Condomínio -->
+<div class="d-flex flex-column" style="min-width: 220px;">
+  
+  <label class="small text-muted fw-semibold mb-1">
+    Situação cadastral
+  </label>
+
+  <div class="input-group input-group-sm">
+    <span class="input-group-text bg-white">
+      <i class="bi bi-building text-secondary"></i>
+    </span>
+    <select id="condominioDashboard" class="form-select border-start-0">
+      <option value="">Todos</option>
+      <% if (condominios && condominios.length) { %>
+        <% condominios.forEach(c => { %>
+          <option value="<%= c.id %>"><%= c.nome %></option>
+        <% }) %>
+      <% } %>
+    </select>
   </div>
 
 </div>
 
 
-    <% if (usuario && usuario.perfil === 'ADMIN') { %>
-    <div class="col-md-3">
-      <div class="card text-white bg-dark h-100">
-        <div class="card-body">
-          <h5 class="card-title"><i class="bi bi-shield-lock"></i> Administração</h5>
-          <p class="card-text">Configurações de usuários e permissões.</p>
+         </div>
+
+    <!-- Cards Resumo INLINE -->
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+
+      <div class="mini-metric" id="cardColabs">
+        <span class="mini-icon bg-primary-subtle text-primary">
+          <i class="bi bi-people"></i>
+        </span>
+        <div>
+          <div class="mini-value" id="totalColabs"><%= resumoGeral.colaboradores %></div>
+          <div class="mini-label">Colaboradores</div>
         </div>
-        <div class="card-footer text-end">
-          <a href="/user" class="btn btn-light btn-sm">
-            Gerenciar <i class="bi bi-arrow-right"></i>
+      </div>
+
+      <div class="mini-metric">
+        <span class="mini-icon bg-success-subtle text-success">
+          <i class="bi bi-house-door"></i>
+        </span>
+        <div>
+          <div class="mini-value" id="totalPostos"><%= resumoGeral.postos %></div>
+          <div class="mini-label">Postos</div>
+        </div>
+      </div>
+
+      <div class="mini-metric">
+        <span class="mini-icon bg-warning-subtle text-warning">
+          <i class="bi bi-briefcase"></i>
+        </span>
+        <div>
+          <div class="mini-value" id="totalEmpresas"><%= resumoGeral.empresas %></div>
+          <div class="mini-label">Empresas</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+  <!-- Resto igual... -->
+
+
+  <div class="row g-4">
+    
+ <!-- Atalhos Rápidos -->
+<div class="col-lg-4">
+  <div class="card border-0 shadow-sm h-100">
+    
+    <div class="card-header bg-white border-0">
+      <h6 class="fw-bold mb-0">
+        <i class="bi bi-lightning-charge text-warning"></i> Ações Rápidas
+      </h6>
+    </div>
+
+    <div class="card-body">
+      
+      <div class="quick-actions">
+
+        <a href="/presenca/lancar" class="quick-action-btn quick-action-danger">
+          <i class="bi bi-calendar-check"></i>
+          <span>Lançar Presença</span>
+        </a>
+
+        <a href="/presenca/consultar" class="quick-action-btn quick-action-success">
+          <i class="bi bi-search"></i>
+          <span>Consultar Presenças</span>
+        </a>
+
+        <% if (usuario && usuario.perfil === 'admin') { %>
+          <a href="/usuarios" class="quick-action-btn quick-action-dark">
+            <i class="bi bi-shield-lock"></i>
+            <span>Administração</span>
           </a>
+        <% } %>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+    <!-- Status dos Condomínios -->
+<div class="col-lg-8">
+  <div class="card border-0 shadow-sm h-100">
+    
+    <div class="card-header bg-white border-0">
+
+      <!-- Linha 1: título + calendário -->
+      <div class="d-flex justify-content-between align-items-center mb-2">
+
+        <h6 class="fw-bold mb-0">
+          <i class="bi bi-list-check text-primary"></i> Status dos Lançamentos
+        </h6>
+
+        <div class="input-group input-group-sm shadow-sm" style="width: 160px; cursor: pointer;">
+          <span class="input-group-text bg-white border-end-0">
+            <i class="bi bi-calendar-event text-primary"></i>
+          </span>
+          <input 
+            type="text" 
+            id="filtroDataStatus" 
+            class="form-control border-start-0 fw-semibold bg-white" 
+            readonly 
+            value="<%= dataSelecionada %>">
         </div>
+
+      </div>
+
+      <!-- Linha 2: resumo -->
+      <div class="d-flex justify-content-between align-items-center">
+
+        <div class="small text-muted">
+          <strong><%= totalLancados %></strong> lançados • 
+          <strong><%= totalPendentes %></strong> pendentes
+        </div>
+
+        <div class="small fw-bold text-primary">
+          <%= percentual %>%
+        </div>
+
+      </div>
+
+      <!-- Barra de progresso -->
+      <div class="progress mt-2" style="height: 6px;">
+        <div 
+  class="progress-bar 
+    <%= percentual === 100 ? 'bg-success' : (percentual >= 50 ? 'bg-warning' : 'bg-danger') %>" 
+  role="progressbar"
+  data-percentual="<%= percentual %>">
+</div>
+
+      </div>
+
+    </div>
+
+    <div class="card-body p-0">
+      <div class="row g-2 p-3">
+        <% if (condominiosStatus && condominiosStatus.length) { %>
+          <% condominiosStatus.forEach(c => { %>
+            <div class="col-sm-6 col-md-4">
+              <a href="/presenca/lancar?condominio_id=<%= c.id %>&data=<%= dataSelecionada %>" class="text-decoration-none">
+                
+                    <div class="card border-0 shadow-sm h-100 dashboard-status-card 
+                    <%= c.status === 'completo' ? 'status-ok' : (c.status === 'iniciado' ? 'status-warning' : 'status-pending') %>">
+                  
+                  <div class="card-body p-3 text-center">
+                    
+                    <div class="fw-bold mb-2 text-truncate"><%= c.nome %></div>
+
+                    <% if (c.status === 'completo') { %>
+  <span class="badge bg-success w-100">
+    <i class="bi bi-check-circle"></i> Lançado
+  </span>
+<% } else if (c.status === 'iniciado') { %>
+  <span class="badge bg-warning w-100 text-dark">
+    <i class="bi bi-hourglass-split"></i> Iniciado
+  </span>
+<% } else { %>
+  <span class="badge bg-danger w-100">
+    <i class="bi bi-exclamation-triangle"></i> Pendente
+  </span>
+<% } %>
+
+
+                  </div>
+
+                </div>
+
+              </a>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="col-12 text-center py-4">
+            <i class="bi bi-building text-muted fs-1 mb-3"></i>
+            <p class="text-muted mb-0">Nenhum condomínio encontrado</p>
+          </div>
+        <% } %>
       </div>
     </div>
-  <% } %>
+
+  </div>
 </div>
 

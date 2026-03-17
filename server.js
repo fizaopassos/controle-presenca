@@ -4,6 +4,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const Sentry = require('@sentry/node');
+const logsRoutes = require('./routes/logs');
 
 const app = express();
 const perfilRoutes = require('./routes/perfil');
@@ -141,6 +142,7 @@ app.use('/colaboradores', require('./routes/colaboradores'));
 app.use('/presenca', require('./routes/presenca'));
 app.use('/usuarios', require('./routes/usuarios'));
 app.use('/perfil', perfilRoutes);
+app.use('/logs', logsRoutes);
 
 // ========================
 // Rota raiz

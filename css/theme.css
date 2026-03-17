@@ -171,3 +171,252 @@ color: var(--text-strong) !important;
 }
 
 
+/* Dashboard Modern */
+.dashboard-modern {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-metric {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dashboard-metric:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.dashboard-status-card {
+  transition: all 0.2s ease;
+}
+
+.status-ok {
+  border-left: 4px solid #28a745 !important;
+}
+
+.status-ok:hover {
+  background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+}
+
+.status-pending {
+  border-left: 4px solid #dc3545 !important;
+}
+
+.status-pending:hover {
+  background: linear-gradient(135deg, #fff8f8 0%, #fff2f2 100%);
+}
+
+.status-warning {
+  border-left: 4px solid #ffc107;
+}
+
+
+.btn-outline-danger,
+.btn-outline-success,
+.btn-outline-dark {
+  border-width: 2px !important;
+  font-weight: 500;
+}
+
+.badge {
+  font-weight: 500;
+  font-size: 0.8em;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .dashboard-modern .row > div {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Cards Métricas */
+.metric-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(13,110,253,0.1) 0%, rgba(13,110,253,0.05) 100%);
+}
+
+.dashboard-metric:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15) !important;
+}
+
+.status-ok .badge {
+  background: linear-gradient(135deg, #28a745, #20c997) !important;
+  color: white !important;
+}
+
+.status-pending .badge {
+  background: linear-gradient(135deg, #dc3545, #fd7e14) !important;
+  color: white !important;
+}
+
+/* Loading */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+  background: #fff;
+  color: #212529;
+}
+
+.quick-action-btn i {
+  font-size: 1.1rem;
+  width: 22px;
+  text-align: center;
+}
+
+.quick-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.quick-action-danger {
+  border-left: 4px solid #dc3545;
+}
+
+.quick-action-danger:hover {
+  background: #fff5f5;
+  color: #dc3545;
+}
+
+.quick-action-success {
+  border-left: 4px solid #198754;
+}
+
+.quick-action-success:hover {
+  background: #f3fff8;
+  color: #198754;
+}
+
+.quick-action-dark {
+  border-left: 4px solid #212529;
+}
+
+.quick-action-dark:hover {
+  background: #f8f9fa;
+  color: #212529;
+}
+
+
+#condominioDashboard {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+#condominioDashboard:focus {
+  box-shadow: 0 0 0 0.15rem rgba(13,110,253,0.15);
+  border-color: #86b7fe;
+}
+
+
+.dashboard-topbar {
+  border-radius: 14px;
+}
+
+/* Mini métricas estilo SaaS */
+.mini-metric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.mini-metric:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+}
+
+.mini-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.mini-value {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.mini-label {
+  font-size: 11px;
+  color: #6c757d;
+  text-transform: uppercase;
+}
+
+#filtroDataStatus {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#filtroDataStatus:hover {
+  background-color: #f8f9fa;
+}
+
+.progress {
+  background-color: #f1f3f5;
+  border-radius: 10px;
+}
+
+.progress-bar {
+  transition: width 0.4s ease;
+}
+
+.status-completo {
+  border-left: 4px solid #198754;
+}
+
+.status-iniciado {
+  border-left: 4px solid #ffc107;
+}
+
+.status-pendente {
+  border-left: 4px solid #dc3545;
+}
+
+.status-warning {
+  border-left: 4px solid #ffc107;
+  background: linear-gradient(90deg, rgba(255,193,7,0.08), transparent);
+}
+
+.status-warning {
+  border-left: 4px solid #ffc107 !important;
+}
+
+.status-warning .card-body {
+  border-radius: 0;
+}
+
+

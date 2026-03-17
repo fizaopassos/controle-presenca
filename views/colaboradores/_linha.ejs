@@ -3,6 +3,7 @@
 <td><%= c.empresa_nome || '-' %></td>
 <td><%= c.condominio_nome || '-' %></td>
 <td><%= c.posto_nome || '-' %></td>
+
 <td>
 <% if (c.tipo === 'cobertura') { %>
 <span class="badge bg-info text-dark">Cobertura</span>
@@ -10,6 +11,7 @@
 <span class="badge bg-primary">Fixo</span>
 <% } %>
 </td>
+
 <td>
 <% if (c.ativo) { %>
 <span class="badge bg-success">Ativo</span>
@@ -19,51 +21,48 @@
 </td>
 
 <td class="text-end">
-  <div class="d-inline-flex align-items-center gap-2">
-    <button
-      type="button"
-      class="btn btn-outline-primary btn-sm rounded-pill px-3"
-      hx-get="/colaboradores/editar/<%= c.id %>?partial=1"
-      hx-target="#colaboradorModalBody"
-      hx-swap="innerHTML"
-    >
-      Editar
-    </button>
+<div class="d-inline-flex align-items-center gap-2">
 
-    <% if (c.ativo) { %>
-      <!-- Se está ATIVO: botão para INATIVAR (abre modal) -->
-      <button
-        type="button"
-        class="btn btn-outline-danger btn-sm rounded-pill px-3"
-        data-bs-toggle="modal"
-        data-bs-target="#modalInativarColaborador"
-        data-colaborador-id="<%= c.id %>"
-        data-colaborador-nome="<%= c.nome %>"
-      >
-        Inativar
-      </button>
-    <% } else { %>
-      <!-- Se está INATIVO: botão para ATIVAR (direto, sem modal) -->
-      <form
-        action="/colaboradores/toggle-ativo/<%= c.id %>"
-        method="POST"
-        class="d-inline"
-        hx-post="/colaboradores/toggle-ativo/<%= c.id %>"
-        hx-target="#colaborador-<%= c.id %>"
-        hx-swap="outerHTML"
-        hx-trigger="confirmed"
-        data-confirm="1"
-        data-confirm-title="Ativar colaborador"
-        data-confirm-body="Tem certeza que deseja ativar <%= c.nome %>?"
-        data-confirm-ok="Sim, ativar"
-      >
-        <button
-          type="submit"
-          class="btn btn-outline-success btn-sm rounded-pill px-3"
-        >
-          Ativar
-        </button>
-      </form>
-    <% } %>
-  </div>
+<button
+type="button"
+class="btn btn-outline-primary btn-sm rounded-pill px-3"
+hx-get="/colaboradores/editar/<%= c.id %>?partial=1"
+hx-target="#colaboradorModalBody"
+hx-swap="innerHTML"
+>
+Editar
+</button>
+
+<% if (c.ativo) { %>
+
+<!-- INATIVAR -->
+<button
+type="button"
+class="btn btn-outline-danger btn-sm rounded-pill px-3"
+data-bs-toggle="modal"
+data-bs-target="#modalInativarColaborador"
+data-colaborador-id="<%= c.id %>"
+data-colaborador-nome="<%= c.nome %>"
+>
+Inativar
+</button>
+
+<% } else { %>
+
+<!-- ATIVAR -->
+<button
+type="button"
+class="btn btn-outline-success btn-sm rounded-pill px-3"
+data-bs-toggle="modal"
+data-bs-target="#modalAtivarColaborador"
+data-colaborador-id="<%= c.id %>"
+data-colaborador-nome="<%= c.nome %>"
+>
+Ativar
+</button>
+
+<% } %>
+
+</div>
 </td>
+</tr>
