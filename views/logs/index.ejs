@@ -1,0 +1,129 @@
+<h2>Logs do Sistema</h2>
+
+<div class="card">
+<div class="card-body">
+
+<table class="table table-sm table-striped">
+
+<thead>
+<tr>
+<th>Data</th>
+<th>Usuário</th>
+<th>Ação</th>
+<th>Tabela</th>
+<th>Descrição</th>
+<th>IP</th>
+<th>Detalhes</th>
+</tr>
+</thead>
+
+<tbody>
+
+<% logs.forEach(log => { %>
+
+<tr>
+<td><%= new Date(log.criado_em).toLocaleString('pt-BR') %></td>
+<td><%= log.usuario_nome || '-' %></td>
+<td><%= log.acao %></td>
+<td><%= log.tabela %></td>
+<td><%= log.descricao %></td>
+<td><%= log.ip || '-' %></td>
+
+<td>
+<button 
+class="btn btn-sm btn-outline-primary"
+onclick="verDetalhes('<%= log.id %>')">
+Ver detalhes
+</button>
+</td>
+
+</tr>
+
+<% }) %>
+
+</tbody>
+
+</table>
+
+</div>
+</div>
+
+
+<nav>
+<ul class="pagination">
+
+<% for(let i = 1; i <= totalPaginas; i++) { %>
+
+<li class="page-item <%= pagina === i ? 'active' : '' %>">
+<a class="page-link" href="/logs?pagina=<%= i %>">
+<%= i %>
+</a>
+</li>
+
+<% } %>
+
+</ul>
+</nav>
+
+
+<!-- MODAL DETALHES -->
+
+<div class="modal fade" id="modalDetalhes" tabindex="-1">
+
+<div class="modal-dialog modal-lg">
+
+<div class="modal-content">
+
+<div class="modal-header">
+<h5 class="modal-title">Detalhes da alteração</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<div class="modal-body">
+
+<h6>Antes</h6>
+<pre id="logAntes" style="background:#f8f9fa;padding:10px;border-radius:6px;"></pre>
+
+<h6>Depois</h6>
+<pre id="logDepois" style="background:#f8f9fa;padding:10px;border-radius:6px;"></pre>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+async function verDetalhes(id){
+
+try{
+
+const res = await fetch(`/logs/${id}`);
+
+const data = await res.json();
+
+document.getElementById('logAntes').textContent =
+JSON.stringify(data.dados_antes, null, 2);
+
+document.getElementById('logDepois').textContent =
+JSON.stringify(data.dados_depois, null, 2);
+
+const modal = new bootstrap.Modal(
+document.getElementById('modalDetalhes')
+);
+
+modal.show();
+
+}catch(err){
+
+console.error('Erro ao carregar detalhes do log', err);
+
+}
+
+}
+
+</script>
