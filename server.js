@@ -143,6 +143,8 @@ app.use('/presenca', require('./routes/presenca'));
 app.use('/usuarios', require('./routes/usuarios'));
 app.use('/perfil', perfilRoutes);
 app.use('/logs', logsRoutes);
+app.use('/backup', require('./routes/backup'));
+
 
 // ========================
 // Rota raiz
