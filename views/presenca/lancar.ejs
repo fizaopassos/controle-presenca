@@ -522,7 +522,7 @@ pendBadge = '<span class="badge bg-success">Confirmado</span>';
     } else if (estaEmOutroCond) {
       btns = '<span class="text-muted small fst-italic">Trabalhando em outro condomínio nesta data.</span>';
     } else if (isFaltaEfetivo) {
-      btns = '<span class="badge bg-success">Presente (Falta de efetivo)</span>';
+      btns = '<span class="badge bg-success">Presente (Falta de efetivo/apoio)</span>';
     } else {
       STATUSES.forEach(function (st) {
         var active = (st.key === statusRender);
@@ -738,8 +738,8 @@ var extras = [];
     + '  <div class="card-body p-3">'
     + '    <div class="d-flex justify-content-between align-items-center mb-2">'
     + '      <div>'
-    + '        <div class="fw-semibold">Falta de Efetivo</div>'
-    + '        <div class="text-muted small">Registre presença de colaborador que veio de outro condomínio.</div>'
+    + '        <div class="fw-semibold">Falta de Efetivo/Apoio</div>'
+    + '        <div class="text-muted small">Registre aqui a cobertura para falta de efetivo ou apoio.</div>'
     + '      </div>'
     + '    </div>'
     + '    <div class="row g-2 align-items-center">'
@@ -958,7 +958,7 @@ input.addEventListener('input', filtrar);
 
       estado[colabIdFe] = {
         status:              'presente',
-        observacoes:         'Falta de efetivo',
+        observacoes:         'Falta de efetivo/Apoio',
         cobertura_id:        null,
         cobertura_nome:      '',
         originalStatus:      '',
